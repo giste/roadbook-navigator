@@ -7,7 +7,7 @@ Shared foundation for every other module. `:core` depends on no other project mo
 - **Logger:** the only logging entry point. Other modules never call `android.util.Log` directly.
 - **Theme:** Material 3 theme, color, typography and dimension tokens.
 - **Common UI components:** generic composables reused by several features.
-- **Permissions management:** shared helpers for requesting and observing runtime permissions.
+- **Permissions management:** `PermissionGate`, which shows its content only while the required runtime permissions are granted.
 - **Coroutine dispatchers:** `@IoDispatcher`, `@DefaultDispatcher`, … qualifiers and the application-level `CoroutineScope`.
 - **Shared kernel:** minimal, framework-free value objects that several features need (e.g. `Distance`, `GeoPoint`, `Bearing`). Keep it small. Feature-specific concepts stay in their feature.
 
@@ -22,7 +22,10 @@ dev/giste/roadbooknavigator/core/
 │   └── di/         LoggerModule
 ├── coroutines/     IoDispatcher, DefaultDispatcher, ApplicationScope   ← public API
 │   └── di/         CoroutinesModule
-├── permission/     (planned) permission gate and states
+├── permission/     AppPermission, PermissionGate   ← public API
+│   ├── domain/     PermissionStatus, PermissionChecker
+│   ├── data/       ActivityPermissionChecker, manifest mapping, app settings
+│   └── presentation/  PermissionGateState, PermissionScreen
 ├── ui/
 │   ├── theme/      RoadbookNavigatorTheme, Dimensions   ← public API
 │   │   └── presentation/  BeerColorScheme, LocalDimensions, previews
@@ -57,11 +60,19 @@ Package `dev.giste.roadbooknavigator.core.ui.theme`:
 | `RoadbookNavigatorTheme.dimensions` | The current `Dimensions`. Read colors and typography through `MaterialTheme`. |
 | `Dimensions` | Spacing tokens (`spacingExtraSmall` 4 dp … `spacingExtraLarge` 32 dp) and `minTouchTarget` (56 dp). Only the theme creates it. |
 
+Package `dev.giste.roadbooknavigator.core.permission`:
+
+| Type | Purpose |
+|---|---|
+| `AppPermission` | Permissions the app can require. `PRECISE_LOCATION`: fine location while the app is in use. |
+| `PermissionGate(permissions, modifier) { … }` | Shows its content only while every permission is granted. Otherwise shows a full-screen explanation with the action that can grant the first missing one. Must be hosted in an `Activity`. |
+
 `:core` exposes `kotlinx-coroutines-core` as an `api` dependency, because these types appear in its public API.
 
 ## Inputs and outputs
 
 - **Outputs:** log lines written to Logcat through Timber, only after `DebugLogging.install()`.
+- **Manifest:** `:core` declares `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION`, merged into the app.
 - **Inputs:** none.
 
 ## Settings
@@ -75,7 +86,7 @@ None.
 ## Resources
 
 - `resourcePrefix` is `core_`.
-- Only generic strings live here (e.g. `core_action_retry`), in `values` and `values-es`.
+- Only generic strings live here (e.g. `core_action_retry`), in `values` and `values-es`, plus the texts of the permission screen (`core_permission_*`), which belong to the permission capability.
 
 ## Design decisions
 
@@ -105,9 +116,20 @@ None.
 - **Glove-friendly touch targets.** `minTouchTarget` is 56 dp, above the Material 48 dp minimum, because the app is used while driving.
 - **Layout.** The color schemes and `LocalDimensions` are `internal`, so they live in `ui/theme/presentation/`. The root package only holds the public theme API.
 
+### Permissions
+
+- **Foreground only.** Location is used only while the app is open and the screen is on, so there is no `ACCESS_BACKGROUND_LOCATION` and no foreground service. Keeping the screen on is up to the screens that need it.
+- **Precise location is required.** `PRECISE_LOCATION` requests fine and coarse location together (Android 12+ requires both) but counts as granted only with fine location. Approximate location is not accurate enough for the odometer.
+- **No ViewModel.** `shouldShowRequestPermissionRationale` needs the current `Activity`, so a ViewModel could not compute the status on its own. `PermissionGateState` is a plain Compose state holder, and the decision logic is a pure function (`PermissionStatus.resolve`) tested on the JVM.
+- **Detecting "permanently denied".** Android has no flag for it. After one denial the rationale flag turns on; after a second it turns off and the dialog is no longer shown. So "not granted, no rationale" means *never asked* before any request in this state and *permanently denied* after one. The requested permissions are saved with `rememberSaveable`, so this survives rotation and process death. A dismissed dialog looks the same, so the permanently-denied screen offers "Try again" next to "Open settings".
+- **Re-checked on resume.** The gate refreshes on every `ON_RESUME`, which picks up permissions granted in the settings or revoked while the app was in the background.
+- **One permission at a time.** The gate explains and requests the first missing permission in `AppPermission` order, so each screen can explain one permission clearly.
+- **Strings per permission.** Titles, messages and the allow button are mapped per `AppPermission` in `PermissionScreen`, so adding a permission means adding its strings and its `when` branches.
+
 ## Testing notes
 
 - **Logger:** tests plant a `RecordingTree` (in `src/test`) to capture what reaches Timber, and call `Timber.uprootAll()` in `@After` because Timber's forest is global.
 - **AutomaticTagTree:** `callerTag` is tested with synthetic stack traces. The `stackTrace` constructor parameter lets tests drive `createStackElementTag` without depending on the real JUnit stack.
 - **Coroutines:** `CoroutinesModuleTest` calls the `provide*` functions directly instead of going through Hilt. It builds the application scope on a `StandardTestDispatcher` and checks that a failing child leaves the scope and its siblings running.
 - **Theme:** `BeerColorSchemeTest` (JVM) checks scheme selection, the WCAG AA contrast of every content/background pair, a minimum CIELAB distance between each brand color and its error counterpart, and that no role is left at its Material default, in both schemes. A palette change that hurts readability or reintroduces a lookalike or a leaking default fails the build. `RoadbookNavigatorThemeTest` (`androidTest`) checks that the composable provides the right scheme and the dimensions. It needs a device or emulator.
+- **Permissions:** `PermissionStatusTest`, `AppPermissionManifestTest` and `PermissionGateStateTest` (JVM) cover the resolver, the manifest mapping and every state transition, using `FakePermissionChecker` (in `src/test`). `PermissionScreenTest` and `PermissionGateContentTest` (`androidTest`) cover every screen state, every button and the content switch. `PermissionGateTest` and `ActivityPermissionCheckerTest` (`androidTest`) run the real gate and checker with location granted through `UiAutomation`. Revoking a runtime permission kills the app process and would stop the instrumentation, so the denied paths are covered by the stateless and JVM tests. Note that AGP installs connected-test APKs with every runtime permission granted.

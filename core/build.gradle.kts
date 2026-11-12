@@ -42,6 +42,8 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.timber)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     // Public API exposes CoroutineDispatcher and CoroutineScope, so consumers need it too.
     api(libs.kotlinx.coroutines.core)
     testImplementation(libs.junit)
