@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+    Declared here, next to AppPermission, so PermissionGate can always request every permission
+    it knows. Foreground only: location is used while the app is open and the screen is on, so
+    there is no ACCESS_BACKGROUND_LOCATION. Android 12+ needs COARSE requested together with FINE.
+    -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+</manifest>
