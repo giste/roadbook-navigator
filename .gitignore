@@ -1,0 +1,62 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Kotlin / Java
+.kotlin/
+*.class
+*.log
+*.ctxt
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+*.hprof
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+cmake-build-*/
+.navigation/
+
+# OS generated files
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Build outputs
+/app/debug/
+/app/release/
+*.apk
+*.aab
+*.aar
+*.ap_
+*.dex
+
+# Lint
+lint-results*.xml
+lint-results*.html
+
+# Secrets / signing
+google-services.json
+*secret.xml
+keystore.properties
+*.jks
+*.keystore
+.env
+
+# AI Agent Artifacts
+.artifacts/
+*.artifact.md
