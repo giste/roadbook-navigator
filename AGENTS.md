@@ -23,7 +23,7 @@ Base package: `dev.giste.roadbooknavigator`. Module packages are `dev.giste.road
 3. **Never break the module dependency graph** described in [§4](#4-modules-and-dependency-rules).
 4. **Use explicit API mode** in every library module. Everything that is not part of the module's public API must be `internal` or `private`.
 5. **Never throw from a `Flow`.** Model failures as sealed states (see [§6](#6-error-handling)).
-6. **All user-facing text is a string resource**, in English (default) and Spanish (Spain) (see [§8](#8-strings-and-localization)).
+6. **All user-facing text is a string resource**, in English (default) and Spanish (see [§8](#8-strings-and-localization)).
 7. **Everything is in English**: code, identifiers, comments, KDoc, commit messages, file names and logs.
 8. **Document everything.** Public API gets full KDoc. Internal and private code gets KDoc or comments too (see [§9](#9-documentation)).
 9. **Every change comes with tests.** It covers every functionality, branch, error path and screen state (see [§10](#10-testing)).
@@ -126,7 +126,7 @@ dev/giste/roadbooknavigator/<module>/
 └── di/             Hilt modules
 ```
 
-- **Root package = public API only.** Root-package files contain only `public` top-level declarations. They may also have `private` helpers used only by a public declaration in the same file. Do not put `internal` types or shared helpers there, even if they are small. Move them into the layer they belong to.
+- **Root package = public API only** (see the [`:core` exception](#core-exception-one-sub-package-per-capability)). Root-package files contain only `public` top-level declarations. They may also have `private` helpers used only by a public declaration in the same file. Do not put `internal` types or shared helpers there, even if they are small. Move them into the layer they belong to.
 - **Layer packages contain no `public` declarations.** Everything in them is `internal` or `private`. If a type in a layer needs to become public, move it, or a public interface it implements, to the root package.
 - Public types are imported from the module's root package, e.g. `dev.giste.roadbooknavigator.odometer.OdometerController`.
 
@@ -148,6 +148,28 @@ odometer/
 ├── presentation/   OdometerViewModel.kt, OdometerUiState.kt, OdometerScreen.kt
 └── di/             OdometerModule.kt
 ```
+
+#### `:core` exception: one sub-package per capability
+
+`:core` is a set of unrelated capabilities, not one feature, so its root package holds no code. Each capability lives in its own sub-package, and **each sub-package follows the module rules above**: its root holds only its public API, and its layer packages hold only `internal` or `private` code. A capability creates only the layer packages it needs.
+
+```
+core/
+├── logging/        Logger.kt, DebugLogging.kt   ← public API
+│   ├── data/       TimberLogger.kt, AutomaticTagTree.kt
+│   └── di/         LoggerModule.kt
+├── coroutines/     Dispatcher qualifiers, ApplicationScope
+│   └── di/
+├── permission/     PermissionGate.kt, AppPermission.kt
+│   ├── domain/  data/  presentation/  di/
+├── ui/
+│   ├── theme/      Theme, colours, typography, dimensions
+│   └── component/  Common composables
+└── model/          Shared kernel: framework-free value objects (Distance, GeoPoint, …)
+```
+
+- Capabilities depend on each other only through their public API (e.g. `permission` injects `logging.Logger`, never `logging.data.TimberLogger`). Kotlin's `internal` is module-wide, so the compiler does not enforce this. Reviews must.
+- Add a new capability sub-package instead of growing an existing one with unrelated code.
 
 ### 5.2 DDD building blocks
 
@@ -204,7 +226,8 @@ odometer/
 
 ## 8. Strings and localization
 
-- All user-facing text lives in `res/values/strings.xml` (English, the default) **and** `res/values-es-rES/strings.xml` (Spanish, Spain). Every key must exist in both files.
+- All user-facing text lives in `res/values/strings.xml` (English, the default) **and** `res/values-es/strings.xml` (Spanish, used for every Spanish locale). Every key must exist in both files.
+- Add a regional folder (e.g. `values-es-rMX`) only for the strings whose wording differs in that region. It overrides `values-es` and does not need every key.
 - This includes content descriptions, error messages, units shown to users, notification text and labels. Use `plurals` and placeholders (`%1$s`, `%1$d`) instead of string concatenation.
 - Format numbers and distances with the current locale.
 - **Accepted exceptions** (no resource needed): log messages, exception or `require` messages meant for developers, DataStore keys, intent extras and other identifiers, MIME types, file extensions, test names and test data, `@Preview` sample data, and format patterns that are not user-visible.
@@ -363,7 +386,7 @@ The test suite is exhaustive: **every functionality, branch, error path, sealed 
 6. **Definition of done:**
    - [ ] Module boundaries and visibility rules are respected (explicit API, root package holds only public API, layer packages hold no public declarations).
    - [ ] No exceptions escape flows. Failures are sealed states.
-   - [ ] All new user-facing strings exist in `values` and `values-es-rES`.
+   - [ ] All new user-facing strings exist in `values` and `values-es`.
    - [ ] Public API has full KDoc. Internal and private code is documented.
    - [ ] Unit and integration tests cover every branch and error path. UI tests cover every screen state.
    - [ ] The module `README.md` is updated if the public API, settings, persisted state or design decisions changed.
