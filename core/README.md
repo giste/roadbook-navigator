@@ -20,7 +20,8 @@ dev/giste/roadbooknavigator/core/
 ├── logging/        Logger, DebugLogging   ← public API
 │   ├── data/       TimberLogger, AutomaticTagTree
 │   └── di/         LoggerModule
-├── coroutines/     (planned) dispatcher qualifiers, application scope
+├── coroutines/     IoDispatcher, DefaultDispatcher, ApplicationScope   ← public API
+│   └── di/         CoroutinesModule
 ├── permission/     (planned) permission gate and states
 ├── ui/
 │   ├── theme/      (planned) theme, colours, typography, dimensions
@@ -38,6 +39,16 @@ Package `dev.giste.roadbooknavigator.core.logging`:
 |---|---|
 | `Logger` | The only logging entry point. Inject it (Hilt binds it in `SingletonComponent`). Messages are `String.format` patterns. `withTag(tag)` returns a logger with a fixed tag. |
 | `DebugLogging` | `DebugLogging.install()` turns on Logcat output. `:app` calls it from `Application.onCreate`, only in debuggable builds. Idempotent. |
+
+Package `dev.giste.roadbooknavigator.core.coroutines`:
+
+| Type | Purpose |
+|---|---|
+| `@IoDispatcher` | Qualifier for the `CoroutineDispatcher` used for blocking I/O (`Dispatchers.IO` in production). |
+| `@DefaultDispatcher` | Qualifier for the `CoroutineDispatcher` used for CPU-bound work (`Dispatchers.Default` in production). |
+| `@ApplicationScope` | Qualifier for the app-wide `CoroutineScope`: a `@Singleton`, never cancelled, `SupervisorJob` + `@DefaultDispatcher`. Use it instead of `GlobalScope`. |
+
+`:core` exposes `kotlinx-coroutines-core` as an `api` dependency, because these types appear in its public API.
 
 ## Inputs and outputs
 
@@ -67,7 +78,15 @@ None.
 - **Explicit tags per call.** Timber clears an explicit tag after each line, so the logger returned by `withTag` sets it before every call.
 - **Unscoped binding.** `TimberLogger` is stateless, so `LoggerModule` binds it without `@Singleton`.
 
+### Coroutines
+
+- **Injected, not hardcoded.** Classes get dispatchers and the application scope through the qualifiers, so tests can pass a `StandardTestDispatcher` or a `TestScope` instead.
+- **No `@MainDispatcher` yet.** ViewModels use `viewModelScope` (already on Main) and tests replace Main with a `MainDispatcherRule`. Add the qualifier when a non-ViewModel class needs Main.
+- **Supervisor scope with no exception handler.** One failing child does not cancel the scope or its siblings. An uncaught exception still crashes the app on purpose: expected failures must be sealed states (AGENTS.md §6), so anything that reaches the scope is a bug.
+- **Unscoped dispatchers, singleton scope.** The `Dispatchers` objects are already singletons. The scope must be one instance so the whole app shares its job.
+
 ## Testing notes
 
 - **Logger:** tests plant a `RecordingTree` (in `src/test`) to capture what reaches Timber, and call `Timber.uprootAll()` in `@After` because Timber's forest is global.
 - **AutomaticTagTree:** `callerTag` is tested with synthetic stack traces. The `stackTrace` constructor parameter lets tests drive `createStackElementTag` without depending on the real JUnit stack.
+- **Coroutines:** `CoroutinesModuleTest` calls the `provide*` functions directly instead of going through Hilt. It builds the application scope on a `StandardTestDispatcher` and checks that a failing child leaves the scope and its siblings running.
