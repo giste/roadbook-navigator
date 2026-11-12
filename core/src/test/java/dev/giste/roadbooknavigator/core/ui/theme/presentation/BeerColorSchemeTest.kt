@@ -89,8 +89,8 @@ class BeerColorSchemeTest {
     }
 
     /**
-     * Returns every brand/error pair whose colour distance is below [MIN_ERROR_DISTANCE], i.e.
-     * where a brand colour could be mistaken for an error at a glance.
+     * Returns every brand/error pair whose color distance is below [MIN_ERROR_DISTANCE], i.e.
+     * where a brand color could be mistaken for an error at a glance.
      */
     private fun ColorScheme.errorLookalikes(): List<String> = listOf(
         "primary/error" to (primary to error),
@@ -119,7 +119,7 @@ class BeerColorSchemeTest {
         }.keys.toList()
     }
 
-    /** Every colour role of the scheme, by name. */
+    /** Every color role of the scheme, by name. */
     private fun ColorScheme.roles(): Map<String, Color> = mapOf(
         "primary" to primary,
         "onPrimary" to onPrimary,
@@ -159,7 +159,7 @@ class BeerColorSchemeTest {
         "surfaceContainerHighest" to surfaceContainerHighest,
     )
 
-    /** CIE76 colour difference: Euclidean distance in CIELAB. About 2.3 is just noticeable. */
+    /** CIE76 color difference: Euclidean distance in CIELAB. About 2.3 is just noticeable. */
     private fun labDistance(a: Color, b: Color): Double {
         val labA = a.convert(ColorSpaces.CieLab)
         val labB = b.convert(ColorSpaces.CieLab)
@@ -211,7 +211,7 @@ class BeerColorSchemeTest {
         const val MIN_CONTRAST = 4.5
 
         /**
-         * Minimum CIE76 distance between a brand colour and its error counterpart. The pale
+         * Minimum CIE76 distance between a brand color and its error counterpart. The pale
          * containers are inherently close to each other, so this is lower than for vivid roles,
          * but still far above the ~2.3 noticeable difference.
          */

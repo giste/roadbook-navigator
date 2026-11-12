@@ -22,9 +22,9 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 
-// Palette based on beer colours, built from four seeds:
+// Palette based on beer colors, built from four seeds:
 //
-// - Primary: beer gold (#F28E1C), nudged towards amber (#FFB300) so tone 80 reads as gold, not
+// - Primary: beer gold (#F28E1C), nudged toward amber (#FFB300) so tone 80 reads as gold, not
 //   peach.
 // - Secondary: hops green (#558B2F).
 // - Tertiary: roasted malt (#8D6E63), shifted to a coffee-brown hue with a little more chroma so
@@ -34,12 +34,12 @@ import androidx.compose.ui.graphics.Color
 //
 // Each seed gives a tonal palette (CIELAB lightness = Material "tone", seed hue and chroma kept
 // within the sRGB gamut), and every role uses the Material 3 baseline tone for it: e.g. primary
-// is tone 40 in light and tone 80 in dark. Every role is set, so no default purple-tinted colour
+// is tone 40 in light and tone 80 in dark. Every role is set, so no default purple-tinted color
 // leaks in. Light surfaces show the bright gold through primaryContainer (tone 80) because white
 // text on the bright gold itself would be unreadable.
 //
-// BeerColorSchemeTest checks that every content colour reaches WCAG AA contrast (4.5:1) on its
-// background, that every brand colour stays clearly distinct from its error counterpart, and that
+// BeerColorSchemeTest checks that every content color reaches WCAG AA contrast (4.5:1) on its
+// background, that every brand color stays clearly distinct from its error counterpart, and that
 // no role is left at its Material default.
 
 /** Light scheme: dark gold, hops and malt on foam cream. */

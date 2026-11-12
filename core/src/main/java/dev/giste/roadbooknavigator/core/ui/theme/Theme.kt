@@ -27,16 +27,16 @@ import dev.giste.roadbooknavigator.core.ui.theme.presentation.LocalDimensions
 import dev.giste.roadbooknavigator.core.ui.theme.presentation.beerColorScheme
 
 /**
- * The app's Material 3 theme, with a palette based on beer colours.
+ * The app's Material 3 theme, with a palette based on beer colors.
  *
- * Wrap every screen, and every `@Preview`, in it. Read colours and typography through
+ * Wrap every screen, and every `@Preview`, in it. Read colors and typography through
  * [MaterialTheme] (`MaterialTheme.colorScheme.primary`, `MaterialTheme.typography.bodyLarge`) and
- * spacing through [RoadbookNavigatorTheme.dimensions]. Never hardcode colours or dimensions.
+ * spacing through [RoadbookNavigatorTheme.dimensions]. Never hardcode colors or dimensions.
  *
- * Dynamic colour (Material You) is not used: the beer palette is the app's identity, and fixed
- * colours keep the roadbook equally readable on every device.
+ * Dynamic color (Material You) is not used: the beer palette is the app's identity, and fixed
+ * colors keep the roadbook equally readable on every device.
  *
- * @param darkTheme whether to use the dark (stout) colour scheme instead of the light (foam)
+ * @param darkTheme whether to use the dark (stout) color scheme instead of the light (foam)
  * one. Defaults to the system setting.
  * @param content the composable content the theme applies to.
  */
@@ -57,7 +57,7 @@ public fun RoadbookNavigatorTheme(
 /**
  * Accessors for the theme values that [MaterialTheme] does not cover.
  *
- * Read them only inside [RoadbookNavigatorTheme]. Outside it they fall back to the defaults.
+ * Read them only inside [RoadbookNavigatorTheme]. Outside it, they fall back to the defaults.
  */
 public object RoadbookNavigatorTheme {
 

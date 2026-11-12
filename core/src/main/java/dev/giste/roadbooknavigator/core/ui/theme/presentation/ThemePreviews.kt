@@ -34,7 +34,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import dev.giste.roadbooknavigator.core.ui.theme.RoadbookNavigatorTheme
 
 /**
- * Shows the main colour roles of the theme as swatches with their "on" colour, so the palette
+ * Shows the main color roles of the theme as swatches with their "on" color, so the palette
  * can be reviewed in Android Studio. Preview-only: labels are sample data, not resources.
  */
 @Composable
@@ -62,7 +62,7 @@ private fun ColorRolesSample(modifier: Modifier = Modifier) {
     }
 }
 
-/** One colour role: its name written in its "on" colour over its background. */
+/** One color role: its name written in its "on" color over its background. */
 @Composable
 private fun Swatch(name: String, background: Color, content: Color) {
     val dimensions = RoadbookNavigatorTheme.dimensions
