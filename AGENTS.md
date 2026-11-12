@@ -10,7 +10,7 @@ An Android app for rally navigation. It:
 
 - Imports a **Rally Navigator roadbook definition file (`.rn2`)** and turns its waypoints and moderators into a scrollable on-screen roadbook used to navigate the route.
 - Shows an **odometer** with **partial** and **total** distance (and possibly speed, bearing, etc.).
-- Shows a **map** centred on the current location, with custom zoom and tilt.
+- Shows a **map** centered on the current location, with custom zoom and tilt.
 
 Base package: `dev.giste.roadbooknavigator`. Module packages are `dev.giste.roadbooknavigator.<module>` (e.g. `dev.giste.roadbooknavigator.odometer`).
 
@@ -76,7 +76,7 @@ Use only libraries that are already in the version catalog, unless the developer
 | `:location` | Provides a location `Flow` to other modules | `:core` |
 | `:odometer` | Computes and keeps partial and total distance (and possibly speed, bearing, etc.) | `:core` |
 | `:roadbook` | Imports `.rn2`, builds and draws waypoints and moderators, emits roadbook events, auto-advances from a partial-distance flow | `:core` |
-| `:map` | Map centred on current location with custom zoom and tilt, map management | `:core` |
+| `:map` | Map centered on current location with custom zoom and tilt, map management | `:core` |
 | `:settings` | Settings UI and persistence for all modules. Provides each module's settings flow | `:core` + feature modules |
 | `:app` | Composition root: `Application`, `MainActivity`, navigation host, cross-module wiring. No business logic | all modules |
 
@@ -136,7 +136,7 @@ dev/giste/roadbooknavigator/<module>/
 - When a layer grows, split it into sub-packages, but only for groups that are big enough to need one. Leave the remaining files at the layer root.
 - **Group by concept rather than by type** when that reads better, e.g. `roadbook/domain/waypoint/` and `roadbook/domain/parsing/` instead of `model/` and `usecase/`. Use type-based names (`model/`, `repository/`, `usecase/`, `source/`, `mapper/`) when there is no clearer concept.
 - Closely related declarations may share one Kotlin file, e.g. a sealed hierarchy and its subtypes, or a small value object used only by its owner. Name the file after the main declaration.
-- When you restructure packages, move files without changing behaviour, and do it in a separate change from functional work.
+- When you restructure packages, move files without changing behavior, and do it in a separate change from functional work.
 
 Example of a small module:
 
@@ -163,7 +163,7 @@ core/
 ├── permission/     PermissionGate.kt, AppPermission.kt
 │   ├── domain/  data/  presentation/  di/
 ├── ui/
-│   ├── theme/      Theme, colours, typography, dimensions
+│   ├── theme/      Theme, colors, typography, dimensions
 │   └── component/  Common composables
 └── model/          Shared kernel: framework-free value objects (Distance, GeoPoint, …)
 ```
@@ -173,7 +173,7 @@ core/
 
 ### 5.2 DDD building blocks
 
-- **Value objects:** immutable and validated on creation. Use `@JvmInline value class` for single-value types such as `Distance` or `WaypointId`. Never pass raw `Double`s or `Int`s around for domain quantities. Store distance in metres internally and convert only for display.
+- **Value objects:** immutable and validated on creation. Use `@JvmInline value class` for single-value types such as `Distance` or `WaypointId`. Never pass raw `Double`s or `Int`s around for domain quantities. Store distance in meters internally and convert only for display.
 - **Entities and aggregates:** have identity and enforce their own invariants. For example, `Roadbook` is the aggregate root that owns its `Waypoint`s and their moderators. All changes go through the aggregate root.
 - **Domain events:** sealed hierarchies that describe something that happened (e.g. `RoadbookEvent.Loaded`).
 - **Repositories:** interfaces are declared in `domain`. Implementations live in `data`. They expose `Flow`s and `suspend` functions and return sealed results.
@@ -191,8 +191,8 @@ core/
   - The first optional parameter is `modifier: Modifier = Modifier`, and it is applied to the root layout.
   - Hoist state and keep composables side-effect free. Use `LaunchedEffect` and similar APIs correctly.
   - Provide `@Preview`s for every screen state, in light and dark themes, using `:core` theme.
-  - Use `:core` theme tokens and common components. Do not hardcode colours or dimensions.
-- One-shot UI effects (snackbars, navigation) are modelled as state where possible, following Android guidance.
+  - Use `:core` theme tokens and common components. Do not hardcode colors or dimensions.
+- One-shot UI effects (snackbars, navigation) are modeled as state where possible, following Android guidance.
 
 ### 5.4 Coroutines and flows
 
@@ -238,7 +238,7 @@ core/
 
 ## 9. Documentation
 
-- **Public API:** full KDoc on every public class, interface, function, property, parameter (`@param`), return value (`@return`), sealed subtype and enum entry. Explain behaviour, threading or flow semantics (hot or cold, replay, when it emits) and error states.
+- **Public API:** full KDoc on every public class, interface, function, property, parameter (`@param`), return value (`@return`), sealed subtype and enum entry. Explain behavior, threading or flow semantics (hot or cold, replay, when it emits) and error states.
 - **Internal and private code:** KDoc for classes and non-trivial functions, and inline comments that explain *why*, not *what*. Document non-trivial algorithms in detail.
 - Each module has a `README.md` describing its responsibility, public API, inputs and outputs, settings, persisted state, key design decisions and module-specific testing notes. It is the single place for module-specific guidance. Update it in the same change whenever any of these change.
 - Do not leave commented-out code. `TODO`s must include context.
@@ -263,7 +263,7 @@ The test suite is exhaustive: **every functionality, branch, error path, sealed 
 - Prefer **fakes over mocks**. Fakes live in the test source set of the module that owns the interface and are named `FakeXxx`. Use a mocking library only when a fake is impractical.
 - Test flows with Turbine. Use `runTest` and `StandardTestDispatcher`/`UnconfinedTestDispatcher` with injected dispatchers, and a `MainDispatcherRule` for ViewModels.
 - Test names follow `subject_condition_expectedResult`, e.g. `addFix_lowAccuracy_isIgnored`. Test classes are named `XxxTest`, and integration tests `XxxIntegrationTest`.
-- Each test follows Arrange / Act / Assert (Given / When / Then) and checks one behaviour.
+- Each test follows Arrange / Act / Assert (Given / When / Then) and checks one behavior.
 - Tests are deterministic: no real time, network, location or `Thread.sleep`. Inject clocks and time sources.
 - Test fixtures (e.g. sample input files) go in `src/test/resources`.
 - Bug fixes start with a failing test that reproduces the bug.
@@ -336,7 +336,7 @@ The test suite is exhaustive: **every functionality, branch, error path, sealed 
 - Prefer **squash merge** with a Conventional Commits title, so `main` keeps one meaningful commit per change.
 - **Write a proper squash commit message.** Squashing discards the branch commits, so this message is the only record of the change in the Git history. Replace the auto-generated list of branch commit messages ("wip", "fix typo", "address review") with:
   - **Title:** the pull request title, in Conventional Commits format.
-  - **Body:** what changed, at the behaviour level rather than file by file, and why. Add notable design decisions or trade-offs, and risks such as persisted-format changes or migrations.
+  - **Body:** what changed, at the behavior level rather than file by file, and why. Add notable design decisions or trade-offs, and risks such as persisted-format changes or migrations.
   - **Footer:** `BREAKING CHANGE: <description>` when applicable, and issue references (`Refs: #12`, `Closes: #12`).
 
   Write the pull request description in the same shape so it can be reused as the squash message. Example:
@@ -352,7 +352,7 @@ The test suite is exhaustive: **every functionality, branch, error path, sealed 
     throwing
   - Emit RoadbookEvent.Loaded so :app can reset the odometer
 
-  Distances are stored in metres; .rn2 kilometre values are converted
+  Distances are stored in meters; .rn2 kilometer values are converted
   at the data boundary.
 
   Refs: #4
