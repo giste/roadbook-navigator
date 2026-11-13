@@ -78,7 +78,7 @@ Use only libraries that are already in the version catalog, unless the developer
 | `:roadbook` | Imports `.rn2`, builds and draws waypoints and moderators, emits roadbook events, auto-advances from a partial-distance flow | `:core` |
 | `:map` | Map centered on current location with custom zoom and tilt, map management | `:core` |
 | `:settings` | Settings UI and persistence for all modules. Provides each module's settings flow | `:core` + feature modules |
-| `:app` | Composition root: `Application`, `MainActivity`, navigation host, cross-module wiring. No business logic | all modules |
+| `:app` | Composition root: `Application`, `MainActivity`, navigation host, cross-module wiring and cross-module rules. No domain logic (see [§4.2](#42-cross-module-rules-in-app)) | all modules |
 
 Rules:
 
@@ -98,7 +98,16 @@ Each feature module **declares the inputs it needs as interfaces or flows in its
 
 When several features need the **same primitive concept**, put a minimal, framework-free value object in `:core`'s **shared kernel**, for example `Distance`, `GeoPoint` or `Bearing`. Keep the shared kernel small. Feature-specific concepts stay in their feature.
 
-### 4.2 Settings contract
+### 4.2 Cross-module rules in `:app`
+
+Some rules belong to no single feature, because they decide how features react to each other, and no feature may know about another. Resetting the odometer when a new roadbook is loaded is one example. These **cross-module rules** live in `:app`. **Domain logic** does not: anything about one concept (how distance is accumulated, when a waypoint is reached, how `.rn2` is parsed) belongs in the feature that owns that concept.
+
+- Implement each rule as a small **coordinator** class in `:app`'s `coordination` package, named after what it coordinates, e.g. `RoadbookOdometerCoordinator`. It collects one module's public outputs (events, flows) and calls another module's public API. It runs in the injected application `CoroutineScope` and starts from the `Application`.
+- Coordinators use only the modules' public APIs. They follow the same rules as any other code: KDoc, no exceptions escaping flows, injected dispatchers, and tests (see [§10.1](#101-test-types)).
+- If a rule only involves one module's concepts, move it into that module.
+- If a coordinator starts doing domain work, such as calculations, state machines or persistence, that logic belongs in a feature. Move it there, or ask the developer about a new module.
+
+### 4.3 Settings contract
 
 - Each feature module defines, in its public API:
   - an immutable settings model (`XxxSettings`, `data class` with documented defaults), and
@@ -253,10 +262,10 @@ The test suite is exhaustive: **every functionality, branch, error path, sealed 
 
 | Type | Source set | What |
 |---|---|---|
-| Unit | `src/test` | Value objects and invariants, aggregates, use cases, mappers, parsers (valid, invalid and edge-case fixtures), domain algorithms, ViewModels (every state transition and action), repositories with fake data sources |
+| Unit | `src/test` | Value objects and invariants, aggregates, use cases, mappers, parsers (valid, invalid and edge-case fixtures), domain algorithms, ViewModels (every state transition and action), repositories with fake data sources, `:app` coordinators with fakes of the modules' public APIs |
 | Integration (JVM) | `src/test` | Repositories with real DataStore in a temporary folder, parsers plus repositories on real fixture files, flow pipelines across layers |
 | UI | `src/androidTest` (or `src/test` with Robolectric if configured) | Each stateless `XxxScreen` in every UI state, user interactions and callbacks, accessibility (content descriptions, semantics) |
-| App integration | `:app` `src/androidTest` | Hilt-based tests of cross-module wiring: roadbook load → odometer reset, odometer partial → roadbook auto-advance, settings changes propagating to features |
+| App integration | `:app` `src/androidTest` | Hilt-based tests of cross-module wiring and coordinators: roadbook load → odometer reset, odometer partial → roadbook auto-advance, settings changes propagating to features |
 
 ### 10.2 Conventions
 
