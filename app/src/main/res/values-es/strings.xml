@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- App strings (Spanish, used for every Spanish locale). Every key in values/strings.xml must exist here. -->
+<resources>
+    <string name="app_name">Roadbook Navigator</string>
+
+    <!-- Precise location permission, shown by the core permission gate -->
+    <string name="app_permission_location_action_allow">Permitir ubicación</string>
+    <string name="app_permission_location_title">Se necesita la ubicación precisa</string>
+    <string name="app_permission_location_message">Roadbook Navigator usa tu ubicación precisa para medir distancias y centrar el mapa. Solo se usa mientras la aplicación está abierta y la pantalla encendida.</string>
+    <string name="app_permission_location_rationale">Sin la ubicación precisa, el cuentakilómetros no puede medir distancias. Cuando se te pregunte, elige \"Precisa\" y \"Mientras se usa la aplicación\".</string>
+    <string name="app_permission_location_permanently_denied_message">El acceso a la ubicación está desactivado. Abre los ajustes, ve a Permisos, Ubicación, elige \"Permitir solo mientras se usa la aplicación\" y activa \"Usar ubicación precisa\".</string>
+</resources>

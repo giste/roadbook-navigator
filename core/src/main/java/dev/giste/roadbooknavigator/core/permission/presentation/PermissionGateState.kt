@@ -17,6 +17,7 @@
 
 package dev.giste.roadbooknavigator.core.permission.presentation
 
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -24,7 +25,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import dev.giste.roadbooknavigator.core.permission.AppPermission
+import dev.giste.roadbooknavigator.core.permission.RequiredPermission
 import dev.giste.roadbooknavigator.core.permission.domain.PermissionChecker
 import dev.giste.roadbooknavigator.core.permission.domain.PermissionStatus
 
@@ -35,30 +36,45 @@ import dev.giste.roadbooknavigator.core.permission.domain.PermissionStatus
  * @property status why it is not granted. Never [PermissionStatus.Granted].
  */
 internal data class PendingPermission(
-    val permission: AppPermission,
+    val permission: RequiredPermission,
     val status: PermissionStatus,
-)
+) {
+
+    /** String resource of the explanation that fits [status]. */
+    @get:StringRes
+    val message: Int
+        get() = when (status) {
+            PermissionStatus.ShowRationale -> permission.rationale
+            PermissionStatus.PermanentlyDenied -> permission.permanentlyDeniedMessage
+            // Granted never reaches the screen; it shares the first-time explanation.
+            PermissionStatus.Denied, PermissionStatus.Granted -> permission.message
+        }
+}
 
 /**
  * State holder for [dev.giste.roadbooknavigator.core.permission.PermissionGate].
  *
  * Plain Compose state instead of a ViewModel: the rationale flag needs the current `Activity`,
- * and the only state worth keeping (which permissions were requested) survives configuration
- * changes and process death through [saver].
+ * and the only state worth keeping (which manifest permissions were requested) survives
+ * configuration changes and process death through [saver].
  *
  * @param permissions the required permissions, in the order they are asked for.
- * @param checker reads the current Android state of each permission.
- * @param requested permissions that already got a request result, restored from saved state.
+ * @param checker reads the current Android state of each manifest permission.
+ * @param requested manifest permissions that already got a request result, restored from saved
+ * state.
  */
 @Stable
 internal class PermissionGateState(
-    private val permissions: List<AppPermission>,
+    private val permissions: List<RequiredPermission>,
     private val checker: PermissionChecker,
-    requested: Set<AppPermission> = emptySet(),
+    requested: Set<String> = emptySet(),
 ) {
 
-    /** Permissions that already got a request result. Needed to detect "permanently denied". */
-    var requested: Set<AppPermission> = requested
+    /**
+     * Manifest permissions that already got a request result. Needed to detect "permanently
+     * denied".
+     */
+    var requested: Set<String> = requested
         private set
 
     /**
@@ -76,19 +92,28 @@ internal class PermissionGateState(
     /**
      * Records a request result and re-reads every permission.
      *
-     * @param permissions the permissions the result belongs to.
+     * @param manifestPermissions the manifest permissions the result contains (its keys).
      */
-    fun onRequestResult(permissions: Set<AppPermission>) {
-        requested = requested + permissions
+    fun onRequestResult(manifestPermissions: Collection<String>) {
+        requested = requested + manifestPermissions
         refresh()
     }
 
+    /**
+     * Resolves each permission in order and returns the first one that is not granted.
+     *
+     * A permission is granted when every one of its `required` manifest permissions is. The
+     * rationale flag only matters for the missing ones, and a single request result for any of
+     * its `requested` manifest permissions counts as having requested it, because they are always
+     * requested together.
+     */
     private fun computePending(): PendingPermission? =
         permissions.firstNotNullOfOrNull { permission ->
+            val missing = permission.required.filterNot(checker::isGranted)
             val status = PermissionStatus.resolve(
-                isGranted = checker.isGranted(permission),
-                shouldShowRationale = checker.shouldShowRationale(permission),
-                hasBeenRequested = permission in requested,
+                isGranted = missing.isEmpty(),
+                shouldShowRationale = missing.any(checker::shouldShowRationale),
+                hasBeenRequested = permission.requested.any { it in requested },
             )
             if (status == PermissionStatus.Granted) null else PendingPermission(permission, status)
         }
@@ -96,7 +121,7 @@ internal class PermissionGateState(
     companion object {
 
         /**
-         * Saves the [requested] permissions by name, so a denial is still recognized as
+         * Saves the [requested] manifest permissions, so a denial is still recognized as
          * permanent after a configuration change or process death.
          *
          * @param permissions the required permissions of the restored state.
@@ -104,15 +129,15 @@ internal class PermissionGateState(
          * @return a saver that keeps [requested] and rebuilds everything else.
          */
         fun saver(
-            permissions: List<AppPermission>,
+            permissions: List<RequiredPermission>,
             checker: PermissionChecker,
         ): Saver<PermissionGateState, List<String>> = Saver(
-            save = { state -> state.requested.map { it.name } },
+            save = { state -> state.requested.toList() },
             restore = { names ->
                 PermissionGateState(
                     permissions = permissions,
                     checker = checker,
-                    requested = names.mapTo(mutableSetOf()) { AppPermission.valueOf(it) },
+                    requested = names.toSet(),
                 )
             },
         )
@@ -122,17 +147,18 @@ internal class PermissionGateState(
 /**
  * Remembers a [PermissionGateState] that survives configuration changes and process death.
  *
- * @param permissions the required permissions. They are asked for in [AppPermission] order.
- * @param checker reads the current Android state of each permission.
+ * @param permissions the required permissions, in the order they are asked for.
+ * @param checker reads the current Android state of each manifest permission.
  * @return the remembered state.
  */
 @Composable
 internal fun rememberPermissionGateState(
-    permissions: Set<AppPermission>,
+    permissions: List<RequiredPermission>,
     checker: PermissionChecker,
-): PermissionGateState {
-    val ordered = permissions.sortedBy { it.ordinal }
-    return rememberSaveable(ordered, checker, saver = PermissionGateState.saver(ordered, checker)) {
-        PermissionGateState(ordered, checker)
-    }
+): PermissionGateState = rememberSaveable(
+    permissions,
+    checker,
+    saver = PermissionGateState.saver(permissions, checker),
+) {
+    PermissionGateState(permissions, checker)
 }

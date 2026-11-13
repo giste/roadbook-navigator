@@ -18,8 +18,8 @@
 package dev.giste.roadbooknavigator.core.permission.domain
 
 /**
- * Whether one [dev.giste.roadbooknavigator.core.permission.AppPermission] is granted and, if not,
- * what the user can still do about it.
+ * Whether one [dev.giste.roadbooknavigator.core.permission.RequiredPermission] is granted and, if
+ * not, what the user can still do about it.
  */
 internal sealed interface PermissionStatus {
 

@@ -19,7 +19,6 @@ package dev.giste.roadbooknavigator.core.permission.data
 
 import android.app.Activity
 import android.content.pm.PackageManager
-import dev.giste.roadbooknavigator.core.permission.AppPermission
 import dev.giste.roadbooknavigator.core.permission.domain.PermissionChecker
 
 /**
@@ -29,10 +28,9 @@ import dev.giste.roadbooknavigator.core.permission.domain.PermissionChecker
  */
 internal class ActivityPermissionChecker(private val activity: Activity) : PermissionChecker {
 
-    override fun isGranted(permission: AppPermission): Boolean =
-        activity.checkSelfPermission(permission.grantingPermission) ==
-            PackageManager.PERMISSION_GRANTED
+    override fun isGranted(permission: String): Boolean =
+        activity.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
 
-    override fun shouldShowRationale(permission: AppPermission): Boolean =
-        activity.shouldShowRequestPermissionRationale(permission.grantingPermission)
+    override fun shouldShowRationale(permission: String): Boolean =
+        activity.shouldShowRequestPermissionRationale(permission)
 }

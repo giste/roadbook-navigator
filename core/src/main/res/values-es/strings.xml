@@ -4,9 +4,4 @@
     <!-- Permission gate -->
     <string name="core_permission_action_open_settings">Abrir ajustes</string>
     <string name="core_permission_action_try_again">Volver a intentarlo</string>
-    <string name="core_permission_location_action_allow">Permitir ubicación</string>
-    <string name="core_permission_location_title">Se necesita la ubicación precisa</string>
-    <string name="core_permission_location_message">Roadbook Navigator usa tu ubicación precisa para medir distancias y centrar el mapa. Solo se usa mientras la aplicación está abierta y la pantalla encendida.</string>
-    <string name="core_permission_location_rationale">Sin la ubicación precisa, el cuentakilómetros no puede medir distancias. Cuando se te pregunte, elige \"Precisa\" y \"Mientras se usa la aplicación\".</string>
-    <string name="core_permission_location_permanently_denied">El acceso a la ubicación está desactivado. Abre los ajustes, ve a Permisos, Ubicación, elige \"Permitir solo mientras se usa la aplicación\" y activa \"Usar ubicación precisa\".</string>
 </resources>

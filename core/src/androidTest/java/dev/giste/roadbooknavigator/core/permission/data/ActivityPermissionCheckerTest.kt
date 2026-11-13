@@ -22,7 +22,6 @@ import androidx.activity.ComponentActivity
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import dev.giste.roadbooknavigator.core.permission.AppPermission
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -31,8 +30,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Checks the real Android calls with location granted. Revoking a runtime permission kills the
- * app process, which would stop the instrumentation, so the denied answers are not tested here.
+ * Checks the real Android calls with location granted, and with a permission the test app never
+ * gets. Revoking a runtime permission kills the app process, which would stop the
+ * instrumentation, so the revoked and rationale answers are not tested here.
  */
 @RunWith(AndroidJUnit4::class)
 class ActivityPermissionCheckerTest {
@@ -53,7 +53,16 @@ class ActivityPermissionCheckerTest {
         activityRule.scenario.onActivity { activity ->
             val checker = ActivityPermissionChecker(activity)
 
-            assertTrue(checker.isGranted(AppPermission.PRECISE_LOCATION))
+            assertTrue(checker.isGranted(Manifest.permission.ACCESS_FINE_LOCATION))
+        }
+    }
+
+    @Test
+    fun isGranted_neverGranted_isFalse() {
+        activityRule.scenario.onActivity { activity ->
+            val checker = ActivityPermissionChecker(activity)
+
+            assertFalse(checker.isGranted(Manifest.permission.CAMERA))
         }
     }
 
@@ -62,7 +71,7 @@ class ActivityPermissionCheckerTest {
         activityRule.scenario.onActivity { activity ->
             val checker = ActivityPermissionChecker(activity)
 
-            assertFalse(checker.shouldShowRationale(AppPermission.PRECISE_LOCATION))
+            assertFalse(checker.shouldShowRationale(Manifest.permission.ACCESS_FINE_LOCATION))
         }
     }
 }

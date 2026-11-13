@@ -4,9 +4,4 @@
     <!-- Permission gate -->
     <string name="core_permission_action_open_settings">Open settings</string>
     <string name="core_permission_action_try_again">Try again</string>
-    <string name="core_permission_location_action_allow">Allow location</string>
-    <string name="core_permission_location_message">Roadbook Navigator uses your precise location to measure distances and to center the map. It is only used while the app is open and the screen is on.</string>
-    <string name="core_permission_location_permanently_denied">Location access is turned off. Open the settings, go to Permissions, Location, choose \"Allow only while using the app\" and turn on \"Use precise location\".</string>
-    <string name="core_permission_location_rationale">Without precise location, the odometer cannot measure distances. When asked, choose \"Precise\" and \"While using the app\".</string>
-    <string name="core_permission_location_title">Precise location needed</string>
 </resources>

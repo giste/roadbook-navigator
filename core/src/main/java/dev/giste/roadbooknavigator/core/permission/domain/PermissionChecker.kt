@@ -17,20 +17,21 @@
 
 package dev.giste.roadbooknavigator.core.permission.domain
 
-import dev.giste.roadbooknavigator.core.permission.AppPermission
-
-/** Reads what Android reports about a permission. Implemented over an `Activity` in `data`. */
+/**
+ * Reads what Android reports about a single manifest permission, such as
+ * `android.permission.ACCESS_FINE_LOCATION`. Implemented over an `Activity` in `data`.
+ */
 internal interface PermissionChecker {
 
     /**
-     * @param permission the permission to check.
+     * @param permission the manifest permission name.
      * @return whether [permission] is granted.
      */
-    fun isGranted(permission: AppPermission): Boolean
+    fun isGranted(permission: String): Boolean
 
     /**
-     * @param permission the permission to check.
+     * @param permission the manifest permission name.
      * @return whether Android recommends explaining why the app needs [permission].
      */
-    fun shouldShowRationale(permission: AppPermission): Boolean
+    fun shouldShowRationale(permission: String): Boolean
 }
