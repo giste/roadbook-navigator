@@ -12,7 +12,7 @@ An Android app for rally navigation. It:
 - Shows an **odometer** with **partial** and **total** distance (and possibly speed, bearing, etc.).
 - Shows a **map** centered on the current location, with custom zoom and tilt.
 
-Base package: `dev.giste.roadbooknavigator`. Module packages are `dev.giste.roadbooknavigator.<module>` (e.g. `dev.giste.roadbooknavigator.odometer`).
+Base package: `dev.giste.roadbooknavigator`. App-specific module packages are `dev.giste.roadbooknavigator.<module>` (e.g. `dev.giste.roadbooknavigator.odometer`). **Reusable modules** (see [§4.1](#41-reusable-modules)) are meant to be shared with other apps, so their packages are `dev.giste.<module>` (e.g. `dev.giste.core`, `dev.giste.geo`, `dev.giste.location`).
 
 ---
 
@@ -61,34 +61,49 @@ Use only libraries that are already in the version catalog, unless the developer
                          │               │
                          ▼               ▼
                  ┌──────────────┐   ┌──────────────────────────────────────┐
-                 │  :settings   │──▶│ :location :odometer :roadbook :map   │  feature modules
+                 │  :settings   │──▶│ :location* :odometer :roadbook :map  │  feature modules
                  └──────┬───────┘   └──────────────────┬───────────────────┘
                         │                              │
                         ▼                              ▼
                  ┌────────────────────────────────────────┐
-                 │                 :core                  │  depends on nothing
+                 │           :core*        :geo*          │  foundation, depend on nothing
                  └────────────────────────────────────────┘
+
+                 * reusable module (see §4.1)
 ```
 
 | Module | Responsibility | Allowed project dependencies |
 |---|---|---|
-| `:core` | Shared resources: logger, theme, common UI components, permissions management, coroutine dispatchers, shared-kernel value objects | **none** |
-| `:location` | Provides a location `Flow` to other modules | `:core` |
-| `:odometer` | Computes and keeps partial and total distance (and possibly speed, bearing, etc.) | `:core` |
-| `:roadbook` | Imports `.rn2`, builds and draws waypoints and moderators, emits roadbook events, auto-advances from a partial-distance flow | `:core` |
-| `:map` | Map centered on current location with custom zoom and tilt, map management | `:core` |
-| `:settings` | Settings UI and persistence for all modules. Provides each module's settings flow | `:core` + feature modules |
-| `:app` | Composition root: `Application`, `MainActivity`, navigation host, cross-module wiring and cross-module rules. No domain logic (see [§4.2](#42-cross-module-rules-in-app)) | all modules |
+| `:core` | Reusable. Shared resources: logger, theme, common UI components, permissions management, coroutine dispatchers | **none** |
+| `:geo` | Reusable. Shared kernel: framework-free geographic and measurement value objects (`GeoPoint`, `Distance`, `Speed`, `Bearing`, …) | **none** |
+| `:location` | Reusable. Provides a location `Flow` to other modules | `:core`, `:geo` |
+| `:odometer` | Computes and keeps partial and total distance (and possibly speed, bearing, etc.) | `:core`, `:geo` |
+| `:roadbook` | Imports `.rn2`, builds and draws waypoints and moderators, emits roadbook events, auto-advances from a partial-distance flow | `:core`, `:geo` |
+| `:map` | Map centered on current location with custom zoom and tilt, map management | `:core`, `:geo` |
+| `:settings` | Settings UI and persistence for all modules. Provides each module's settings flow | `:core`, `:geo` + feature modules |
+| `:app` | Composition root: `Application`, `MainActivity`, navigation host, cross-module wiring and cross-module rules. No domain logic (see [§4.3](#43-cross-module-rules-in-app)) | all modules |
 
 Rules:
 
 - A feature module **never** depends on another feature module or on `:settings`.
 - Feature modules communicate **only through `:app`** (or `:settings` for settings), using each module's public API.
+- `:core` and `:geo` depend on nothing, and never on each other.
 - Do not add new modules without the developer's approval.
 
 **Module-specific details** (public API, inputs and outputs, settings, persisted state, design decisions, algorithms and module testing notes) live in each module's `README.md`, not in this file. Read it before working in a module.
 
-### 4.1 Cross-module communication: ports and adapters
+### 4.1 Reusable modules
+
+Some modules are designed to be reused by other apps, not only by Roadbook Navigator: `:core`, `:geo` and `:location`. Besides every other rule in this file, a reusable module:
+
+- Uses the package `dev.giste.<module>` instead of `dev.giste.roadbooknavigator.<module>`, and the same value as its Android `namespace`.
+- Depends **only on other reusable modules**, never on an app-specific module.
+- Contains **nothing app-specific**: no Roadbook Navigator names, branding, rally concepts or app-specific defaults. Rally concepts (waypoint, CAP, partial, …) stay in app modules.
+- Still uses Hilt, the `:core` logger and the `:core` dispatchers, so every app that reuses these modules uses Hilt too.
+
+Concepts that several app-specific modules share, but that make no sense outside this app, would go in an app-specific `:common` module (`dev.giste.roadbooknavigator.common`). It does not exist yet. Ask the developer before creating it, and only when the first such concept appears.
+
+### 4.2 Cross-module communication: ports and adapters
 
 Each feature module **declares the inputs it needs as interfaces or flows in its own public API** (input ports). `:app` connects them with small adapter classes and Hilt bindings. Examples:
 
@@ -96,9 +111,9 @@ Each feature module **declares the inputs it needs as interfaces or flows in its
 - `:roadbook` emits `RoadbookEvent`s, for example *roadbook loaded*, or *waypoint distance long-pressed* to set or show the partial. `:app` collects them and calls the `:odometer` API, for example to reset the odometer when a new roadbook is loaded.
 - `:roadbook` accepts a `Flow` of partial distances. `:app` feeds it from `:odometer` to drive waypoint auto-advance.
 
-When several features need the **same primitive concept**, put a minimal, framework-free value object in `:core`'s **shared kernel**, for example `Distance`, `GeoPoint` or `Bearing`. Keep the shared kernel small. Feature-specific concepts stay in their feature.
+When several modules need the **same primitive geographic or measurement concept**, put a minimal, framework-free value object in the **shared kernel**, `:geo`, for example `Distance`, `GeoPoint` or `Bearing`. Keep the shared kernel small. Feature-specific concepts stay in their feature.
 
-### 4.2 Cross-module rules in `:app`
+### 4.3 Cross-module rules in `:app`
 
 Some rules belong to no single feature, because they decide how features react to each other, and no feature may know about another. Resetting the odometer when a new roadbook is loaded is one example. These **cross-module rules** live in `:app`. **Domain logic** does not: anything about one concept (how distance is accumulated, when a waypoint is reached, how `.rn2` is parsed) belongs in the feature that owns that concept.
 
@@ -107,7 +122,7 @@ Some rules belong to no single feature, because they decide how features react t
 - If a rule only involves one module's concepts, move it into that module.
 - If a coordinator starts doing domain work, such as calculations, state machines or persistence, that logic belongs in a feature. Move it there, or ask the developer about a new module.
 
-### 4.3 Settings contract
+### 4.4 Settings contract
 
 - Each feature module defines, in its public API:
   - an immutable settings model (`XxxSettings`, `data class` with documented defaults), and
@@ -127,7 +142,7 @@ Every feature module is internally layered. Dependencies point **inwards**: `pre
 The module's **root package holds only its public API**. Implementation lives in **layer packages**, which every module has, even small ones. They mark the layer boundaries and keep modules consistent:
 
 ```
-dev/giste/roadbooknavigator/<module>/
+dev/giste/roadbooknavigator/<module>/   (dev/giste/<module>/ for reusable modules)
 ├── *.kt            Public API only: facade interfaces, public models, settings contract, events, entry-point composables / nav routes
 ├── domain/         Entities, value objects, aggregates, domain events, repository interfaces, use cases
 ├── data/           Repository implementations, data sources (DataStore, file system, Android services), mappers
@@ -135,7 +150,7 @@ dev/giste/roadbooknavigator/<module>/
 └── di/             Hilt modules
 ```
 
-- **Root package = public API only** (see the [`:core` exception](#core-exception-one-sub-package-per-capability)). Root-package files contain only `public` top-level declarations. They may also have `private` helpers used only by a public declaration in the same file. Do not put `internal` types or shared helpers there, even if they are small. Move them into the layer they belong to.
+- **Root package = public API only** (see the [`:core` and `:geo` exceptions](#core-exception-one-sub-package-per-capability)). Root-package files contain only `public` top-level declarations. They may also have `private` helpers used only by a public declaration in the same file. Do not put `internal` types or shared helpers there, even if they are small. Move them into the layer they belong to.
 - **Layer packages contain no `public` declarations.** Everything in them is `internal` or `private`. If a type in a layer needs to become public, move it, or a public interface it implements, to the root package.
 - Public types are imported from the module's root package, e.g. `dev.giste.roadbooknavigator.odometer.OdometerController`.
 
@@ -171,14 +186,18 @@ core/
 │   └── di/
 ├── permission/     PermissionGate.kt, AppPermission.kt
 │   ├── domain/  data/  presentation/  di/
-├── ui/
-│   ├── theme/      Theme, colors, typography, dimensions
-│   └── component/  Common composables
-└── model/          Shared kernel: framework-free value objects (Distance, GeoPoint, …)
+└── ui/
+    ├── theme/      GisteTheme, colors, typography, dimensions
+    └── component/  Common composables
 ```
 
 - Capabilities depend on each other only through their public API (e.g. `permission` injects `logging.Logger`, never `logging.data.TimberLogger`). Kotlin's `internal` is module-wide, so the compiler does not enforce this. Reviews must.
 - Add a new capability sub-package instead of growing an existing one with unrelated code.
+- Geographic and measurement value objects do not go in `:core`. They go in `:geo`.
+
+#### `:geo` exception: value objects only
+
+`:geo` holds only framework-free, immutable value objects, and all of them are public API. It has no layer packages, no Hilt and no Android dependencies. Keep it flat in the root package `dev.giste.geo` until it grows, then group by concept (e.g. `dev.giste.geo.distance`).
 
 ### 5.2 DDD building blocks
 
