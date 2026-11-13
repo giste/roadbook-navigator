@@ -12,7 +12,7 @@ An Android app for rally navigation. It:
 - Shows an **odometer** with **partial** and **total** distance (and possibly speed, bearing, etc.).
 - Shows a **map** centered on the current location, with custom zoom and tilt.
 
-Base package: `dev.giste.roadbooknavigator`. App-specific module packages are `dev.giste.roadbooknavigator.<module>` (e.g. `dev.giste.roadbooknavigator.odometer`). **Reusable modules** (see [§4.1](#41-reusable-modules)) are meant to be shared with other apps, so their packages are `dev.giste.<module>` (e.g. `dev.giste.core`, `dev.giste.geo`, `dev.giste.location`).
+Base package: `dev.giste.roadbooknavigator`. App-specific module packages are `dev.giste.roadbooknavigator.<module>` (e.g. `dev.giste.roadbooknavigator.roadbook`). **Reusable modules** (see [§4.1](#41-reusable-modules)) are meant to be shared with other apps, so their packages are `dev.giste.<module>` (e.g. `dev.giste.core`, `dev.giste.geo`, `dev.giste.location`, `dev.giste.odometer`).
 
 ---
 
@@ -61,7 +61,7 @@ Use only libraries that are already in the version catalog, unless the developer
                          │               │
                          ▼               ▼
                  ┌──────────────┐   ┌──────────────────────────────────────┐
-                 │  :settings   │──▶│ :location* :odometer :roadbook :map  │  feature modules
+                 │  :settings   │──▶│ :location* :odometer* :roadbook :map │  feature modules
                  └──────┬───────┘   └──────────────────┬───────────────────┘
                         │                              │
                         ▼                              ▼
@@ -77,7 +77,7 @@ Use only libraries that are already in the version catalog, unless the developer
 | `:core` | Reusable. Shared resources: logger, theme, common UI components, permissions management, coroutine dispatchers | **none** |
 | `:geo` | Reusable. Shared kernel: framework-free geographic and measurement value objects (`GeoPoint`, `Distance`, `Speed`, `Bearing`, …) | **none** |
 | `:location` | Reusable. Provides a location `Flow` to other modules | `:core`, `:geo` |
-| `:odometer` | Computes and keeps partial and total distance (and possibly speed, bearing, etc.) | `:core`, `:geo` |
+| `:odometer` | Reusable. Computes and keeps trip and total distance (and possibly speed, bearing, etc.) and exposes them as a flow. No UI: each app decides how to show them. `:app` uses the trip distance as the partial | `:core`, `:geo` |
 | `:roadbook` | Imports `.rn2`, builds and draws waypoints and moderators, emits roadbook events, auto-advances from a partial-distance flow | `:core`, `:geo` |
 | `:map` | Map centered on current location with custom zoom and tilt, map management | `:core`, `:geo` |
 | `:settings` | Settings UI and persistence for all modules. Provides each module's settings flow | `:core`, `:geo` + feature modules |
@@ -94,7 +94,7 @@ Rules:
 
 ### 4.1 Reusable modules
 
-Some modules are designed to be reused by other apps, not only by Roadbook Navigator: `:core`, `:geo` and `:location`. Besides every other rule in this file, a reusable module:
+Some modules are designed to be reused by other apps, not only by Roadbook Navigator: `:core`, `:geo`, `:location` and `:odometer`. Besides every other rule in this file, a reusable module:
 
 - Uses the package `dev.giste.<module>` instead of `dev.giste.roadbooknavigator.<module>`, and the same value as its Android `namespace`.
 - Depends **only on other reusable modules**, never on an app-specific module.
@@ -108,8 +108,8 @@ Concepts that several app-specific modules share, but that make no sense outside
 Each feature module **declares the inputs it needs as interfaces or flows in its own public API** (input ports). `:app` connects them with small adapter classes and Hilt bindings. Examples:
 
 - `:odometer` declares that it needs location fixes. `:app` adapts the `:location` flow to it.
-- `:roadbook` emits `RoadbookEvent`s, for example *roadbook loaded*, or *waypoint distance long-pressed* to set or show the partial. `:app` collects them and calls the `:odometer` API, for example to reset the odometer when a new roadbook is loaded.
-- `:roadbook` accepts a `Flow` of partial distances. `:app` feeds it from `:odometer` to drive waypoint auto-advance.
+- `:roadbook` emits `RoadbookEvent`s, for example *roadbook loaded*, or *waypoint distance long-pressed* to set or show the partial. `:app` collects them and calls the `:odometer` API, for example to reset the odometer's trip distance (the partial) when a new roadbook is loaded.
+- `:roadbook` accepts a `Flow` of partial distances. `:app` feeds it from the `:odometer` trip distance to drive waypoint auto-advance.
 
 When several modules need the **same primitive geographic or measurement concept**, put a minimal, framework-free value object in the **shared kernel**, `:geo`, for example `Distance`, `GeoPoint` or `Bearing`. Keep the shared kernel small. Feature-specific concepts stay in their feature.
 
@@ -139,7 +139,7 @@ Every feature module is internally layered. Dependencies point **inwards**: `pre
 
 ### 5.1 Package layout per module
 
-The module's **root package holds only its public API**. Implementation lives in **layer packages**, which every module has, even small ones. They mark the layer boundaries and keep modules consistent:
+The module's **root package holds only its public API**. Implementation lives in **layer packages**, which every module has, even small ones (only the layers it needs: see the note on modules without UI below). They mark the layer boundaries and keep modules consistent:
 
 ```
 dev/giste/roadbooknavigator/<module>/   (dev/giste/<module>/ for reusable modules)
@@ -150,9 +150,11 @@ dev/giste/roadbooknavigator/<module>/   (dev/giste/<module>/ for reusable module
 └── di/             Hilt modules
 ```
 
+A module without UI (e.g. `:location`, `:odometer`) has no `presentation` package. Its app decides how to show its outputs.
+
 - **Root package = public API only** (see the [`:core` and `:geo` exceptions](#core-exception-one-sub-package-per-capability)). Root-package files contain only `public` top-level declarations. They may also have `private` helpers used only by a public declaration in the same file. Do not put `internal` types or shared helpers there, even if they are small. Move them into the layer they belong to.
 - **Layer packages contain no `public` declarations.** Everything in them is `internal` or `private`. If a type in a layer needs to become public, move it, or a public interface it implements, to the root package.
-- Public types are imported from the module's root package, e.g. `dev.giste.roadbooknavigator.odometer.OdometerController`.
+- Public types are imported from the module's root package, e.g. `dev.giste.odometer.OdometerController`.
 
 **Sub-packages inside a layer are optional. Add them only when the layer grows.**
 
@@ -169,7 +171,6 @@ odometer/
 ├── OdometerController.kt, OdometerState.kt, OdometerSettings.kt, OdometerSettingsSource.kt   ← public API
 ├── domain/         Odometer.kt, DistanceFilter.kt, OdometerStateRepository.kt
 ├── data/           DataStoreOdometerStateRepository.kt
-├── presentation/   OdometerViewModel.kt, OdometerUiState.kt, OdometerScreen.kt
 └── di/             OdometerModule.kt
 ```
 
@@ -206,7 +207,7 @@ core/
 - **Domain events:** sealed hierarchies that describe something that happened (e.g. `RoadbookEvent.Loaded`).
 - **Repositories:** interfaces are declared in `domain`. Implementations live in `data`. They expose `Flow`s and `suspend` functions and return sealed results.
 - **Use cases:** one action per class, named `VerbNounUseCase`, with a single `operator fun invoke`. Add a use case only when it holds real logic or combines repositories. Do not add pass-through use cases.
-- **Ubiquitous language:** use rally and roadbook terms consistently: *roadbook, waypoint, moderator, partial, total, odometer, auto-advance, tulip, CAP/heading*. Do not invent synonyms.
+- **Ubiquitous language:** use rally and roadbook terms consistently: *roadbook, waypoint, moderator, partial, total, odometer, auto-advance, tulip, CAP/heading*. Do not invent synonyms. Reusable modules use neutral terms instead (e.g. `:odometer`'s *trip* distance), and `:app` maps them to rally terms (trip → partial).
 
 ### 5.3 Presentation (Compose + UDF)
 
@@ -311,11 +312,11 @@ The test suite is exhaustive: **every functionality, branch, error path, sealed 
 | Classes / interfaces | PascalCase nouns | `Waypoint`, `RoadbookRepository` |
 | Repository implementations | Descriptive prefix, not `Impl` | `DefaultRoadbookRepository`, `DataStoreOdometerStateRepository` |
 | Use cases | `VerbNounUseCase` | `ImportRoadbookUseCase` |
-| ViewModels / UI state / actions | `XxxViewModel`, `XxxUiState`, `XxxUiAction` | `OdometerUiState` |
+| ViewModels / UI state / actions | `XxxViewModel`, `XxxUiState`, `XxxUiAction` | `RoadbookUiState` |
 | Composables | PascalCase nouns; stateful `XxxRoute`, stateless `XxxScreen` | `RoadbookRoute`, `WaypointItem` |
 | Hilt modules | `XxxModule` in `di` | `OdometerDataModule` |
 | Constants | `UPPER_SNAKE_CASE` | `DEFAULT_ZOOM_LEVEL` |
-| Resources | `<module>_<type>_<name>` | `roadbook_error_invalid_file`, `odometer_ic_reset` |
+| Resources | `<module>_<type>_<name>` | `roadbook_error_invalid_file`, `roadbook_ic_reset_partial` |
 | Test doubles | `FakeXxx` | `FakeLocationSource` |
 
 ---
@@ -337,7 +338,7 @@ The test suite is exhaustive: **every functionality, branch, error path, sealed 
 
 - `main` is always buildable, tested and releasable. **Never commit directly to `main`.**
 - Do all work on a short-lived branch created from an up-to-date `main`, one branch per task.
-- Name branches `<type>/<short-kebab-case-description>`, using the same types as commit messages (see [§12.3](#123-commits)), e.g. `feat/roadbook-rn2-import`, `fix/odometer-negative-partial`.
+- Name branches `<type>/<short-kebab-case-description>`, using the same types as commit messages (see [§12.3](#123-commits)), e.g. `feat/roadbook-rn2-import`, `fix/odometer-negative-trip`.
 - Keep branches short-lived and in sync with `main`. Rebase your own unpublished branch on `main` rather than merging `main` into it.
 - Delete the branch after it is merged.
 
@@ -349,7 +350,7 @@ The test suite is exhaustive: **every functionality, branch, error path, sealed 
   - **Summary:** imperative mood ("add", not "added"), lowercase, no trailing period, at most 72 characters in the whole subject line.
   - **Body** (optional, separated by a blank line, wrapped at 72 characters): explain *what* and *why*, not *how*.
   - **Footer:** `BREAKING CHANGE: <description>` for incompatible public API or persisted-format changes, and issue references such as `Refs: #12`.
-  - Example: `feat(odometer): reset partial on long press`.
+  - Example: `feat(roadbook): reset partial on long press`.
 - **Atomic commits:** one logical change per commit. Code and its tests go in the same commit. Package moves and renames go in their own commit, separate from functional changes (see [§5.1](#51-package-layout-per-module)).
 - **Every commit builds and passes the tests** listed in [§13](#13-agent-workflow), step 5. Do not commit work in progress to a shared branch.
 - **Stage deliberately.** Add files by path and review the staged diff (`git diff --staged`) before asking for approval. Avoid `git add -A` / `git add .`, which can pick up unrelated or private files.
