@@ -25,3 +25,4 @@ dependencyResolutionManagement {
 rootProject.name = "Roadbook Navigator"
 include(":app")
 include(":core")
+include(":geo")
