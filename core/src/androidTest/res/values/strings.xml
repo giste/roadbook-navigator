@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Test data for the permission gate tests. Not shipped, so not translated. -->
+<resources>
+    <string name="core_test_permission_title">Test permission title</string>
+    <string name="core_test_permission_message">Test permission message</string>
+    <string name="core_test_permission_rationale">Test permission rationale</string>
+    <string name="core_test_permission_permanently_denied">Test permission permanently denied</string>
+    <string name="core_test_permission_allow">Allow test permission</string>
+</resources>

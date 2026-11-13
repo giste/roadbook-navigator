@@ -30,7 +30,6 @@ import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.giste.roadbooknavigator.core.R
-import dev.giste.roadbooknavigator.core.permission.AppPermission
 import dev.giste.roadbooknavigator.core.permission.domain.PermissionStatus
 import dev.giste.roadbooknavigator.core.ui.theme.RoadbookNavigatorTheme
 import org.junit.Assert.assertEquals
@@ -54,7 +53,10 @@ class PermissionScreenTest {
         composeRule.setContent {
             RoadbookNavigatorTheme {
                 PermissionScreen(
-                    pending = PendingPermission(AppPermission.PRECISE_LOCATION, status),
+                    status = status,
+                    title = TITLE,
+                    message = MESSAGE,
+                    allowAction = ALLOW,
                     onRequest = { requests++ },
                     onOpenSettings = { settingsOpened++ },
                 )
@@ -66,25 +68,23 @@ class PermissionScreenTest {
     fun permissionScreen_anyStatus_showsTitleAsHeading() {
         setScreen(PermissionStatus.Denied)
 
-        composeRule.onNodeWithText(string(R.string.core_permission_location_title))
+        composeRule.onNodeWithText(TITLE)
             .assertIsDisplayed()
             .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
     }
 
     @Test
-    fun permissionScreen_denied_showsFirstTimeMessage() {
-        setScreen(PermissionStatus.Denied)
+    fun permissionScreen_anyStatus_showsMessage() {
+        setScreen(PermissionStatus.ShowRationale)
 
-        composeRule.onNodeWithText(string(R.string.core_permission_location_message))
-            .assertIsDisplayed()
+        composeRule.onNodeWithText(MESSAGE).assertIsDisplayed()
     }
 
     @Test
     fun permissionScreen_deniedAllowClicked_requestsPermission() {
         setScreen(PermissionStatus.Denied)
 
-        composeRule.onNodeWithText(string(R.string.core_permission_location_action_allow))
-            .performClick()
+        composeRule.onNodeWithText(ALLOW).performClick()
 
         composeRule.runOnIdle { assertEquals(1, requests) }
     }
@@ -98,29 +98,12 @@ class PermissionScreenTest {
     }
 
     @Test
-    fun permissionScreen_showRationale_showsRationaleMessage() {
-        setScreen(PermissionStatus.ShowRationale)
-
-        composeRule.onNodeWithText(string(R.string.core_permission_location_rationale))
-            .assertIsDisplayed()
-    }
-
-    @Test
     fun permissionScreen_showRationaleAllowClicked_requestsPermission() {
         setScreen(PermissionStatus.ShowRationale)
 
-        composeRule.onNodeWithText(string(R.string.core_permission_location_action_allow))
-            .performClick()
+        composeRule.onNodeWithText(ALLOW).performClick()
 
         composeRule.runOnIdle { assertEquals(1, requests) }
-    }
-
-    @Test
-    fun permissionScreen_permanentlyDenied_showsSettingsMessage() {
-        setScreen(PermissionStatus.PermanentlyDenied)
-
-        composeRule.onNodeWithText(string(R.string.core_permission_location_permanently_denied))
-            .assertIsDisplayed()
     }
 
     @Test
@@ -153,8 +136,7 @@ class PermissionScreenTest {
     fun permissionScreen_permanentlyDenied_hasNoAllowButton() {
         setScreen(PermissionStatus.PermanentlyDenied)
 
-        composeRule.onNodeWithText(string(R.string.core_permission_location_action_allow))
-            .assertDoesNotExist()
+        composeRule.onNodeWithText(ALLOW).assertDoesNotExist()
     }
 
     @Test
@@ -165,5 +147,18 @@ class PermissionScreenTest {
             .assertHeightIsAtLeast(56.dp)
         composeRule.onNodeWithText(string(R.string.core_permission_action_try_again))
             .assertHeightIsAtLeast(56.dp)
+    }
+
+    @Test
+    fun permissionScreen_allowButton_meetsGloveFriendlyTouchTarget() {
+        setScreen(PermissionStatus.Denied)
+
+        composeRule.onNodeWithText(ALLOW).assertHeightIsAtLeast(56.dp)
+    }
+
+    private companion object {
+        const val TITLE = "Permission title"
+        const val MESSAGE = "Permission message"
+        const val ALLOW = "Allow permission"
     }
 }

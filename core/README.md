@@ -7,7 +7,7 @@ Shared foundation for every other module. `:core` depends on no other project mo
 - **Logger:** the only logging entry point. Other modules never call `android.util.Log` directly.
 - **Theme:** Material 3 theme, color, typography and dimension tokens.
 - **Common UI components:** generic composables reused by several features.
-- **Permissions management:** `PermissionGate`, which shows its content only while the required runtime permissions are granted.
+- **Permissions management:** `PermissionGate`, which shows its content only while the required runtime permissions are granted. It is permission agnostic: callers describe each permission with a `RequiredPermission`.
 - **Coroutine dispatchers:** `@IoDispatcher`, `@DefaultDispatcher`, … qualifiers and the application-level `CoroutineScope`.
 - **Shared kernel:** minimal, framework-free value objects that several features need (e.g. `Distance`, `GeoPoint`, `Bearing`). Keep it small. Feature-specific concepts stay in their feature.
 
@@ -22,9 +22,9 @@ dev/giste/roadbooknavigator/core/
 │   └── di/         LoggerModule
 ├── coroutines/     IoDispatcher, DefaultDispatcher, ApplicationScope   ← public API
 │   └── di/         CoroutinesModule
-├── permission/     AppPermission, PermissionGate   ← public API
+├── permission/     RequiredPermission, PermissionGate   ← public API
 │   ├── domain/     PermissionStatus, PermissionChecker
-│   ├── data/       ActivityPermissionChecker, manifest mapping, app settings
+│   ├── data/       ActivityPermissionChecker, app settings
 │   └── presentation/  PermissionGateState, PermissionScreen
 ├── ui/
 │   ├── theme/      RoadbookNavigatorTheme, Dimensions   ← public API
@@ -64,15 +64,15 @@ Package `dev.giste.roadbooknavigator.core.permission`:
 
 | Type | Purpose |
 |---|---|
-| `AppPermission` | Permissions the app can require. `PRECISE_LOCATION`: fine location while the app is in use. |
-| `PermissionGate(permissions, modifier) { … }` | Shows its content only while every permission is granted. Otherwise shows a full-screen explanation with the action that can grant the first missing one. Must be hosted in an `Activity`. |
+| `RequiredPermission` | A runtime permission described by the module that needs it: the manifest permissions it `required` (all must be granted), the ones `requested` together in one dialog (defaults to `required`), and the string resources of its title, first-time message, rationale, permanently-denied message and allow button. Throws `IllegalArgumentException` if `required` is empty or not contained in `requested`. |
+| `PermissionGate(permissions, modifier) { … }` | Shows its content only while every `RequiredPermission` in the list is granted. Otherwise shows a full-screen explanation with the action that can grant the first missing one, in list order. Must be hosted in an `Activity`. |
 
 `:core` exposes `kotlinx-coroutines-core` as an `api` dependency, because these types appear in its public API.
 
 ## Inputs and outputs
 
 - **Outputs:** log lines written to Logcat through Timber, only after `DebugLogging.install()`.
-- **Manifest:** `:core` declares `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION`, merged into the app.
+- **Manifest:** `:core` declares no permission. The module that defines a `RequiredPermission` declares its manifest permissions.
 - **Inputs:** none.
 
 ## Settings
@@ -86,7 +86,7 @@ None.
 ## Resources
 
 - `resourcePrefix` is `core_`.
-- Only generic strings live here (e.g. `core_action_retry`), in `values` and `values-es`, plus the texts of the permission screen (`core_permission_*`), which belong to the permission capability.
+- Only generic strings live here (e.g. `core_action_retry`), in `values` and `values-es`, including the generic buttons of the permission screen (`core_permission_action_*`). The texts of each permission belong to the module that defines it.
 
 ## Design decisions
 
@@ -118,13 +118,13 @@ None.
 
 ### Permissions
 
-- **Foreground only.** Location is used only while the app is open and the screen is on, so there is no `ACCESS_BACKGROUND_LOCATION` and no foreground service. Keeping the screen on is up to the screens that need it.
-- **Precise location is required.** `PRECISE_LOCATION` requests fine and coarse location together (Android 12+ requires both) but counts as granted only with fine location. Approximate location is not accurate enough for the odometer.
+- **Permission agnostic.** `:core` knows no permission in particular. Each `RequiredPermission` carries its manifest permissions and its texts, and the module that needs it defines it and declares the manifest permissions. Precise location, for example, is defined in `:app` (until `:location` exists) as `required = {FINE}`, `requested = {FINE, COARSE}`, so approximate location alone keeps the gate closed.
+- **Required versus requested.** A permission is granted when every `required` manifest permission is. `requested` can add ones Android needs in the same dialog. The rationale flag is only read for the missing `required` ones, and a request result for any `requested` one counts as having requested the permission, because they are always requested together.
 - **No ViewModel.** `shouldShowRequestPermissionRationale` needs the current `Activity`, so a ViewModel could not compute the status on its own. `PermissionGateState` is a plain Compose state holder, and the decision logic is a pure function (`PermissionStatus.resolve`) tested on the JVM.
 - **Detecting "permanently denied".** Android has no flag for it. After one denial the rationale flag turns on; after a second it turns off and the dialog is no longer shown. So "not granted, no rationale" means *never asked* before any request in this state and *permanently denied* after one. The requested permissions are saved with `rememberSaveable`, so this survives rotation and process death. A dismissed dialog looks the same, so the permanently-denied screen offers "Try again" next to "Open settings".
 - **Re-checked on resume.** The gate refreshes on every `ON_RESUME`, which picks up permissions granted in the settings or revoked while the app was in the background.
-- **One permission at a time.** The gate explains and requests the first missing permission in `AppPermission` order, so each screen can explain one permission clearly.
-- **Strings per permission.** Titles, messages and the allow button are mapped per `AppPermission` in `PermissionScreen`, so adding a permission means adding its strings and its `when` branches.
+- **One permission at a time.** The gate explains and requests the first missing permission in list order, so each screen can explain one permission clearly.
+- **Texts come from the caller.** `PermissionGateContent` resolves the `RequiredPermission` string resources, picking the message for the current status, and `PermissionScreen` only receives resolved text. Adding a permission needs no change in `:core`.
 
 ## Testing notes
 
@@ -132,4 +132,4 @@ None.
 - **AutomaticTagTree:** `callerTag` is tested with synthetic stack traces. The `stackTrace` constructor parameter lets tests drive `createStackElementTag` without depending on the real JUnit stack.
 - **Coroutines:** `CoroutinesModuleTest` calls the `provide*` functions directly instead of going through Hilt. It builds the application scope on a `StandardTestDispatcher` and checks that a failing child leaves the scope and its siblings running.
 - **Theme:** `BeerColorSchemeTest` (JVM) checks scheme selection, the WCAG AA contrast of every content/background pair, a minimum CIELAB distance between each brand color and its error counterpart, and that no role is left at its Material default, in both schemes. A palette change that hurts readability or reintroduces a lookalike or a leaking default fails the build. `RoadbookNavigatorThemeTest` (`androidTest`) checks that the composable provides the right scheme and the dimensions. It needs a device or emulator.
-- **Permissions:** `PermissionStatusTest`, `AppPermissionManifestTest` and `PermissionGateStateTest` (JVM) cover the resolver, the manifest mapping and every state transition, using `FakePermissionChecker` (in `src/test`). `PermissionScreenTest` and `PermissionGateContentTest` (`androidTest`) cover every screen state, every button and the content switch. `PermissionGateTest` and `ActivityPermissionCheckerTest` (`androidTest`) run the real gate and checker with location granted through `UiAutomation`. Revoking a runtime permission kills the app process and would stop the instrumentation, so the denied paths are covered by the stateless and JVM tests. Note that AGP installs connected-test APKs with every runtime permission granted.
+- **Permissions:** `PermissionStatusTest`, `RequiredPermissionTest`, `PendingPermissionTest` and `PermissionGateStateTest` (JVM) cover the resolver, the `RequiredPermission` invariants, the message per status and every state transition, using `FakePermissionChecker` and the sample permissions in `TestPermissions` (in `src/test`). `PermissionScreenTest` and `PermissionGateContentTest` (`androidTest`) cover every screen state, every button, the text resolution and the content switch. The instrumented tests use test-only strings (`src/androidTest/res`) and declare the location permissions in `src/androidTest/AndroidManifest.xml`, since `:core` itself declares none. `PermissionGateTest` and `ActivityPermissionCheckerTest` (`androidTest`) run the real gate and checker with location granted through `UiAutomation`. Revoking a runtime permission kills the app process and would stop the instrumentation, so the denied paths are covered by the stateless and JVM tests. Note that AGP installs connected-test APKs with every runtime permission granted.

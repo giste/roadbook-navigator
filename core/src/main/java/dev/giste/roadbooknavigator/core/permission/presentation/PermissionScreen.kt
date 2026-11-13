@@ -41,12 +41,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import dev.giste.roadbooknavigator.core.R
-import dev.giste.roadbooknavigator.core.permission.AppPermission
+import dev.giste.roadbooknavigator.core.permission.RequiredPermission
 import dev.giste.roadbooknavigator.core.permission.domain.PermissionStatus
 import dev.giste.roadbooknavigator.core.ui.theme.RoadbookNavigatorTheme
 
 /**
- * Shows [content] when [pending] is `null`, and the [PermissionScreen] otherwise.
+ * Shows [content] when [pending] is `null`, and the [PermissionScreen] otherwise, with the texts
+ * of the pending permission resolved from its string resources.
  *
  * Stateless, so tests can drive it without an `Activity` or real permissions.
  *
@@ -59,7 +60,7 @@ import dev.giste.roadbooknavigator.core.ui.theme.RoadbookNavigatorTheme
 @Composable
 internal fun PermissionGateContent(
     pending: PendingPermission?,
-    onRequest: (AppPermission) -> Unit,
+    onRequest: (RequiredPermission) -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
@@ -69,7 +70,10 @@ internal fun PermissionGateContent(
             content()
         } else {
             PermissionScreen(
-                pending = pending,
+                status = pending.status,
+                title = stringResource(pending.permission.title),
+                message = stringResource(pending.message),
+                allowAction = stringResource(pending.permission.allowAction),
                 onRequest = { onRequest(pending.permission) },
                 onOpenSettings = onOpenSettings,
             )
@@ -85,14 +89,22 @@ internal fun PermissionGateContent(
  * - [PermissionStatus.PermanentlyDenied]: a button that opens the app settings, plus "try again"
  *   in case the dialog was only dismissed (see [PermissionStatus.resolve]).
  *
- * @param pending the permission to explain and its status.
+ * Texts come in already resolved, so the screen knows no permission in particular.
+ *
+ * @param status why the permission is not granted. Never [PermissionStatus.Granted].
+ * @param title the screen title.
+ * @param message the explanation that fits [status].
+ * @param allowAction the label of the button that shows the system dialog.
  * @param onRequest shows the system dialog.
  * @param onOpenSettings opens the app settings.
  * @param modifier applied to the root layout.
  */
 @Composable
 internal fun PermissionScreen(
-    pending: PendingPermission,
+    status: PermissionStatus,
+    title: String,
+    message: String,
+    allowAction: String,
     onRequest: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
@@ -110,20 +122,20 @@ internal fun PermissionScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = pending.permission.title(),
+                text = title,
                 style = MaterialTheme.typography.headlineSmall,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.semantics { heading() },
             )
             Text(
-                text = pending.message(),
+                text = message,
                 style = MaterialTheme.typography.bodyLarge,
                 textAlign = TextAlign.Center,
             )
             val buttonModifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = dimensions.minTouchTarget)
-            if (pending.status == PermissionStatus.PermanentlyDenied) {
+            if (status == PermissionStatus.PermanentlyDenied) {
                 Button(onClick = onOpenSettings, modifier = buttonModifier) {
                     Text(stringResource(R.string.core_permission_action_open_settings))
                 }
@@ -132,36 +144,10 @@ internal fun PermissionScreen(
                 }
             } else {
                 Button(onClick = onRequest, modifier = buttonModifier) {
-                    Text(pending.permission.allowAction())
+                    Text(allowAction)
                 }
             }
         }
-    }
-}
-
-/** The screen title for this permission. */
-@Composable
-private fun AppPermission.title(): String = when (this) {
-    AppPermission.PRECISE_LOCATION -> stringResource(R.string.core_permission_location_title)
-}
-
-/** The label of the button that shows the system dialog for this permission. */
-@Composable
-private fun AppPermission.allowAction(): String = when (this) {
-    AppPermission.PRECISE_LOCATION -> stringResource(R.string.core_permission_location_action_allow)
-}
-
-/** The explanation for this permission in its current status. */
-@Composable
-private fun PendingPermission.message(): String = when (permission) {
-    AppPermission.PRECISE_LOCATION -> when (status) {
-        PermissionStatus.ShowRationale ->
-            stringResource(R.string.core_permission_location_rationale)
-        PermissionStatus.PermanentlyDenied ->
-            stringResource(R.string.core_permission_location_permanently_denied)
-        // Granted never reaches the screen; it shares the first-time explanation.
-        PermissionStatus.Denied, PermissionStatus.Granted ->
-            stringResource(R.string.core_permission_location_message)
     }
 }
 
@@ -186,12 +172,20 @@ private fun PermissionScreenPermanentlyDeniedPreview() {
     PermissionScreenPreview(PermissionStatus.PermanentlyDenied)
 }
 
-/** Shared body of the previews: the location screen in [status]. */
+/** Shared body of the previews: a sample location permission in [status]. */
 @Composable
 private fun PermissionScreenPreview(status: PermissionStatus) {
     RoadbookNavigatorTheme {
         PermissionScreen(
-            pending = PendingPermission(AppPermission.PRECISE_LOCATION, status),
+            status = status,
+            title = "Precise location needed",
+            message = when (status) {
+                PermissionStatus.ShowRationale -> "Without precise location, distances are wrong."
+                PermissionStatus.PermanentlyDenied -> "Location is off. Turn it on in the settings."
+                PermissionStatus.Denied, PermissionStatus.Granted ->
+                    "The app uses your precise location to measure distances."
+            },
+            allowAction = "Allow location",
             onRequest = {},
             onOpenSettings = {},
         )

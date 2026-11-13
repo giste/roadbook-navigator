@@ -24,9 +24,10 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import dev.giste.roadbooknavigator.core.R
-import dev.giste.roadbooknavigator.core.permission.AppPermission
+import dev.giste.roadbooknavigator.core.permission.RequiredPermission
+import dev.giste.roadbooknavigator.core.permission.TestPermissions
 import dev.giste.roadbooknavigator.core.permission.domain.PermissionStatus
+import dev.giste.roadbooknavigator.core.test.R
 import dev.giste.roadbooknavigator.core.ui.theme.RoadbookNavigatorTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -39,7 +40,11 @@ class PermissionGateContentTest {
     @get:Rule
     val composeRule = createComposeRule()
 
-    private val requested = mutableListOf<AppPermission>()
+    private val permission = TestPermissions.location
+    private val requested = mutableListOf<RequiredPermission>()
+
+    private fun string(id: Int): String =
+        InstrumentationRegistry.getInstrumentation().targetContext.getString(id)
 
     private fun setGate(pending: PendingPermission?) {
         composeRule.setContent {
@@ -64,20 +69,44 @@ class PermissionGateContentTest {
 
     @Test
     fun permissionGateContent_permissionPending_hidesContent() {
-        setGate(PendingPermission(AppPermission.PRECISE_LOCATION, PermissionStatus.Denied))
+        setGate(PendingPermission(permission, PermissionStatus.Denied))
 
         composeRule.onNodeWithText(CONTENT).assertDoesNotExist()
     }
 
     @Test
+    fun permissionGateContent_denied_showsPermissionTexts() {
+        setGate(PendingPermission(permission, PermissionStatus.Denied))
+
+        composeRule.onNodeWithText(string(R.string.core_test_permission_title)).assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.core_test_permission_message))
+            .assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.core_test_permission_allow)).assertIsDisplayed()
+    }
+
+    @Test
+    fun permissionGateContent_showRationale_showsRationale() {
+        setGate(PendingPermission(permission, PermissionStatus.ShowRationale))
+
+        composeRule.onNodeWithText(string(R.string.core_test_permission_rationale))
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun permissionGateContent_permanentlyDenied_showsPermanentlyDeniedMessage() {
+        setGate(PendingPermission(permission, PermissionStatus.PermanentlyDenied))
+
+        composeRule.onNodeWithText(string(R.string.core_test_permission_permanently_denied))
+            .assertIsDisplayed()
+    }
+
+    @Test
     fun permissionGateContent_allowClicked_requestsPendingPermission() {
-        setGate(PendingPermission(AppPermission.PRECISE_LOCATION, PermissionStatus.Denied))
-        val allow = InstrumentationRegistry.getInstrumentation().targetContext
-            .getString(R.string.core_permission_location_action_allow)
+        setGate(PendingPermission(permission, PermissionStatus.Denied))
 
-        composeRule.onNodeWithText(allow).performClick()
+        composeRule.onNodeWithText(string(R.string.core_test_permission_allow)).performClick()
 
-        composeRule.runOnIdle { assertEquals(listOf(AppPermission.PRECISE_LOCATION), requested) }
+        composeRule.runOnIdle { assertEquals(listOf(permission), requested) }
     }
 
     private companion object {

@@ -17,18 +17,19 @@
 
 package dev.giste.roadbooknavigator.core.permission.domain
 
-import dev.giste.roadbooknavigator.core.permission.AppPermission
-
-/** [PermissionChecker] whose answers tests set directly. Everything starts not granted. */
+/**
+ * [PermissionChecker] whose answers tests set directly, per manifest permission. Everything
+ * starts not granted.
+ */
 internal class FakePermissionChecker : PermissionChecker {
 
-    /** Permissions reported as granted. */
-    val granted: MutableSet<AppPermission> = mutableSetOf()
+    /** Manifest permissions reported as granted. */
+    val granted: MutableSet<String> = mutableSetOf()
 
-    /** Permissions for which a rationale is recommended. */
-    val rationale: MutableSet<AppPermission> = mutableSetOf()
+    /** Manifest permissions for which a rationale is recommended. */
+    val rationale: MutableSet<String> = mutableSetOf()
 
-    override fun isGranted(permission: AppPermission): Boolean = permission in granted
+    override fun isGranted(permission: String): Boolean = permission in granted
 
-    override fun shouldShowRationale(permission: AppPermission): Boolean = permission in rationale
+    override fun shouldShowRationale(permission: String): Boolean = permission in rationale
 }

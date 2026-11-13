@@ -25,9 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import dev.giste.roadbooknavigator.core.permission.data.ActivityPermissionChecker
-import dev.giste.roadbooknavigator.core.permission.data.appPermissionsOf
 import dev.giste.roadbooknavigator.core.permission.data.openAppSettings
-import dev.giste.roadbooknavigator.core.permission.data.requestedPermissions
 import dev.giste.roadbooknavigator.core.permission.presentation.PermissionGateContent
 import dev.giste.roadbooknavigator.core.permission.presentation.rememberPermissionGateState
 
@@ -39,17 +37,20 @@ import dev.giste.roadbooknavigator.core.permission.presentation.rememberPermissi
  * It re-checks every time the screen resumes, so a permission granted in the settings, or
  * revoked while the app was in the background, is picked up when the user comes back.
  *
+ * The gate knows no permission in particular: each [RequiredPermission] says which manifest
+ * permissions to request and require, and which texts to show. The module that needs a
+ * permission defines it and declares its manifest permissions; the caller passes it here.
+ *
  * It must be hosted in an `Activity` (it reads `LocalActivity`), which is always the case in
  * the app.
  *
- * @param permissions the permissions [content] needs. Asked for one at a time, in
- * [AppPermission] order.
+ * @param permissions the permissions [content] needs. Asked for one at a time, in list order.
  * @param modifier applied to the root layout.
  * @param content shown once every permission is granted.
  */
 @Composable
 public fun PermissionGate(
-    permissions: Set<AppPermission>,
+    permissions: List<RequiredPermission>,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
@@ -59,7 +60,7 @@ public fun PermissionGate(
     val checker = remember(activity) { ActivityPermissionChecker(activity) }
     val state = rememberPermissionGateState(permissions, checker)
     val launcher = rememberLauncherForActivityResult(RequestMultiplePermissions()) { results ->
-        state.onRequestResult(appPermissionsOf(results.keys))
+        state.onRequestResult(results.keys)
     }
 
     LifecycleResumeEffect(state) {
@@ -70,7 +71,7 @@ public fun PermissionGate(
     PermissionGateContent(
         pending = state.pending,
         onRequest = { permission ->
-            launcher.launch(permission.requestedPermissions.toTypedArray())
+            launcher.launch(permission.requested.toTypedArray())
         },
         onOpenSettings = activity::openAppSettings,
         modifier = modifier,

@@ -25,7 +25,7 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import dev.giste.roadbooknavigator.core.R
+import dev.giste.roadbooknavigator.core.test.R
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -55,21 +55,21 @@ class PermissionGateTest {
     @Test
     fun permissionGate_locationGranted_showsContent() {
         composeRule.setContent {
-            PermissionGate(permissions = setOf(AppPermission.PRECISE_LOCATION)) {
+            PermissionGate(permissions = listOf(TestPermissions.location)) {
                 Text(CONTENT)
             }
         }
 
         composeRule.onNodeWithText(CONTENT).assertIsDisplayed()
         composeRule.onNodeWithText(
-            composeRule.activity.getString(R.string.core_permission_location_title),
+            composeRule.activity.getString(R.string.core_test_permission_title),
         ).assertDoesNotExist()
     }
 
     @Test
     fun permissionGate_noPermissions_showsContent() {
         composeRule.setContent {
-            PermissionGate(permissions = emptySet()) {
+            PermissionGate(permissions = emptyList()) {
                 Text(CONTENT)
             }
         }

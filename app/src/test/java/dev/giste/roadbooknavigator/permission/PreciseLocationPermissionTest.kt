@@ -15,22 +15,30 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.giste.roadbooknavigator.core.permission
+package dev.giste.roadbooknavigator.permission
 
-/**
- * A runtime permission the app can require through [PermissionGate].
- *
- * Each entry maps to one or more Android manifest permissions, which `:core` declares in its
- * manifest so the gate can always request them.
- */
-public enum class AppPermission {
+import android.Manifest
+import org.junit.Assert.assertEquals
+import org.junit.Test
 
-    /**
-     * Precise location, while the app is in use (foreground only).
-     *
-     * Requests `ACCESS_FINE_LOCATION` together with `ACCESS_COARSE_LOCATION`, as Android 12+
-     * requires. It counts as granted only when the user allows *precise* location: approximate
-     * location is not accurate enough for the odometer.
-     */
-    PRECISE_LOCATION,
+class PreciseLocationPermissionTest {
+
+    @Test
+    fun required_preciseLocation_isFineOnly() {
+        assertEquals(
+            setOf(Manifest.permission.ACCESS_FINE_LOCATION),
+            PreciseLocationPermission.required,
+        )
+    }
+
+    @Test
+    fun requested_preciseLocation_isFineAndCoarse() {
+        assertEquals(
+            setOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+            ),
+            PreciseLocationPermission.requested,
+        )
+    }
 }
