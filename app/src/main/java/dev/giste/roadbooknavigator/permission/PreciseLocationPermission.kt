@@ -19,7 +19,7 @@ package dev.giste.roadbooknavigator.permission
 
 import android.Manifest
 import dev.giste.roadbooknavigator.R
-import dev.giste.roadbooknavigator.core.permission.RequiredPermission
+import dev.giste.core.permission.RequiredPermission
 
 /**
  * Precise location while the app is in use, which the odometer and the map need.

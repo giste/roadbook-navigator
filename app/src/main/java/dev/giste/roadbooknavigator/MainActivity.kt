@@ -11,8 +11,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import dev.giste.roadbooknavigator.core.permission.PermissionGate
-import dev.giste.roadbooknavigator.core.ui.theme.RoadbookNavigatorTheme
+import dev.giste.core.permission.PermissionGate
+import dev.giste.core.ui.theme.GisteTheme
 import dev.giste.roadbooknavigator.permission.PreciseLocationPermission
 
 class MainActivity : ComponentActivity() {
@@ -20,7 +20,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            RoadbookNavigatorTheme {
+            GisteTheme {
                 // Every screen needs precise location, so the whole app waits behind the gate.
                 PermissionGate(permissions = listOf(PreciseLocationPermission)) {
                     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
@@ -46,7 +46,7 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
 @Preview(showBackground = true)
 @Composable
 fun GreetingPreview() {
-    RoadbookNavigatorTheme {
+    GisteTheme {
         Greeting("Android")
     }
 }
