@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "dev.giste.roadbooknavigator.core"
+    namespace = "dev.giste.core"
     compileSdk {
         version = release(37)
     }
