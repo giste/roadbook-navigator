@@ -29,7 +29,8 @@ import dev.giste.core.permission.RequiredPermission
  * `ACCESS_COARSE_LOCATION` is requested too, because Android 12+ ignores a fine location request
  * without it. Both are declared in this module's manifest.
  *
- * Lives in `:app` until the `:location` module exists, which will own it.
+ * It stays in `:app`, not in `:location`, because its texts are specific to this app, and a
+ * reusable module must not contain them (AGENTS.md §4.1).
  */
 internal val PreciseLocationPermission: RequiredPermission = RequiredPermission(
     required = setOf(Manifest.permission.ACCESS_FINE_LOCATION),

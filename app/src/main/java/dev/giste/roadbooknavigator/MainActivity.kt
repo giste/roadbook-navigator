@@ -11,10 +11,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import dagger.hilt.android.AndroidEntryPoint
 import dev.giste.core.permission.PermissionGate
 import dev.giste.core.ui.theme.GisteTheme
 import dev.giste.roadbooknavigator.permission.PreciseLocationPermission
 
+/**
+ * The only activity. A Hilt entry point, so the composables it hosts can get Hilt view models.
+ */
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
