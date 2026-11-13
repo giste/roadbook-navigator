@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "dev.giste.roadbooknavigator.location"
+    namespace = "dev.giste.location"
     compileSdk {
         version = release(37)
     }
@@ -16,7 +16,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    // Every resource in this module must start with "location_" (AGENTS.md §8).
+    // Every resource in this module must start with "location_" (AGENTS.md §8). It has none yet.
     resourcePrefix = "location_"
 
     compileOptions {
@@ -31,8 +31,11 @@ kotlin {
 }
 
 dependencies {
-    // Feature modules may depend only on :core (AGENTS.md §4).
+    // :location is a reusable module: it depends only on the reusable :core and :geo
+    // (AGENTS.md §4 and §4.1).
     implementation(project(":core"))
+    // The public API exposes :geo value objects (GeoPoint, Distance, …), so consumers need it too.
+    api(project(":geo"))
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
@@ -41,6 +44,8 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
+    testImplementation(libs.robolectric)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
 }
