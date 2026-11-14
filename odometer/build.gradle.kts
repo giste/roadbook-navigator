@@ -40,6 +40,8 @@ dependencies {
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+    // Persists the trip and total distances (AGENTS.md §7).
+    implementation(libs.androidx.datastore.preferences)
     // The public API exposes the odometer state and settings as Flows, so consumers need
     // coroutines too.
     api(libs.kotlinx.coroutines.core)
