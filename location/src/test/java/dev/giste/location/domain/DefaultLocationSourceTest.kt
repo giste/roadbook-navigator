@@ -23,7 +23,7 @@ import dev.giste.location.FakeLocationSettingsSource
 import dev.giste.location.FakeLogger
 import dev.giste.location.LocationEvent
 import dev.giste.location.LocationSettings
-import dev.giste.location.testUserLocation
+import dev.giste.location.testLocationFix
 import java.io.IOException
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -88,7 +88,7 @@ class DefaultLocationSourceTest {
     fun events_repositoryEmits_forwardsEvent() = runTest {
         settings.emit(LocationSettings())
         val source = createSource()
-        val event = LocationEvent.LocationUpdated(testUserLocation())
+        val event = LocationEvent.LocationUpdated(testLocationFix())
 
         source.events.test {
             runCurrent()
@@ -174,7 +174,7 @@ class DefaultLocationSourceTest {
     fun events_lateCollector_receivesLatestEvent() = runTest {
         settings.emit(LocationSettings())
         val source = createSource()
-        val latest = LocationEvent.LocationUpdated(testUserLocation(latitude = 41.0))
+        val latest = LocationEvent.LocationUpdated(testLocationFix(latitude = 41.0))
 
         source.events.test {
             runCurrent()
@@ -222,7 +222,7 @@ class DefaultLocationSourceTest {
         val source = createSource()
         source.events.test {
             runCurrent()
-            repository.emit(LocationEvent.LocationUpdated(testUserLocation()))
+            repository.emit(LocationEvent.LocationUpdated(testLocationFix()))
             cancelAndIgnoreRemainingEvents()
         }
         advanceTimeBy(5_001)
