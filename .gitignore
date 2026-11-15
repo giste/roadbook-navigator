@@ -1,7 +1,6 @@
 # Gradle
 .gradle/
 build/
-!gradle/wrapper/gradle-wrapper.jar
 
 # Kotlin / Java
 .kotlin/
@@ -15,6 +14,9 @@ build/
 *.tar.gz
 *.rar
 *.hprof
+# The Gradle wrapper jar must be committed, so ./gradlew works in a fresh clone. This exception
+# must come after "*.jar": in .gitignore, the last matching rule wins.
+!gradle/wrapper/gradle-wrapper.jar
 
 # Android Studio / IntelliJ
 .idea/
@@ -60,3 +62,7 @@ keystore.properties
 # AI Agent Artifacts
 .artifacts/
 *.artifact.md
+
+# Claude Code: per-machine settings and agent worktrees
+.claude/settings.local.json
+.claude/worktrees/
