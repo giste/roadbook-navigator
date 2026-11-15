@@ -10,7 +10,7 @@ Measures the **trip** and **total** distance travelled from location fixes, and 
 - Let the app reset, set, increase or decrease the trip distance, and reset both distances.
 - Persist the distances so they survive process death and restarts (AGENTS.md §7).
 
-It has **no UI**. It exposes the distances as a flow, and each app decides how to show them (numbers, a progress bar, …). It does **not** read the location itself: the app adapts its location provider (in Roadbook Navigator, `:location`) to `OdometerLocationSource` (AGENTS.md §4.2). It does **not** store its settings either: the app provides them through `OdometerSettingsSource` (AGENTS.md §4.4; in Roadbook Navigator, `:settings` will).
+It has **no UI**. It exposes the distances as a flow, and each app decides how to show them (numbers, a progress bar, …). It does **not** read the location itself: the app forwards the `LocationFix`es of its location provider (in Roadbook Navigator, `:location`) through `OdometerLocationSource` (AGENTS.md §4.2). The fix type comes from `:geo`, so no mapping is needed, and the port stays so the odometer is not tied to one provider: an app can feed it any source, including a recorded track. It does **not** store its settings either: the app provides them through `OdometerSettingsSource` (AGENTS.md §4.4; in Roadbook Navigator, `:settings` will).
 
 ## Terminology
 
@@ -27,7 +27,7 @@ Rally concepts stay out of reusable modules (AGENTS.md §4.1), so `:odometer` us
 
 ```
 dev/giste/odometer/
-├── OdometerController, OdometerState, OdometerLocation, OdometerLocationSource,
+├── OdometerController, OdometerState, OdometerLocationSource,
 │   OdometerSettings, OdometerSettingsSource                          ← public API
 ├── domain/         DefaultOdometerController, FixFilter, TravelledDistance,
 │                   OdometerStateRepository
@@ -45,8 +45,7 @@ Package `dev.giste.odometer`:
 |---|---|
 | `OdometerController` | Inject it (Hilt binds it as a singleton). `state` is a hot `Flow<OdometerState>` shared by every collector. Measuring runs while it is collected, and stops 5 s after the last collector leaves. A new collector first gets the current state once it has been read from storage, never a placeholder. It never throws or completes. The suspend functions `resetTrip()`, `resetAll()`, `setTrip(distance)`, `increaseTrip(by)` and `decreaseTrip(by)` change the distances and save them at once. They are main-safe and applied in call order. `decreaseTrip` stops at zero. |
 | `OdometerState` | `trip` and `total`, as `:geo` `Distance`s. No upper limit: the app decides how many digits it shows. `OdometerState.ZERO` has both at zero. |
-| `OdometerLocation` | One fix: `position`, and the nullable `horizontalAccuracy`, `altitudeInMeters`, `verticalAccuracy` and `speed`. `null` means "unknown", which is not the same as zero. |
-| `OdometerLocationSource` | Input port. The app implements it and binds it with Hilt. |
+| `OdometerLocationSource` | Input port: a `Flow` of `:geo` `LocationFix`es. The app implements it and binds it with Hilt. An unknown horizontal accuracy is never counted, an unknown speed is never treated as stopped, and the bearing and times are not used. |
 | `OdometerSettings` | `minSpeed`, `maxHorizontalAccuracy`, `minStepDistance`, `useAltitude`, `maxVerticalAccuracy`, with documented defaults (`DEFAULT_MIN_SPEED`, …). Any value is valid. |
 | `OdometerSettingsSource` | Input port. The app implements it and binds it with Hilt. |
 

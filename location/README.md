@@ -16,7 +16,7 @@ It does **not** request runtime permissions. `:core`'s `PermissionGate` does tha
 
 ```
 dev/giste/location/
-├── LocationSource, LocationEvent, LocationError, UserLocation,
+├── LocationSource, LocationEvent, LocationError,
 │   LocationSettings, LocationSettingsSource                     ← public API
 ├── domain/         LocationRepository, DefaultLocationSource
 ├── data/           GpsLocationRepository, LocationMapper
@@ -32,9 +32,8 @@ Package `dev.giste.location`:
 | Type | Purpose |
 |---|---|
 | `LocationSource` | Inject it (Hilt binds it as a singleton). `events` is a hot `Flow<LocationEvent>` shared by every collector. Updates start with the first collector and stop 5 s after the last one leaves. A new collector first gets the latest event while updates run. It never throws or completes. |
-| `LocationEvent` | Sealed: `LocationUpdated(location)`, `ProviderEnabled`, `ProviderDisabled`, `Error(reason)`. |
+| `LocationEvent` | Sealed: `LocationUpdated(location)`, `ProviderEnabled`, `ProviderDisabled`, `Error(reason)`. `location` is a `:geo` `LocationFix`, the location type shared by every module, so consumers such as `:odometer` take it directly. |
 | `LocationError` | Typed reason of `LocationEvent.Error`: `PERMISSION_DENIED`, `PROVIDER_UNAVAILABLE`, `UNKNOWN`. The UI maps it to a string. |
-| `UserLocation` | One fix: `position` (`GeoPoint`), `time` (`Instant`, wall clock) and `elapsedRealtime` (`Duration` since boot, monotonic: use it for intervals). `horizontalAccuracy`, `altitudeInMeters`, `verticalAccuracy`, `speed` and `bearing` are `null` when the platform did not provide them. |
 | `LocationSettings` | `updateInterval` (default 500 ms, must be positive and finite) and `minUpdateDistance` (default 2 m). |
 | `LocationSettingsSource` | Input port. The app implements it and binds it with Hilt. |
 
@@ -63,11 +62,12 @@ None.
 
 - **GPS provider only, high accuracy.** Distances along a route need GPS precision, so network or fused providers are not used. This also keeps the module free of Google Play services.
 - **Errors are events.** If the request cannot start, the repository emits `Error` and completes normally, instead of closing the flow with the exception. `LocationSource` then waits for the next settings change, or for a new collection after it stopped, to try again.
-- **Invalid fixes are dropped.** A platform fix that no `:geo` value object accepts (e.g. latitude out of range, `NaN` speed) is logged and skipped instead of crashing the flow.
+- **Invalid fixes are dropped.** A platform fix that no `:geo` value object accepts (e.g. latitude out of range, `NaN` speed or altitude) is logged and skipped instead of crashing the flow.
+- **The fix type lives in `:geo`.** `LocationFix` is a plain value, so it belongs to the shared kernel, while the provider stays here. Consumers declare an input port of `LocationFix`es instead of depending on `:location`, so they are not tied to the GPS provider, and the app can feed them recorded tracks.
 - **Optional values are nullable.** `Location` returns `0` for missing values, so the mapper checks `hasSpeed()`, `hasBearing()`, … and uses `null` for "unknown". A real `0` speed stays `Speed.ZERO`.
 - **Shared, short-lived replay.** `shareIn` with `WhileSubscribed(5 s, replayExpirationMillis = 0)`: a configuration change does not restart the request, and a stale fix is never replayed after updates stopped.
 - **Callbacks on a direct executor.** Listener callbacks run on the platform thread and only call the thread-safe `trySend`, so no main-thread hop is needed.
-- **Altitude is a raw `Double`.** It can be negative, so it cannot be a `Distance`, and `:geo` has no altitude type yet. Add one to `:geo` when a module needs to compute with altitude.
+- **Altitude is a `:geo` `Altitude`.** It can be negative, so it cannot be a `Distance`. The platform reports it above the WGS84 ellipsoid, which is the reference surface of every `LocationFix.altitude`.
 - **No coordinates in logs.** Only request changes, provider changes and failures are logged.
 
 ## Testing notes

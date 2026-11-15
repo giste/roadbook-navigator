@@ -20,8 +20,8 @@ package dev.giste.odometer.domain
 import dev.giste.core.coroutines.ApplicationScope
 import dev.giste.core.logging.Logger
 import dev.giste.geo.Distance
+import dev.giste.geo.LocationFix
 import dev.giste.odometer.OdometerController
-import dev.giste.odometer.OdometerLocation
 import dev.giste.odometer.OdometerLocationSource
 import dev.giste.odometer.OdometerSettings
 import dev.giste.odometer.OdometerSettingsSource
@@ -114,7 +114,7 @@ internal class DefaultOdometerController @Inject constructor(
         // Settings changes must not reprocess a fix, so the latest value is read per fix instead
         // of combining both flows.
         val currentSettings = settings.stateIn(this)
-        var anchor: OdometerLocation? = null
+        var anchor: LocationFix? = null
 
         locationSource.locations
             .catch { error -> logger.e(error, "Odometer locations failed, measuring stopped") }

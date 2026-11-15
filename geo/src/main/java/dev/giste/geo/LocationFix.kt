@@ -15,42 +15,49 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.giste.location
+package dev.giste.geo
 
-import dev.giste.geo.Bearing
-import dev.giste.geo.Distance
-import dev.giste.geo.GeoPoint
-import dev.giste.geo.Speed
 import kotlin.time.Duration
 import kotlin.time.Instant
 
 /**
- * One location fix of the device, free of Android types.
+ * One location fix of a device, free of platform types.
+ *
+ * It is the common currency between modules that produce locations (e.g. a GPS provider) and
+ * modules that consume them (e.g. an odometer or a map), so neither depends on the other.
  *
  * Only [position], [time] and [elapsedRealtime] are always known. Every other value is `null`
- * when the platform did not provide it for this fix, so callers can tell "unknown" apart from a
+ * when the source did not provide it for this fix, so callers can tell "unknown" apart from a
  * real zero (e.g. a stopped vehicle has a speed of [Speed.ZERO], not `null`).
  *
  * @property position where the device was, as WGS84 latitude and longitude.
  * @property horizontalAccuracy radius of 68% confidence around [position], or `null` if unknown.
  * Smaller is better.
- * @property altitudeInMeters height above the WGS84 reference ellipsoid, in meters, or `null` if
- * unknown. It is a raw `Double` because it can be negative, and `:geo` has no altitude type yet.
- * @property verticalAccuracy 68% confidence of [altitudeInMeters], or `null` if unknown.
+ * @property altitude height above the WGS84 reference ellipsoid, or `null` if unknown. It can be
+ * negative.
+ * @property verticalAccuracy 68% confidence of [altitude], or `null` if unknown.
  * @property speed ground speed, or `null` if unknown.
  * @property bearing direction of travel, or `null` if unknown. Usually unknown while stopped.
  * @property time wall-clock time of the fix (UTC). It can jump if the device clock changes, so
  * use [elapsedRealtime] to measure intervals between fixes.
  * @property elapsedRealtime time of the fix since the device booted. It is monotonic, so it is
  * the right value to compute the time between two fixes.
+ * @throws IllegalArgumentException if [elapsedRealtime] is negative or infinite.
  */
-public data class UserLocation(
+public data class LocationFix(
     public val position: GeoPoint,
     public val horizontalAccuracy: Distance?,
-    public val altitudeInMeters: Double?,
+    public val altitude: Altitude?,
     public val verticalAccuracy: Distance?,
     public val speed: Speed?,
     public val bearing: Bearing?,
     public val time: Instant,
     public val elapsedRealtime: Duration,
-)
+) {
+
+    init {
+        require(elapsedRealtime.isFinite() && !elapsedRealtime.isNegative()) {
+            "The elapsed realtime must be finite and non-negative, but was $elapsedRealtime"
+        }
+    }
+}

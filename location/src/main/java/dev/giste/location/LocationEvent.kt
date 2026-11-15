@@ -17,6 +17,8 @@
 
 package dev.giste.location
 
+import dev.giste.geo.LocationFix
+
 /**
  * Something that happened to the device location, as emitted by [LocationSource.events].
  *
@@ -29,7 +31,7 @@ public sealed interface LocationEvent {
      *
      * @property location the new fix.
      */
-    public data class LocationUpdated(public val location: UserLocation) : LocationEvent
+    public data class LocationUpdated(public val location: LocationFix) : LocationEvent
 
     /** The GPS provider was turned on, e.g. the user enabled location in the system settings. */
     public data object ProviderEnabled : LocationEvent

@@ -51,11 +51,11 @@ internal class GpsLocationRepository @Inject constructor(
     override fun events(settings: LocationSettings): Flow<LocationEvent> = callbackFlow {
         val listener = object : LocationListener {
             override fun onLocationChanged(location: Location) {
-                val userLocation = location.toUserLocation()
-                if (userLocation == null) {
+                val fix = location.toLocationFix()
+                if (fix == null) {
                     logger.w("Dropped a location fix with invalid values")
                 } else {
-                    trySend(LocationEvent.LocationUpdated(userLocation))
+                    trySend(LocationEvent.LocationUpdated(fix))
                 }
             }
 

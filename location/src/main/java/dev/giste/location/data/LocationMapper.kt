@@ -18,31 +18,32 @@
 package dev.giste.location.data
 
 import android.location.Location
+import dev.giste.geo.Altitude
 import dev.giste.geo.Bearing
 import dev.giste.geo.Distance
 import dev.giste.geo.GeoPoint
 import dev.giste.geo.Speed
 import dev.giste.location.LocationError
-import dev.giste.location.UserLocation
+import dev.giste.geo.LocationFix
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.nanoseconds
 import kotlin.time.Instant
 
 /**
- * Maps a platform [Location] to a [UserLocation].
+ * Maps a platform [Location] to a [LocationFix].
  *
  * Optional values are `null` when the platform says it does not have them (`hasSpeed()`, …), so
  * the `0` that [Location] returns for a missing value is never taken as a real measurement.
  *
- * @return the fix, or `null` if the platform sent a value that no valid [UserLocation] can hold
+ * @return the fix, or `null` if the platform sent a value that no valid [LocationFix] can hold
  * (e.g. a latitude out of range or a `NaN` accuracy). Such a fix is broken, so it is dropped
  * instead of crashing the location flow.
  */
-internal fun Location.toUserLocation(): UserLocation? = try {
-    UserLocation(
+internal fun Location.toLocationFix(): LocationFix? = try {
+    LocationFix(
         position = GeoPoint(latitude = latitude, longitude = longitude),
         horizontalAccuracy = if (hasAccuracy()) Distance.meters(accuracy.toDouble()) else null,
-        altitudeInMeters = if (hasAltitude()) altitude else null,
+        altitude = if (hasAltitude()) Altitude.meters(altitude) else null,
         verticalAccuracy = if (hasVerticalAccuracy()) {
             Distance.meters(verticalAccuracyMeters.toDouble())
         } else {

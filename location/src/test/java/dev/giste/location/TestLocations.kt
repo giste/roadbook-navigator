@@ -18,14 +18,15 @@
 package dev.giste.location
 
 import dev.giste.geo.GeoPoint
+import dev.giste.geo.LocationFix
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 /** A minimal fix with only the values that are always known. */
-internal fun testUserLocation(latitude: Double = 40.4168): UserLocation = UserLocation(
+internal fun testLocationFix(latitude: Double = 40.4168): LocationFix = LocationFix(
     position = GeoPoint(latitude = latitude, longitude = -3.7038),
     horizontalAccuracy = null,
-    altitudeInMeters = null,
+    altitude = null,
     verticalAccuracy = null,
     speed = null,
     bearing = null,

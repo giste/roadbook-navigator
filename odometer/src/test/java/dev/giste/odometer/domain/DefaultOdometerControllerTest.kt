@@ -19,11 +19,11 @@ package dev.giste.odometer.domain
 
 import app.cash.turbine.test
 import dev.giste.geo.Distance
+import dev.giste.geo.LocationFix
 import dev.giste.geo.Speed
 import dev.giste.odometer.FakeLogger
 import dev.giste.odometer.FakeOdometerLocationSource
 import dev.giste.odometer.FakeOdometerSettingsSource
-import dev.giste.odometer.OdometerLocation
 import dev.giste.odometer.OdometerSettings
 import dev.giste.odometer.OdometerState
 import dev.giste.odometer.testFix
@@ -46,13 +46,13 @@ import org.junit.Test
 class DefaultOdometerControllerTest {
 
     private val repository = FakeOdometerStateRepository()
-    private val locations = MutableSharedFlow<OdometerLocation>()
+    private val locations = MutableSharedFlow<LocationFix>()
     private val settings = MutableStateFlow(OdometerSettings())
     private val logger = FakeLogger()
 
     /** Creates the controller under test, sharing its state in the test's background scope. */
     private fun TestScope.createController(
-        locationFlow: Flow<OdometerLocation> = locations,
+        locationFlow: Flow<LocationFix> = locations,
         settingsFlow: Flow<OdometerSettings> = settings,
     ) = DefaultOdometerController(
         repository = repository,
@@ -63,7 +63,7 @@ class DefaultOdometerControllerTest {
     )
 
     /** Emits [fixes] one by one, and lets the controller process each of them. */
-    private suspend fun TestScope.emitFixes(vararg fixes: OdometerLocation) {
+    private suspend fun TestScope.emitFixes(vararg fixes: LocationFix) {
         fixes.forEach { fix ->
             locations.emit(fix)
             runCurrent()

@@ -19,6 +19,7 @@ package dev.giste.location.data
 
 import android.location.Location
 import android.location.LocationManager
+import dev.giste.geo.Altitude
 import dev.giste.geo.Bearing
 import dev.giste.geo.Distance
 import dev.giste.geo.GeoPoint
@@ -46,7 +47,7 @@ class LocationMapperTest {
     }
 
     @Test
-    fun toUserLocation_allValuesPresent_mapsEveryValue() {
+    fun toLocationFix_allValuesPresent_mapsEveryValue() {
         val location = minimalLocation().apply {
             accuracy = 5f
             altitude = -12.5
@@ -55,11 +56,11 @@ class LocationMapperTest {
             bearing = 90f
         }
 
-        val result = location.toUserLocation()!!
+        val result = location.toLocationFix()!!
 
         assertEquals(GeoPoint(latitude = 40.4168, longitude = -3.7038), result.position)
         assertEquals(Distance.meters(5.0), result.horizontalAccuracy)
-        assertEquals(-12.5, result.altitudeInMeters!!, 0.0)
+        assertEquals(Altitude.meters(-12.5), result.altitude)
         assertEquals(Distance.meters(3.0), result.verticalAccuracy)
         assertEquals(Speed.metersPerSecond(10.0), result.speed)
         assertEquals(Bearing.degrees(90.0), result.bearing)
@@ -68,35 +69,42 @@ class LocationMapperTest {
     }
 
     @Test
-    fun toUserLocation_optionalValuesMissing_mapsThemToNull() {
-        val result = minimalLocation().toUserLocation()!!
+    fun toLocationFix_optionalValuesMissing_mapsThemToNull() {
+        val result = minimalLocation().toLocationFix()!!
 
         assertNull(result.horizontalAccuracy)
-        assertNull(result.altitudeInMeters)
+        assertNull(result.altitude)
         assertNull(result.verticalAccuracy)
         assertNull(result.speed)
         assertNull(result.bearing)
     }
 
     @Test
-    fun toUserLocation_zeroSpeed_mapsToZeroNotNull() {
+    fun toLocationFix_zeroSpeed_mapsToZeroNotNull() {
         val location = minimalLocation().apply { speed = 0f }
 
-        assertEquals(Speed.ZERO, location.toUserLocation()!!.speed)
+        assertEquals(Speed.ZERO, location.toLocationFix()!!.speed)
     }
 
     @Test
-    fun toUserLocation_latitudeOutOfRange_returnsNull() {
+    fun toLocationFix_latitudeOutOfRange_returnsNull() {
         val location = minimalLocation().apply { latitude = 91.0 }
 
-        assertNull(location.toUserLocation())
+        assertNull(location.toLocationFix())
     }
 
     @Test
-    fun toUserLocation_nanSpeed_returnsNull() {
+    fun toLocationFix_nanSpeed_returnsNull() {
         val location = minimalLocation().apply { speed = Float.NaN }
 
-        assertNull(location.toUserLocation())
+        assertNull(location.toLocationFix())
+    }
+
+    @Test
+    fun toLocationFix_nanAltitude_returnsNull() {
+        val location = minimalLocation().apply { altitude = Double.NaN }
+
+        assertNull(location.toLocationFix())
     }
 
     @Test
