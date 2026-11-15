@@ -4,7 +4,7 @@ Imports a Rally Navigator roadbook definition file (`.rn2`) and turns its waypoi
 
 `:roadbook` is a **reusable module** (AGENTS.md §4.1): its package is `dev.giste.roadbook`, and it contains nothing specific to Roadbook Navigator, so other rally apps can depend on it too. Its domain is the roadbook, so it uses rally terms (*roadbook, waypoint, moderator, partial, total, auto-advance, tulip, CAP/heading*). It must not get app-specific defaults or concepts from outside that domain: the app decides what to do with its events (e.g. how to change the odometer).
 
-> **Status:** being migrated from the previous project step by step. The public API contract is defined, but nothing implements it yet: `RoadbookController` is not bound with Hilt, and there is no screen. Every section below is updated as each part lands.
+> **Status:** being migrated from the previous project step by step. The public API contract and the domain model are defined, but nothing implements the API yet: there is no `.rn2` parsing, no persistence, `RoadbookController` is not bound with Hilt, and there is no screen. Every section below is updated as each part lands.
 
 ## Responsibility
 
@@ -20,7 +20,10 @@ Imports a Rally Navigator roadbook definition file (`.rn2`) and turns its waypoi
 dev/giste/roadbook/
 ├── RoadbookController, RoadbookEvent, RoadbookSettings,
 │   RoadbookSettingsSource, ShortDistanceThreshold        ← public API
-├── domain/         Not created yet
+├── domain/
+│   ├── roadbook/   Roadbook (aggregate root), Waypoint, WaypointNumber, DangerLevel
+│   └── drawing/    Element, Track, Road, RoadType, Icon, IconType, Text, CanvasPoint
+│                   (drawn in the tulip and notes columns)
 ├── data/           Not created yet
 ├── presentation/   Not created yet
 └── di/             Not created yet
@@ -68,6 +71,17 @@ Not defined yet.
 - **Colors and dimensions are not public API.** The previous `RoadbookColors` and `RoadbookDimensions` were public but never customized by the app. They become internal and use `:core` theme tokens when the UI is migrated.
 - **The roadbook name is not exposed** until `:app` needs it.
 
+### Domain model
+
+- **`Roadbook` is the aggregate root** (previously `Route`, renamed to the ubiquitous language). It is immutable and checks its invariants on creation: at least one waypoint, numbered 1…n in order with no gaps, and the first one has no distance from a previous one. The distances are not checked against each other, because waypoints that are not shown still add distance.
+- **An empty roadbook is invalid.** A file without waypoints is reported as an import failure instead of producing an empty roadbook.
+- **`Waypoint.partial` is the partial**, the distance since the last waypoint that resets it (or since the start). The previous `distance` field held the same value, but its documentation called it the total from the start. `distanceFromPrevious` counts from the previous waypoint shown, including waypoints that are not shown.
+- **`partialToSet` is domain logic.** The partial the odometer should show at a waypoint (`partial`, or zero when it `resetsPartial`) used to be computed in the long-press handler of a composable. It now lives in the model, so the UI only emits it.
+- **Typed values instead of raw ones:** `WaypointNumber` (at least 1), `GeoPoint` and `Altitude` from `:geo` (previously a local `Coordinates` with `elevation`), and `Distance` from `:geo` (previously a local `Distance` in whole meters). The altitude is `null` when the file does not give one.
+- **Drawing elements describe the tulip and notes, not the file.** `Element` is a sealed interface, so the previous `elementType` field, which repeated the subtype, is gone. The `.rn2` numeric road type ids (4, 12, 15, …) belong to the parser, not to `RoadType`. Canvas positions are `CanvasPoint`s (previously `Point`), so they are never confused with a `GeoPoint`.
+- **Icon sizes keep their fractions.** The previous `Icon` stored `width` and `height` as `Int`s, but `.rn2` files have fractional sizes (e.g. 35.67), so they are `Double`s now. Sizes must be positive and scales non-zero (a negative scale mirrors the symbol). Values the domain rejects must be handled by the parser.
+
 ## Testing notes
 
 - `ShortDistanceThreshold` and `RoadbookSettings` defaults are unit-tested in `src/test`.
+- The domain model is unit-tested in `src/test`: every `Roadbook` invariant (accepted and broken), `Waypoint.partialToSet` with and without a reset, and the validation of `WaypointNumber`, `CanvasPoint`, `Icon` and `Text`. `testWaypoint()` in `domain/roadbook` builds valid waypoints for other tests. `Track` and `Road` have no logic of their own, so they are not tested.
