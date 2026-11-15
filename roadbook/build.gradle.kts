@@ -6,8 +6,8 @@ plugins {
 }
 
 android {
-    // :roadbook is app-specific, so it lives under the app's base package (AGENTS.md §1).
-    namespace = "dev.giste.roadbooknavigator.roadbook"
+    // :roadbook is a reusable module, so its namespace is dev.giste.<module> (AGENTS.md §4.1).
+    namespace = "dev.giste.roadbook"
     compileSdk {
         version = release(37)
     }
@@ -37,7 +37,8 @@ kotlin {
 }
 
 dependencies {
-    // :roadbook is a feature module: it depends only on :core and :geo (AGENTS.md §4).
+    // :roadbook is a reusable feature module: it depends only on the reusable :core and :geo
+    // (AGENTS.md §4 and §4.1).
     implementation(project(":core"))
     // The public API will expose :geo value objects (Distance, …), so consumers need it too.
     api(project(":geo"))

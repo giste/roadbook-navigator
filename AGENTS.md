@@ -12,7 +12,7 @@ An Android app for rally navigation. It:
 - Shows an **odometer** with **partial** and **total** distance (and possibly speed, bearing, etc.).
 - Shows a **map** centered on the current location, with custom zoom and tilt.
 
-Base package: `dev.giste.roadbooknavigator`. App-specific module packages are `dev.giste.roadbooknavigator.<module>` (e.g. `dev.giste.roadbooknavigator.roadbook`). **Reusable modules** (see [§4.1](#41-reusable-modules)) are meant to be shared with other apps, so their packages are `dev.giste.<module>` (e.g. `dev.giste.core`, `dev.giste.geo`, `dev.giste.location`, `dev.giste.odometer`).
+Base package: `dev.giste.roadbooknavigator`. App-specific module packages are `dev.giste.roadbooknavigator.<module>` (e.g. `dev.giste.roadbooknavigator.settings`). **Reusable modules** (see [§4.1](#41-reusable-modules)) are meant to be shared with other apps, so their packages are `dev.giste.<module>` (e.g. `dev.giste.core`, `dev.giste.geo`, `dev.giste.location`, `dev.giste.odometer`, `dev.giste.roadbook`, `dev.giste.map`).
 
 ---
 
@@ -60,9 +60,9 @@ Use only libraries that are already in the version catalog, unless the developer
                  └───────┬───────────────┬────────────────┘
                          │               │
                          ▼               ▼
-                 ┌──────────────┐   ┌──────────────────────────────────────┐
-                 │  :settings   │──▶│ :location* :odometer* :roadbook :map │  feature modules
-                 └──────┬───────┘   └──────────────────┬───────────────────┘
+                 ┌──────────────┐   ┌────────────────────────────────────────┐
+                 │  :settings   │──▶│ :location* :odometer* :roadbook* :map* │  feature modules
+                 └──────┬───────┘   └──────────────────┬─────────────────────┘
                         │                              │
                         ▼                              ▼
                  ┌────────────────────────────────────────┐
@@ -78,8 +78,8 @@ Use only libraries that are already in the version catalog, unless the developer
 | `:geo` | Reusable. Shared kernel: framework-free geographic and measurement value objects (`GeoPoint`, `Distance`, `Speed`, `Bearing`, …) | **none** |
 | `:location` | Reusable. Provides a location `Flow` to other modules | `:core`, `:geo` |
 | `:odometer` | Reusable. Computes and keeps trip and total distance (and possibly speed, bearing, etc.) and exposes them as a flow. No UI: each app decides how to show them. `:app` uses the trip distance as the partial | `:core`, `:geo` |
-| `:roadbook` | Imports `.rn2`, builds and draws waypoints and moderators, emits roadbook events, auto-advances from a partial-distance flow | `:core`, `:geo` |
-| `:map` | Map centered on current location with custom zoom and tilt, map management | `:core`, `:geo` |
+| `:roadbook` | Reusable. Imports `.rn2`, builds and draws waypoints and moderators, emits roadbook events, auto-advances from a partial-distance flow | `:core`, `:geo` |
+| `:map` | Reusable. Map centered on current location with custom zoom and tilt, map management | `:core`, `:geo` |
 | `:settings` | Settings UI and persistence for all modules. Provides each module's settings flow | `:core`, `:geo` + feature modules |
 | `:app` | Composition root: `Application`, `MainActivity`, navigation host, cross-module wiring and cross-module rules. No domain logic (see [§4.3](#43-cross-module-rules-in-app)) | all modules |
 
@@ -94,11 +94,11 @@ Rules:
 
 ### 4.1 Reusable modules
 
-Some modules are designed to be reused by other apps, not only by Roadbook Navigator: `:core`, `:geo`, `:location` and `:odometer`. Besides every other rule in this file, a reusable module:
+Some modules are designed to be reused by other apps, not only by Roadbook Navigator: `:core`, `:geo`, `:location`, `:odometer`, `:roadbook` and `:map`. Besides every other rule in this file, a reusable module:
 
 - Uses the package `dev.giste.<module>` instead of `dev.giste.roadbooknavigator.<module>`, and the same value as its Android `namespace`.
 - Depends **only on other reusable modules**, never on an app-specific module.
-- Contains **nothing app-specific**: no Roadbook Navigator names, branding, rally concepts or app-specific defaults. Rally concepts (waypoint, CAP, partial, …) stay in app modules.
+- Contains **nothing specific to Roadbook Navigator**: no app names, branding or app-specific defaults, and no concepts from outside its own domain. A module whose domain is rally (`:roadbook`) uses rally terms. Modules whose domain is not (`:odometer`, `:location`, …) use neutral terms, and `:app` maps them to rally terms (trip → partial).
 - Still uses Hilt, the `:core` logger and the `:core` dispatchers, so every app that reuses these modules uses Hilt too.
 
 Concepts that several app-specific modules share, but that make no sense outside this app, would go in an app-specific `:common` module (`dev.giste.roadbooknavigator.common`). It does not exist yet. Ask the developer before creating it, and only when the first such concept appears.
@@ -108,7 +108,7 @@ Concepts that several app-specific modules share, but that make no sense outside
 Each feature module **declares the inputs it needs as interfaces or flows in its own public API** (input ports). `:app` connects them with small adapter classes and Hilt bindings. Examples:
 
 - `:odometer` declares that it needs location fixes. `:app` adapts the `:location` flow to it.
-- `:roadbook` emits `RoadbookEvent`s, for example *roadbook loaded*, or *waypoint distance long-pressed* to set or show the partial. `:app` collects them and calls the `:odometer` API, for example to reset the odometer's trip distance (the partial) when a new roadbook is loaded.
+- `:roadbook` emits `RoadbookEvent`s, for example *roadbook loaded*, or *waypoint distance long-pressed* to set or show the partial. `:app` collects them and calls the `:odometer` API, for example to reset the odometer's trip and total distances (the partial and the total) when a new roadbook is loaded.
 - `:roadbook` accepts a `Flow` of partial distances. `:app` feeds it from the `:odometer` trip distance to drive waypoint auto-advance.
 
 When several modules need the **same primitive geographic or measurement concept**, put a minimal, framework-free value object in the **shared kernel**, `:geo`, for example `Distance`, `GeoPoint` or `Bearing`. Keep the shared kernel small. Feature-specific concepts stay in their feature.
@@ -207,7 +207,7 @@ core/
 - **Domain events:** sealed hierarchies that describe something that happened (e.g. `RoadbookEvent.Loaded`).
 - **Repositories:** interfaces are declared in `domain`. Implementations live in `data`. They expose `Flow`s and `suspend` functions and return sealed results.
 - **Use cases:** one action per class, named `VerbNounUseCase`, with a single `operator fun invoke`. Add a use case only when it holds real logic or combines repositories. Do not add pass-through use cases.
-- **Ubiquitous language:** use rally and roadbook terms consistently: *roadbook, waypoint, moderator, partial, total, odometer, auto-advance, tulip, CAP/heading*. Do not invent synonyms. Reusable modules use neutral terms instead (e.g. `:odometer`'s *trip* distance), and `:app` maps them to rally terms (trip → partial).
+- **Ubiquitous language:** use rally and roadbook terms consistently: *roadbook, waypoint, moderator, partial, total, odometer, auto-advance, tulip, CAP/heading*. Do not invent synonyms. Reusable modules whose domain is not rally use neutral terms instead (e.g. `:odometer`'s *trip* distance), and `:app` maps them to rally terms (trip → partial). `:roadbook`, whose domain is the roadbook, uses rally terms.
 
 ### 5.3 Presentation (Compose + UDF)
 
@@ -308,7 +308,7 @@ The test suite is exhaustive: **every functionality, branch, error path, sealed 
 
 | Element | Convention | Example |
 |---|---|---|
-| Packages | lowercase, no underscores | `dev.giste.roadbooknavigator.roadbook.domain.model` |
+| Packages | lowercase, no underscores | `dev.giste.roadbook.domain.model` |
 | Classes / interfaces | PascalCase nouns | `Waypoint`, `RoadbookRepository` |
 | Repository implementations | Descriptive prefix, not `Impl` | `DefaultRoadbookRepository`, `DataStoreOdometerStateRepository` |
 | Use cases | `VerbNounUseCase` | `ImportRoadbookUseCase` |

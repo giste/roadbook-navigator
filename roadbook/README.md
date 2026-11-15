@@ -2,7 +2,7 @@
 
 Imports a Rally Navigator roadbook definition file (`.rn2`) and turns its waypoints and moderators into a scrollable on-screen roadbook used to navigate the route. `:roadbook` depends only on `:core` and `:geo`.
 
-`:roadbook` is an **app-specific** feature module (AGENTS.md §4): its package is `dev.giste.roadbooknavigator.roadbook`, and it uses rally terms (*roadbook, waypoint, moderator, partial, total, auto-advance, tulip, CAP/heading*).
+`:roadbook` is a **reusable module** (AGENTS.md §4.1): its package is `dev.giste.roadbook`, and it contains nothing specific to Roadbook Navigator, so other rally apps can depend on it too. Its domain is the roadbook, so it uses rally terms (*roadbook, waypoint, moderator, partial, total, auto-advance, tulip, CAP/heading*). It must not get app-specific defaults or concepts from outside that domain: the app decides what to do with its events (e.g. how to change the odometer).
 
 > **Status:** skeleton only. The code is being migrated from the previous project step by step. Every section below is updated as each part lands.
 
@@ -16,7 +16,7 @@ Imports a Rally Navigator roadbook definition file (`.rn2`) and turns its waypoi
 ## Package layout
 
 ```
-dev/giste/roadbooknavigator/roadbook/
+dev/giste/roadbook/
 ├── *.kt            Public API (not defined yet)
 ├── domain/         Not created yet
 ├── data/           Not created yet
