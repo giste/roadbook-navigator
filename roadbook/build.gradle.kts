@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.compose)
+    // Generates the serializers of the .rn2 file DTOs.
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt.android)
 }
@@ -48,6 +50,8 @@ dependencies {
     // The public API will expose roadbook events and the partial distance input as Flows, so
     // consumers need coroutines too.
     api(libs.kotlinx.coroutines.core)
+    // Parses .rn2 roadbook files, which are JSON.
+    implementation(libs.kotlinx.serialization.json)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.material3)
