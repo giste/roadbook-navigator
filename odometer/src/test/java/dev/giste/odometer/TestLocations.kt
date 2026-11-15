@@ -17,9 +17,13 @@
 
 package dev.giste.odometer
 
+import dev.giste.geo.Altitude
 import dev.giste.geo.Distance
 import dev.giste.geo.GeoPoint
+import dev.giste.geo.LocationFix
 import dev.giste.geo.Speed
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 /** Meters along a meridian per degree of latitude, on the sphere the odometer uses. */
 internal const val METERS_PER_DEGREE_OF_LATITUDE: Double = 6_371_000.0 * Math.PI / 180.0
@@ -30,7 +34,9 @@ internal val START: GeoPoint = GeoPoint(latitude = 40.0, longitude = -3.0)
 /**
  * A fix [metersNorth] of [START], accurate and moving unless the test says otherwise.
  *
- * Moving due north along a meridian makes the expected distance exact.
+ * Moving due north along a meridian makes the expected distance exact. The bearing and the times
+ * are fixed, because the odometer does not use them. [altitudeInMeters] is a plain number only to
+ * keep the tests short: it becomes the fix's [Altitude].
  */
 internal fun testFix(
     metersNorth: Double = 0.0,
@@ -38,13 +44,16 @@ internal fun testFix(
     speed: Speed? = Speed.metersPerSecond(10.0),
     altitudeInMeters: Double? = null,
     verticalAccuracy: Distance? = null,
-): OdometerLocation = OdometerLocation(
+): LocationFix = LocationFix(
     position = GeoPoint(
         latitude = START.latitude + metersNorth / METERS_PER_DEGREE_OF_LATITUDE,
         longitude = START.longitude,
     ),
     horizontalAccuracy = horizontalAccuracy,
-    altitudeInMeters = altitudeInMeters,
+    altitude = altitudeInMeters?.let(Altitude::meters),
     verticalAccuracy = verticalAccuracy,
     speed = speed,
+    bearing = null,
+    time = Instant.fromEpochMilliseconds(1_000),
+    elapsedRealtime = 1.seconds,
 )

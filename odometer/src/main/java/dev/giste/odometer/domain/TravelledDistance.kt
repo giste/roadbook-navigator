@@ -17,9 +17,10 @@
 
 package dev.giste.odometer.domain
 
+import dev.giste.geo.Altitude
 import dev.giste.geo.Distance
 import dev.giste.geo.GeoPoint
-import dev.giste.odometer.OdometerLocation
+import dev.giste.geo.LocationFix
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
@@ -54,41 +55,43 @@ internal fun surfaceDistance(from: GeoPoint, to: GeoPoint): Distance {
 /**
  * Distance travelled from [from] to [to].
  *
- * It is the [surfaceDistance] between both positions, plus the altitude change when both fixes
- * know their altitude with a vertical accuracy of [maxVerticalAccuracy] or better. A bad
- * altitude adds more error than it removes, so it is ignored then.
+ * It is the [surfaceDistance] between both positions, combined with the climb (up or down) when
+ * both fixes know their altitude with a vertical accuracy of [maxVerticalAccuracy] or better. A
+ * bad altitude adds more error than it removes, so it is ignored then.
  *
  * @param maxVerticalAccuracy the worst vertical accuracy at which the altitude is still used, or
  * `null` to never use the altitude.
  */
 internal fun travelledDistance(
-    from: OdometerLocation,
-    to: OdometerLocation,
+    from: LocationFix,
+    to: LocationFix,
     maxVerticalAccuracy: Distance?,
 ): Distance {
     val horizontal = surfaceDistance(from.position, to.position)
     if (maxVerticalAccuracy == null) return horizontal
-    val climb = altitudeChange(from, to, maxVerticalAccuracy) ?: return horizontal
-    return Distance.meters(hypot(horizontal.inMeters, climb))
+    val climb = climb(from, to, maxVerticalAccuracy) ?: return horizontal
+    return Distance.meters(hypot(horizontal.inMeters, climb.inMeters))
 }
 
 /**
- * Altitude change in meters from [from] to [to], or `null` if either altitude is unknown or less
- * accurate than [maxVerticalAccuracy].
+ * Vertical distance between [from] and [to], or `null` if either altitude is unknown or less
+ * accurate than [maxVerticalAccuracy]. Going up and going down count the same.
  */
-private fun altitudeChange(
-    from: OdometerLocation,
-    to: OdometerLocation,
+private fun climb(
+    from: LocationFix,
+    to: LocationFix,
     maxVerticalAccuracy: Distance,
-): Double? {
-    if (!from.hasAccurateAltitude(maxVerticalAccuracy)) return null
-    if (!to.hasAccurateAltitude(maxVerticalAccuracy)) return null
-    // Both are non-null: hasAccurateAltitude checked them.
-    return to.altitudeInMeters!! - from.altitudeInMeters!!
+): Distance? {
+    val fromAltitude = from.accurateAltitude(maxVerticalAccuracy) ?: return null
+    val toAltitude = to.accurateAltitude(maxVerticalAccuracy) ?: return null
+    return fromAltitude.verticalDistanceTo(toAltitude)
 }
 
-/** Whether the altitude of this fix is known with [maxVerticalAccuracy] or better. */
-private fun OdometerLocation.hasAccurateAltitude(maxVerticalAccuracy: Distance): Boolean {
-    val accuracy = verticalAccuracy ?: return false
-    return altitudeInMeters != null && accuracy <= maxVerticalAccuracy
+/**
+ * The altitude of this fix, or `null` if it is unknown or less accurate than
+ * [maxVerticalAccuracy].
+ */
+private fun LocationFix.accurateAltitude(maxVerticalAccuracy: Distance): Altitude? {
+    val accuracy = verticalAccuracy ?: return null
+    return altitude?.takeIf { accuracy <= maxVerticalAccuracy }
 }

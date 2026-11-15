@@ -18,7 +18,7 @@
 package dev.giste.odometer.domain
 
 import dev.giste.geo.Distance
-import dev.giste.odometer.OdometerLocation
+import dev.giste.geo.LocationFix
 import dev.giste.odometer.OdometerSettings
 
 /**
@@ -48,8 +48,8 @@ import dev.giste.odometer.OdometerSettings
  * @return what to do with [fix].
  */
 internal fun filterFix(
-    anchor: OdometerLocation?,
-    fix: OdometerLocation,
+    anchor: LocationFix?,
+    fix: LocationFix,
     settings: OdometerSettings,
 ): FixResult {
     val accuracy = fix.horizontalAccuracy

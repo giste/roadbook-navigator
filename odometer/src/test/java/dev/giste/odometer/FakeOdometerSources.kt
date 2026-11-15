@@ -17,6 +17,7 @@
 
 package dev.giste.odometer
 
+import dev.giste.geo.LocationFix
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -26,7 +27,7 @@ import kotlinx.coroutines.flow.Flow
  * @property locations the flow returned to the controller.
  */
 internal class FakeOdometerLocationSource(
-    override val locations: Flow<OdometerLocation>,
+    override val locations: Flow<LocationFix>,
 ) : OdometerLocationSource
 
 /**
