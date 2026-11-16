@@ -43,7 +43,7 @@ internal data class Text(
     val maxWidth: Double,
     val maxHeight: Double,
     val center: CanvasPoint,
-) : Element {
+) : TulipElement, NoteElement {
 
     init {
         require(fontSize > 0) { "A text's font size must be positive, but was $fontSize" }

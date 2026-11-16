@@ -144,7 +144,7 @@ internal class Rn2RoadbookParser @Inject constructor(
                 resetsPartial = point.resetsPartial(),
                 dangerLevel = point.dangerLevel(),
                 tulip = tulip.elements,
-                notes = elementMapper.mapNotes(point.notes.elements, inheritedRoadType),
+                notes = elementMapper.mapNotes(point.notes.elements),
             )
         }
     }

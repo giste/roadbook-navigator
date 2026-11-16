@@ -20,7 +20,8 @@ package dev.giste.roadbook.domain.roadbook
 import dev.giste.geo.Altitude
 import dev.giste.geo.Distance
 import dev.giste.geo.GeoPoint
-import dev.giste.roadbook.domain.drawing.Element
+import dev.giste.roadbook.domain.drawing.NoteElement
+import dev.giste.roadbook.domain.drawing.TulipElement
 
 /**
  * One point of a route as a roadbook file describes it, before the distances are measured.
@@ -44,8 +45,8 @@ internal data class RoutePoint(
     val shown: Boolean,
     val resetsPartial: Boolean = false,
     val dangerLevel: DangerLevel = DangerLevel.NONE,
-    val tulip: List<Element> = emptyList(),
-    val notes: List<Element> = emptyList(),
+    val tulip: List<TulipElement> = emptyList(),
+    val notes: List<NoteElement> = emptyList(),
 )
 
 /**

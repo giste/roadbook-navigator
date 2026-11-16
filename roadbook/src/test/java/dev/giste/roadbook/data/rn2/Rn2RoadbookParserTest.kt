@@ -313,19 +313,18 @@ class Rn2RoadbookParserTest {
     }
 
     @Test
-    fun parse_trackInNotes_inheritsTheKindItsTulipLeavesOn() = runTest {
+    fun parse_roadsInNotes_areSkipped() = runTest {
         val content = rn2(
             point(
                 lat = 0.0,
                 lon = 0.0,
-                tulip = """[{"type": "Track", "roadOut": {"typeId": 12}}]""",
-                notes = """[{"type": "Track"}]""",
+                notes = """[{"type": "Track"}, {"type": "Road"}, $RESET_ICON]""",
             ),
         )
 
-        val notesTrack = parseRoadbook(content).waypoints.single().notes.single() as Track
+        val notes = parseRoadbook(content).waypoints.single().notes
 
-        assertEquals(RoadType.DUAL_CARRIAGEWAY, notesTrack.roadIn.type)
+        assertEquals(listOf(Icon::class), notes.map { it::class })
     }
 
     @Test

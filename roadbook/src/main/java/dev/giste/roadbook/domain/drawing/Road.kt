@@ -34,7 +34,7 @@ internal data class Road(
     val end: CanvasPoint?,
     val type: RoadType = RoadType.TRACK,
     val handles: List<CanvasPoint> = emptyList(),
-) : Element
+) : TulipElement
 
 /**
  * The kind of a [Road], from the least to the most important. It decides how the road is drawn

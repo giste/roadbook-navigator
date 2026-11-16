@@ -20,7 +20,8 @@ package dev.giste.roadbook.domain.roadbook
 import dev.giste.geo.Altitude
 import dev.giste.geo.Distance
 import dev.giste.geo.GeoPoint
-import dev.giste.roadbook.domain.drawing.Element
+import dev.giste.roadbook.domain.drawing.NoteElement
+import dev.giste.roadbook.domain.drawing.TulipElement
 
 /**
  * One waypoint of a [Roadbook]: a point of the route with the instructions to navigate it.
@@ -40,7 +41,7 @@ import dev.giste.roadbook.domain.drawing.Element
  * of this waypoint still counts up to it, and the next waypoints count from here.
  * @property dangerLevel how dangerous the waypoint is, so it can be highlighted.
  * @property tulip what is drawn in the tulip column: the junction diagram.
- * @property notes what is drawn in the notes column: signs, landmarks, texts, ….
+ * @property notes what is drawn in the notes column: signs, landmarks, texts, …. It has no roads.
  */
 internal data class Waypoint(
     val number: WaypointNumber,
@@ -50,8 +51,8 @@ internal data class Waypoint(
     val distanceFromPrevious: Distance,
     val resetsPartial: Boolean = false,
     val dangerLevel: DangerLevel = DangerLevel.NONE,
-    val tulip: List<Element> = emptyList(),
-    val notes: List<Element> = emptyList(),
+    val tulip: List<TulipElement> = emptyList(),
+    val notes: List<NoteElement> = emptyList(),
 ) {
 
     /**

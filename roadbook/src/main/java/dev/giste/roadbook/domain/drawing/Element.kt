@@ -23,8 +23,22 @@ package dev.giste.roadbook.domain.drawing
  *
  * Positions are [CanvasPoint]s relative to the center of the column's canvas. The type of element
  * is its subtype, so there is no separate type field.
+ *
+ * Each column only allows some kinds of element: [TulipElement]s go in a tulip and
+ * [NoteElement]s in a notes column. Code that draws any column works with [Element].
  */
 internal sealed interface Element
+
+/**
+ * An [Element] that may be drawn in a tulip: any of them, roads and tracks included.
+ */
+internal sealed interface TulipElement : Element
+
+/**
+ * An [Element] that may be drawn in a notes column: an [Icon] or a [Text]. A notes column has no
+ * junction, so it has no [Road]s or [Track]s.
+ */
+internal sealed interface NoteElement : Element
 
 /**
  * The route through the junction of a tulip: the road the rider arrives on and the road they
@@ -36,4 +50,4 @@ internal sealed interface Element
 internal data class Track(
     val roadIn: Road,
     val roadOut: Road,
-) : Element
+) : TulipElement

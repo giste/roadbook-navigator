@@ -22,6 +22,7 @@ import dev.giste.geo.Distance
 import dev.giste.geo.GeoPoint
 import dev.giste.roadbook.domain.drawing.CanvasPoint
 import dev.giste.roadbook.domain.drawing.Road
+import dev.giste.roadbook.domain.drawing.Text
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -128,6 +129,15 @@ class RoutePointTest {
     @Test
     fun toWaypoints_shownPoint_keepsItsValues() {
         val road = Road(start = null, end = CanvasPoint(0.0, -50.0))
+        val text = Text(
+            text = "CAP 120",
+            lineHeight = 1.0,
+            width = 0.0,
+            height = 0.0,
+            maxWidth = 180.0,
+            maxHeight = 100.0,
+            center = CanvasPoint.CENTER,
+        )
         val shown = RoutePoint(
             position = position(0),
             altitude = Altitude.meters(730.0),
@@ -135,7 +145,7 @@ class RoutePointTest {
             resetsPartial = true,
             dangerLevel = DangerLevel.HIGH,
             tulip = listOf(road),
-            notes = listOf(road, road),
+            notes = listOf(text, text),
         )
 
         val waypoint = listOf(shown).toWaypoints().single()
@@ -145,7 +155,7 @@ class RoutePointTest {
         assertTrue(waypoint.resetsPartial)
         assertEquals(DangerLevel.HIGH, waypoint.dangerLevel)
         assertEquals(listOf(road), waypoint.tulip)
-        assertEquals(listOf(road, road), waypoint.notes)
+        assertEquals(listOf(text, text), waypoint.notes)
     }
 
     @Test

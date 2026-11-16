@@ -22,10 +22,12 @@ import dev.giste.roadbook.domain.drawing.CanvasPoint
 import dev.giste.roadbook.domain.drawing.Element
 import dev.giste.roadbook.domain.drawing.Icon
 import dev.giste.roadbook.domain.drawing.IconType
+import dev.giste.roadbook.domain.drawing.NoteElement
 import dev.giste.roadbook.domain.drawing.Road
 import dev.giste.roadbook.domain.drawing.RoadType
 import dev.giste.roadbook.domain.drawing.Text
 import dev.giste.roadbook.domain.drawing.Track
+import dev.giste.roadbook.domain.drawing.TulipElement
 import javax.inject.Inject
 import kotlin.math.roundToInt
 
@@ -64,13 +66,14 @@ private val ROAD_TYPES_BY_ID: Map<Int, RoadType> = mapOf(
  * @property roadTypeOut the kind of the road out of the last track, or the inherited kind when
  * the tulip has no track. The next tulip inherits it.
  */
-internal data class MappedTulip(val elements: List<Element>, val roadTypeOut: RoadType)
+internal data class MappedTulip(val elements: List<TulipElement>, val roadTypeOut: RoadType)
 
 /**
  * Maps the elements of a `.rn2` column to drawing elements, filling in what the file leaves out.
  *
- * Elements whose values cannot be drawn (e.g. an icon of zero width) and elements of unknown type
- * are skipped with a warning, so one odd element does not stop the whole roadbook from loading.
+ * Elements whose values cannot be drawn (e.g. an icon of zero width), elements of unknown type and
+ * elements that do not belong in their column (a road in a notes column) are skipped with a
+ * warning, so one odd element does not stop the whole roadbook from loading.
  */
 internal class Rn2ElementMapper @Inject constructor(private val logger: Logger) {
 
@@ -94,7 +97,7 @@ internal class Rn2ElementMapper @Inject constructor(private val logger: Logger) 
     ): MappedTulip {
         var roadType = inheritedRoadType
         val mapped = elements.mapNotNull { element ->
-            mapElement(element, roadType, exitPoint)?.also {
+            mapTulipElement(element, roadType, exitPoint)?.also {
                 if (it is Track) roadType = it.roadOut.type
             }
         }
@@ -102,34 +105,55 @@ internal class Rn2ElementMapper @Inject constructor(private val logger: Logger) 
     }
 
     /**
-     * Maps the elements of a notes column. A track there has no next point to aim at, so its road
-     * out goes straight on unless the file says otherwise.
+     * Maps the elements of a notes column: its symbols and texts.
+     *
+     * A notes column has no junction, so roads and tracks do not belong there. Rally Navigator
+     * does not put them there, and any found are skipped with a warning.
      *
      * @param elements the elements, in drawing order.
-     * @param inheritedRoadType the kind of road for tracks that do not give one.
      * @return the elements.
      */
-    fun mapNotes(elements: List<Rn2Element>, inheritedRoadType: RoadType): List<Element> =
-        mapTulip(elements, inheritedRoadType) { DEFAULT_ROAD_OUT_END }.elements
+    fun mapNotes(elements: List<Rn2Element>): List<NoteElement> =
+        elements.mapNotNull(::mapNoteElement)
 
-    /** Maps one element, or returns `null` (and warns) if it must be skipped. */
-    private fun mapElement(
+    /** Maps one element of a tulip, or returns `null` (and warns) if it must be skipped. */
+    private fun mapTulipElement(
         element: Rn2Element,
         inheritedRoadType: RoadType,
         exitPoint: () -> CanvasPoint,
-    ): Element? {
-        val mapped = when (element) {
-            is Rn2Road -> element.toRoad(defaultType = RoadType.TRACK)
-            is Rn2Track -> element.toTrack(inheritedRoadType, exitPoint)
-            is Rn2Text -> element.toText()
-            is Rn2Icon -> element.toIcon()
-            Rn2UnknownElement -> {
-                logger.w("Skipping a .rn2 element of unknown type")
-                return null
-            }
+    ): TulipElement? = when (element) {
+        is Rn2Road -> drawableOrNull(element) { element.toRoad(defaultType = RoadType.TRACK) }
+        is Rn2Track -> drawableOrNull(element) { element.toTrack(inheritedRoadType, exitPoint) }
+        is Rn2Text -> drawableOrNull(element) { element.toText() }
+        is Rn2Icon -> drawableOrNull(element) { element.toIcon() }
+        Rn2UnknownElement -> skipUnknownElement()
+    }
+
+    /** Maps one element of a notes column, or returns `null` (and warns) if it must be skipped. */
+    private fun mapNoteElement(element: Rn2Element): NoteElement? = when (element) {
+        is Rn2Text -> drawableOrNull(element) { element.toText() }
+        is Rn2Icon -> drawableOrNull(element) { element.toIcon() }
+        is Rn2Road, is Rn2Track -> {
+            logger.w("Skipping a .rn2 road in a notes column, which has no roads: %s", element)
+            null
         }
-        if (mapped == null) logger.w("Skipping a .rn2 element that cannot be drawn: %s", element)
-        return mapped
+        Rn2UnknownElement -> skipUnknownElement()
+    }
+
+    /**
+     * Returns what [map] maps [element] to, or `null` with a warning when its values cannot be
+     * drawn.
+     */
+    private inline fun <T : Element> drawableOrNull(element: Rn2Element, map: () -> T?): T? =
+        map() ?: run {
+            logger.w("Skipping a .rn2 element that cannot be drawn: %s", element)
+            null
+        }
+
+    /** Warns that an element of unknown type is skipped, and returns `null` in its place. */
+    private fun skipUnknownElement(): Nothing? {
+        logger.w("Skipping a .rn2 element of unknown type")
+        return null
     }
 
     private fun Rn2Track.toTrack(

@@ -80,7 +80,7 @@ Not defined yet.
 - **`Waypoint.partial` is the partial**, the distance since the last waypoint that resets it (or since the start). The previous `distance` field held the same value, but its documentation called it the total from the start. `distanceFromPrevious` counts from the previous waypoint shown, including waypoints that are not shown.
 - **`partialToSet` is domain logic.** The partial the odometer should show at a waypoint (`partial`, or zero when it `resetsPartial`) used to be computed in the long-press handler of a composable. It now lives in the model, so the UI only emits it.
 - **Typed values instead of raw ones:** `WaypointNumber` (at least 1), `GeoPoint` and `Altitude` from `:geo` (previously a local `Coordinates` with `elevation`), and `Distance` from `:geo` (previously a local `Distance` in whole meters). The altitude is `null` when the file does not give one.
-- **Drawing elements describe the tulip and notes, not the file.** `Element` is a sealed interface, so the previous `elementType` field, which repeated the subtype, is gone. The `.rn2` numeric road type ids (4, 12, 15, …) belong to the parser, not to `RoadType`. Canvas positions are `CanvasPoint`s (previously `Point`), so they are never confused with a `GeoPoint`.
+- **Drawing elements describe the tulip and notes, not the file.** `Element` is a sealed interface, so the previous `elementType` field, which repeated the subtype, is gone. Each column has its own element type: a tulip holds `TulipElement`s (tracks, roads, icons and texts) and a notes column `NoteElement`s (only icons and texts), so a road in the notes cannot be represented. The previous app used one element list for both. The `.rn2` numeric road type ids (4, 12, 15, …) belong to the parser, not to `RoadType`. Canvas positions are `CanvasPoint`s (previously `Point`), so they are never confused with a `GeoPoint`.
 - **Icon sizes keep their fractions.** The previous `Icon` stored `width` and `height` as `Int`s, but `.rn2` files have fractional sizes (e.g. 35.67), so they are `Double`s now. Sizes must be positive and scales non-zero (a negative scale mirrors the symbol). Values the domain rejects must be handled by the parser.
 
 ### `.rn2` parsing
@@ -92,11 +92,12 @@ Not defined yet.
 - **One icon DTO.** The previous app had a DTO class per symbol (37 identical classes) to tell them apart. Now one `Rn2Icon` DTO is looked up by id, then by name, then falls back to `UNKNOWN`. Speed limits are matched by name only: the previous app's speed limit ids were placeholders that were never used.
 - **Behavior kept from the previous app:**
   - A point resets the partial when its notes column has the reset symbol, even if it is not shown. A shown point's danger level is that of the first danger symbol in its notes.
-  - A track's road out aims at the next point of the route (shown or not). It goes straight on (0, -55) when there is no next point, and in the notes column.
+  - A track's road out aims at the next point of the route (shown or not). It goes straight on (0, -55) when there is no next point.
   - Roads of a track without a kind inherit it: the road in takes the kind the last shown tulip left on, and the road out takes the road in's.
   - Defaults: the road in ends at (0, 35) and the road out starts at the center, a text's line height is 1, and its box may grow to 180 by 100. A symbol is 50 units wide.
 - **Small changes from the previous app:**
   - Icon angles are rounded instead of truncated.
+  - Roads and tracks in a notes column are skipped with a warning, instead of being drawn there.
   - A missing `ele` gives no altitude, instead of 0 m.
   - A text without a `fontSize` uses 18, instead of rejecting the file.
   - An icon with a scale on only one axis keeps its square size `w`, and both scales are 1. The drawn size is the same as before.

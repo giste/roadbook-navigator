@@ -47,7 +47,7 @@ internal data class Icon(
     val scaleY: Double = 1.0,
     val originalId: String? = null,
     val originalName: String? = null,
-) : Element {
+) : TulipElement, NoteElement {
 
     init {
         require(width.isFinite() && width > 0.0) {

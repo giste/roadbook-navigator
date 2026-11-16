@@ -19,13 +19,13 @@ package dev.giste.roadbook.data.rn2
 
 import dev.giste.roadbook.FakeLogger
 import dev.giste.roadbook.domain.drawing.CanvasPoint
-import dev.giste.roadbook.domain.drawing.Element
 import dev.giste.roadbook.domain.drawing.Icon
 import dev.giste.roadbook.domain.drawing.IconType
 import dev.giste.roadbook.domain.drawing.Road
 import dev.giste.roadbook.domain.drawing.RoadType
 import dev.giste.roadbook.domain.drawing.Text
 import dev.giste.roadbook.domain.drawing.Track
+import dev.giste.roadbook.domain.drawing.TulipElement
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -37,6 +37,9 @@ class Rn2ElementMapperTest {
     private val logger = FakeLogger()
     private val mapper = Rn2ElementMapper(logger)
     private val exit = CanvasPoint(75.0, 0.0)
+
+    /** A symbol of a known type, so mapping it logs no warning. */
+    private val churchIcon = Rn2Icon(name = "Church")
 
     // Roads
 
@@ -177,13 +180,6 @@ class Rn2ElementMapperTest {
         val result = mapper.mapTulip(listOf(Rn2Road(typeId = 18)), RoadType.SMALL_TRACK) { exit }
 
         assertEquals(RoadType.SMALL_TRACK, result.roadTypeOut)
-    }
-
-    @Test
-    fun mapNotes_trackWithoutRoadOutEnd_goesStraightOn() {
-        val track = mapper.mapNotes(listOf(Rn2Track()), RoadType.TRACK).single() as Track
-
-        assertEquals(DEFAULT_ROAD_OUT_END, track.roadOut.end)
     }
 
     // Texts
@@ -371,9 +367,54 @@ class Rn2ElementMapperTest {
         )
     }
 
+    // Notes
+
+    @Test
+    fun mapNotes_textsAndIcons_areMappedInOrder() {
+        val mapped = mapper.mapNotes(listOf(Rn2Text(text = "a"), churchIcon, Rn2Text(text = "b")))
+
+        assertEquals(listOf(Text::class, Icon::class, Text::class), mapped.map { it::class })
+        assertEquals("a", (mapped[0] as Text).text)
+        assertTrue(logger.warnings.isEmpty())
+    }
+
+    @Test
+    fun mapNotes_road_isSkippedWithAWarning() {
+        val mapped = mapper.mapNotes(listOf(Rn2Road(), churchIcon))
+
+        assertEquals(listOf(Icon::class), mapped.map { it::class })
+        assertEquals(1, logger.warnings.size)
+    }
+
+    @Test
+    fun mapNotes_track_isSkippedWithAWarning() {
+        val mapped = mapper.mapNotes(listOf(Rn2Track(), churchIcon))
+
+        assertEquals(listOf(Icon::class), mapped.map { it::class })
+        assertEquals(1, logger.warnings.size)
+    }
+
+    @Test
+    fun mapNotes_unknownElement_isSkippedWithAWarning() {
+        val mapped = mapper.mapNotes(listOf(Rn2UnknownElement, Rn2Text()))
+
+        assertEquals(listOf(Text::class), mapped.map { it::class })
+        assertEquals(1, logger.warnings.size)
+    }
+
+    @Test
+    fun mapNotes_elementsThatCannotBeDrawn_areSkippedWithAWarning() {
+        val invalid = listOf(Rn2Text(fontSize = 0), Rn2Icon(name = "Church", w = 0.0))
+
+        val mapped = mapper.mapNotes(invalid)
+
+        assertTrue(mapped.isEmpty())
+        assertEquals(invalid.size, logger.warnings.size)
+    }
+
     private fun tulip(
         vararg elements: Rn2Element,
         inherited: RoadType = RoadType.TRACK,
-    ): List<Element> =
+    ): List<TulipElement> =
         mapper.mapTulip(elements.toList(), inherited) { exit }.elements
 }
