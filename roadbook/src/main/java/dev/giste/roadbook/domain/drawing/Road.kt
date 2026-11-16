@@ -41,22 +41,11 @@ internal data class Road(
  * (dashed, thin, double line, …).
  */
 internal enum class RoadType {
-
-    /** A track that is hard to see on the ground. */
     LOW_VISIBILITY_TRACK,
-
-    /** Off track: no road at all, e.g. across open terrain. */
     OFF_TRACK,
-
-    /** A small track. */
     SMALL_TRACK,
-
-    /** A track. The default when the file gives no type. */
+    /** The default when the file gives no type. */
     TRACK,
-
-    /** A tarmac road. */
     TARMAC_ROAD,
-
-    /** A dual carriageway. */
     DUAL_CARRIAGEWAY,
 }

@@ -67,114 +67,54 @@ internal data class Icon(
 
 /** The symbols the roadbook can draw. Symbols the app does not know are [UNKNOWN]. */
 internal enum class IconType {
-
-    // Cross: marks that apply to the whole waypoint.
-
+    // Cross.
     /** Danger level 1. Sets the waypoint's danger level to low. */
     DANGER_1,
-
     /** Danger level 2. Sets the waypoint's danger level to medium. */
     DANGER_2,
-
     /** Danger level 3. Sets the waypoint's danger level to high. */
     DANGER_3,
-
-    /** A fuel zone. */
     FUEL_ZONE,
-
     /** The partial starts again from zero at this waypoint. */
     RESET_PARTIAL,
 
     // Landmarks.
-
     /** The route passes over a bridge. */
     ABOVE_BRIDGE,
-
-    /** A church. */
     CHURCH,
-
-    /** A fort or castle. */
     FORT_CASTLE,
-
-    /** A house. */
     HOUSE,
-
-    /** A traffic light. */
     TRAFFIC_LIGHT,
-
-    /** A tree. */
     TREE,
-
-    /** A tunnel. */
     TUNNEL,
-
     /** The route passes under a bridge. */
     UNDER_BRIDGE,
 
     // Signs.
-
     /** A warning sign. */
     ALERT,
-
-    /** A no-entry sign. */
     DO_NOT_ENTER,
-
-    /** A roundabout. */
     ROUNDABOUT,
-
-    /** A stop sign. */
     STOP,
 
     // Speed limits, in km/h.
-
-    /** Speed limit of 10 km/h. */
     SPEED_LIMIT_10,
-
-    /** Speed limit of 20 km/h. */
     SPEED_LIMIT_20,
-
-    /** Speed limit of 30 km/h. */
     SPEED_LIMIT_30,
-
-    /** Speed limit of 40 km/h. */
     SPEED_LIMIT_40,
-
-    /** Speed limit of 50 km/h. */
     SPEED_LIMIT_50,
-
-    /** Speed limit of 60 km/h. */
     SPEED_LIMIT_60,
-
-    /** Speed limit of 70 km/h. */
     SPEED_LIMIT_70,
-
-    /** Speed limit of 80 km/h. */
     SPEED_LIMIT_80,
-
-    /** Speed limit of 90 km/h. */
     SPEED_LIMIT_90,
-
-    /** Speed limit of 100 km/h. */
     SPEED_LIMIT_100,
-
-    /** Speed limit of 110 km/h. */
     SPEED_LIMIT_110,
-
-    /** Speed limit of 120 km/h. */
     SPEED_LIMIT_120,
-
-    /** Speed limit of 130 km/h. */
     SPEED_LIMIT_130,
-
-    /** Speed limit of 140 km/h. */
     SPEED_LIMIT_140,
-
-    /** Speed limit of 150 km/h. */
     SPEED_LIMIT_150,
 
     // Terrain.
-
-    /** A river or water crossing. */
     RIVER_WATER,
 
     /** A symbol the app does not know. It is shown by its [Icon.originalName] or [Icon.originalId]. */
