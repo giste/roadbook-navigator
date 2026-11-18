@@ -32,6 +32,7 @@ import dev.giste.roadbook.domain.roadbook.MoveRoadbookUseCase
 import dev.giste.roadbook.domain.roadbook.ParseRoadbookResult
 import dev.giste.roadbook.domain.roadbook.ReadRoadbookSourceResult
 import dev.giste.roadbook.domain.roadbook.Roadbook
+import dev.giste.roadbook.domain.roadbook.RoadbookEvents
 import dev.giste.roadbook.domain.roadbook.RoadbookSource
 import dev.giste.roadbook.domain.roadbook.SavedRoadbook
 import dev.giste.roadbook.domain.roadbook.WaypointNumber
@@ -78,6 +79,7 @@ class DefaultRoadbookControllerTest {
         ),
         moveRoadbook = MoveRoadbookUseCase(roadbookRepository, positionRepository, logger),
         sourceFactory = sourceFactory,
+        roadbookEvents = RoadbookEvents(),
         logger = logger,
     )
 

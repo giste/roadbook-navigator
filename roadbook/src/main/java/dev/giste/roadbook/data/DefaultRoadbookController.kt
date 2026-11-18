@@ -26,10 +26,9 @@ import dev.giste.roadbook.data.source.RoadbookSourceFactory
 import dev.giste.roadbook.domain.roadbook.ImportRoadbookUseCase
 import dev.giste.roadbook.domain.roadbook.MoveDirection
 import dev.giste.roadbook.domain.roadbook.MoveRoadbookUseCase
+import dev.giste.roadbook.domain.roadbook.RoadbookEvents
 import javax.inject.Inject
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -52,31 +51,27 @@ import kotlinx.coroutines.sync.withLock
  * @param importRoadbookUseCase reads, parses and saves a roadbook.
  * @param moveRoadbook moves the position.
  * @param sourceFactory turns the URI of a file into a source to import.
+ * @param roadbookEvents the channel the events go through, shared with the screen.
  * @param logger logs the commands.
  */
 internal class DefaultRoadbookController @Inject constructor(
     private val importRoadbookUseCase: ImportRoadbookUseCase,
     private val moveRoadbook: MoveRoadbookUseCase,
     private val sourceFactory: RoadbookSourceFactory,
+    private val roadbookEvents: RoadbookEvents,
     private val logger: Logger,
 ) : RoadbookController {
 
     /** Runs one command at a time. */
     private val commands = Mutex()
 
-    /**
-     * No replay and no buffer, as [RoadbookController.events] promises: an event only reaches
-     * the collectors present when it is emitted, and emitting waits until they have all taken it.
-     */
-    private val mutableEvents = MutableSharedFlow<RoadbookEvent>()
-
-    override val events: SharedFlow<RoadbookEvent> = mutableEvents.asSharedFlow()
+    override val events: SharedFlow<RoadbookEvent> = roadbookEvents.events
 
     override suspend fun importRoadbook(uri: Uri): ImportRoadbookResult {
         logger.i("Importing a roadbook")
         val result = commands.withLock { importRoadbookUseCase(sourceFactory.create(uri)) }
         if (result is ImportRoadbookResult.Success) {
-            mutableEvents.emit(RoadbookEvent.Loaded)
+            roadbookEvents.emit(RoadbookEvent.Loaded)
         }
         return result
     }

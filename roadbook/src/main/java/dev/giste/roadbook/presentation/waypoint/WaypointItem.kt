@@ -61,7 +61,7 @@ internal val HIGH_DANGER_BORDER_WIDTH: Dp = 8.dp
  * Width of a waypoint row for its height: the distance section (as wide as the row is high) and
  * the tulip and notes canvases.
  */
-private const val ROW_ASPECT_RATIO: Float = (CANVAS_HEIGHT + 2 * CANVAS_WIDTH) / CANVAS_HEIGHT
+internal const val ROW_ASPECT_RATIO: Float = (CANVAS_HEIGHT + 2 * CANVAS_WIDTH) / CANVAS_HEIGHT
 
 /**
  * One waypoint of the roadbook, as on a paper roadbook: its distances and number, its tulip and

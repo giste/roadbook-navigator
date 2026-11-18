@@ -4,7 +4,7 @@ Imports a Rally Navigator roadbook definition file (`.rn2`) and turns its waypoi
 
 `:roadbook` is a **reusable module** (AGENTS.md §4.1): its package is `dev.giste.roadbook`, and it contains nothing specific to Roadbook Navigator, so other rally apps can depend on it too. Its domain is the roadbook, so it uses rally terms (*roadbook, waypoint, moderator, partial, total, auto-advance, tulip, CAP/heading*). It must not get app-specific defaults or concepts from outside that domain: the app decides what to do with its events (e.g. how to change the odometer).
 
-> **Status:** being migrated from the previous project step by step. The public API contract, the domain model, the `.rn2` parser the import (reading the file, parsing it and saving the roadbook), the persisted position and the `RoadbookController` implementation are in place. The roadbook symbols, the roadbook styles, the drawing of tulips and notes, and the waypoint row are in place, but there is no screen yet, and `:app` does not use the module yet. Every section below is updated as each part lands.
+> **Status:** being migrated from the previous project step by step. The public API contract, the domain model, the `.rn2` parser the import (reading the file, parsing it and saving the roadbook), the persisted position and the `RoadbookController` implementation are in place. The roadbook viewer is in place too, from its symbols and styles to `RoadbookViewer`. `:app` does not use the module yet, and auto-advance is not implemented. Every section below is updated as each part lands.
 
 ## Responsibility
 
@@ -19,13 +19,14 @@ Imports a Rally Navigator roadbook definition file (`.rn2`) and turns its waypoi
 ```
 dev/giste/roadbook/
 ├── RoadbookController, RoadbookEvent, ImportRoadbookResult,
-│   RoadbookSettings, RoadbookSettingsSource, RoadbookStyle,
-│   ShortDistanceThreshold                                ← public API
+│   RoadbookViewer, RoadbookSettings, RoadbookSettingsSource,
+│   RoadbookStyle, ShortDistanceThreshold                 ← public API
 ├── domain/
 │   ├── roadbook/   Roadbook (aggregate root), Waypoint, WaypointNumber, DangerLevel,
 │   │               RoutePoint + toWaypoints, RoadbookParser + ParseRoadbookResult,
 │   │               RoadbookSource, RoadbookRepository + SavedRoadbook, ImportRoadbookUseCase,
-│   │               RoadbookPositionRepository, MoveRoadbookUseCase + MoveDirection
+│   │               RoadbookPositionRepository, MoveRoadbookUseCase + MoveDirection,
+│   │               RoadbookEvents (the channel every event goes through)
 │   └── drawing/    Element, Track, Road, RoadType, Icon, IconType, Text, CanvasPoint,
 │                   tulipExitPoint (drawn in the tulip and notes columns)
 ├── data/           DefaultRoadbookController
@@ -36,6 +37,8 @@ dev/giste/roadbook/
 │                   RoadbookFileSerializer, DataStoreRoadbookRepository,
 │                   RoadbookStateDataStore, DataStoreRoadbookPositionRepository
 ├── presentation/
+│   ├── viewer/     RoadbookViewModel, RoadbookUiState, RoadbookViewerContent,
+│   │               RoadbookViewerContentPreview
 │   ├── theme/      RoadbookColors, FIA_ROADBOOK_COLORS, roadbookColors, RoadbookTheme
 │   ├── drawing/    CanvasGeometry (pure), ElementDrawing, TulipCanvas + NotesCanvas,
 │   │               ElementCanvasPreview
@@ -51,7 +54,7 @@ dev/giste/roadbook/
 
 | Type | What it is |
 |---|---|
-| `RoadbookController` | Singleton facade for the app, independent of the screen. `events: SharedFlow<RoadbookEvent>` (hot, no replay, never completes), `suspend` `importRoadbook(uri: Uri): ImportRoadbookResult`, and `suspend` `moveToNextWaypoint()` / `moveToPreviousWaypoint()`. Moving does nothing at either end or without a roadbook, and persists the new position. Implemented by `DefaultRoadbookController`, bound as a singleton. |
+| `RoadbookController` | Singleton facade for the app, independent of the viewer. `events: SharedFlow<RoadbookEvent>` (hot, no replay, never completes), `suspend` `importRoadbook(uri: Uri): ImportRoadbookResult`, and `suspend` `moveToNextWaypoint()` / `moveToPreviousWaypoint()`. Moving does nothing at either end or without a roadbook, and persists the new position. Implemented by `DefaultRoadbookController`, bound as a singleton. |
 | `ImportRoadbookResult` | Sealed. `Success`, or `Failure(reason: ImportRoadbookFailure)`: `UNREADABLE` (the file cannot be opened or read), `MALFORMED`, `NO_WAYPOINTS`, or `NOT_SAVED` (valid, but it could not be written to storage). A failed import keeps the previous roadbook. |
 | `RoadbookEvent` | Sealed. `Loaded`: a new roadbook was imported. `SetPartialRequested(partial: Distance)`: the user long-pressed a waypoint's distance to set the partial. |
 | `RoadbookSettings` | Immutable settings: `shortDistanceThreshold`, default `ShortDistanceThreshold.DEFAULT`, and `style`, default `RoadbookStyle.APP_THEME`. |
@@ -59,11 +62,11 @@ dev/giste/roadbook/
 | `RoadbookSettingsSource` | Input port for the settings flow, implemented by the app (in Roadbook Navigator, `:settings`). |
 | `ShortDistanceThreshold` | Value object over a `:geo` `Distance`, always within `RANGE` (50 m – 1 km), default 250 m. `of()` requires a value in range, `coerce()` clamps one that may not be. |
 
-The screen entry point is not defined yet. It is added with the screen.
+| `RoadbookViewer(showImportButton, modifier)` | The roadbook viewer, a whole screen or part of one, with its state from Hilt: the waypoints at the saved position, and importing (a button without a roadbook, a floating button with one when `showImportButton`, and the reasons of failed imports). |
 
 ## Inputs and outputs
 
-- **Inputs:** `RoadbookSettingsSource` (settings), and `RoadbookController.importRoadbook()` (a `content://` or `file://` URI, usually from the system file picker) and `moveToNextWaypoint()` / `moveToPreviousWaypoint()` (commands). The partial distance input for auto-advance comes later.
+- **Inputs:** `RoadbookSettingsSource` (settings), `RoadbookViewer`'s `showImportButton` (whether the app lets the user import from the roadbook, e.g. only when stopped), and `RoadbookController.importRoadbook()` (a `content://` or `file://` URI, usually from the system file picker) and `moveToNextWaypoint()` / `moveToPreviousWaypoint()` (commands). The partial distance input for auto-advance comes later.
 - **Outputs:** `RoadbookController.events`. In Roadbook Navigator, `:app` reacts to them:
   - `Loaded` → reset both the partial and the total (`OdometerController.resetAll()`), as the previous app did.
   - `SetPartialRequested` → set the partial to `partial` (`OdometerController.setTrip()`).
@@ -183,6 +186,19 @@ A waypoint whose distance from the previous one is shorter than the threshold is
 - **Fixed sizes:** `ROADBOOK_LINE_WIDTH` (1 dp, the lines of the roadbook) and `HIGH_DANGER_BORDER_WIDTH` (8 dp). Spacing comes from `GisteTheme.dimensions`. The previous app's public `RoadbookDimensions`, with compact and expanded variants, are gone: there is one size, until a larger layout needs another.
 - **FIA row colors:** pale green `#D2F8D2` behind waypoints that come soon (as the previous app's FIA theme), and white numbers on black. The app theme uses `tertiaryContainer` and `inverseSurface`.
 
+### Viewer
+
+- **Named after what it is.** `RoadbookViewer` is the public, stateful entry point, and `RoadbookViewerContent` its internal, stateless content (AGENTS.md §5.3). It is not called `Roadbook`, which is the domain aggregate, nor `RoadbookRoute` or `RoadbookScreen`, as the app may show it as part of a screen, next to the odometer.
+
+- **Importing is part of the viewer.** The file picker, the import buttons and the messages of failed imports are in `:roadbook`, so every app that reuses it gets them, translated, without knowing `ImportRoadbookFailure`. Apps can still import with `RoadbookController.importRoadbook()` (e.g. a `.rn2` opened from a file manager).
+- **The app decides when the floating import button shows** (`showImportButton`), because hiding it while riding needs the speed, which `:roadbook` does not know: it is a cross-module rule of the app. The buttons shown without a roadbook are always shown, as there is nothing to navigate. The previous app always showed a floating button.
+- **Import UI uses the app theme**, the roadbook the roadbook style: the buttons are app controls, not part of the roadbook.
+- **One state, typed.** `RoadbookUiState` has the style, the roadbook (`Loading`, `Empty`, `Unreadable` or `Content` with the position kept within the roadbook) and the import (`Idle`, `Importing`, `Failed(reason)`). A failure is shown once in a snackbar, then the ViewModel goes back to `Idle`. Imports go through `RoadbookController`, so they emit `Loaded` and run one at a time with the app's commands.
+- **The list follows the position, and the position follows the list.** A new position (a remote control key, an import) scrolls the list to it; when the user stops scrolling, the first visible waypoint is saved. Saving the waypoint already at the top changes nothing, so they never loop. A new roadbook gets a new list (`key(roadbook)`), which opens at its own position.
+- **Every waypoint can reach the top.** The list has empty space below the last waypoint, the height of the screen minus one row. Without it, moving to one of the last waypoints would stop short, the list would report an earlier waypoint, and the position would be lost: "next" could never reach the end.
+- **`SetPartialRequested` comes from the viewer through `RoadbookEvents`,** the internal channel that `RoadbookController.events` exposes, so the app gets it however the roadbook is shown.
+- **`hiltViewModel()` comes from `androidx.hilt:hilt-lifecycle-viewmodel-compose`,** which needs no Navigation: placing the viewer is the app's job.
+
 ## Testing notes
 
 - `ShortDistanceThreshold` and `RoadbookSettings` defaults are unit-tested in `src/test`.
@@ -199,5 +215,7 @@ A waypoint whose distance from the previous one is shorter than the threshold is
 - `IconVectorsTest` checks, on the JVM, that every `IconType` draws its own symbol (by vector name), that `UNKNOWN` has none, and that every symbol changes with the theme colors. `IconGalleryPreview` shows every symbol in both styles, light and dark, for visual review.
 - `RoadbookColorsTest` covers the palette of each style in light and dark modes, and the symbol colors with and without a highlighted background. `CanvasGeometryTest` covers road points from the junction, smooth curves through two, three and four points, end angles, arrow heads and end bars.
 - `WaypointItemTest` is a Compose UI test on Robolectric (`isIncludeAndroidResources` is on, so strings resolve): what each state shows, the long press (partial or zero) and the tap, the long-press label, the figures the merged element exposes, and the Spanish formatting and label. `DistanceFormatTest` covers the formatting on the JVM, and `WaypointTest` the "comes soon" rule.
-- The drawing itself (`ElementDrawing`, `TulipCanvas`, `NotesCanvas`) is not unit-tested: there is no screenshot testing in the project. The previews were checked once by rendering them with Robolectric's native graphics (`captureToImage`) in a throwaway test. `ElementCanvasPreview` shows a sample tulip and notes column with every kind of road and element, in both styles, light and dark, for visual review.
+- `RoadbookViewModelTest` covers every state (including a position past the last waypoint and failing settings), imports (running, succeeding, failing, the failure being shown), the set partial request, and saving the position on scroll (new, same, past the end, no roadbook), with fakes and `MainDispatcherRule`. It runs on Robolectric only because of `Uri`.
+- `RoadbookViewerContentTest` (Compose, Robolectric) covers every viewer state, the import buttons (shown, hidden while riding, disabled while importing), each failure message, the long press, the list scrolling to a new position (the last one included) and reporting where the user stopped.
+- The drawing itself (`ElementDrawing`, `TulipCanvas`, `NotesCanvas`) is not unit-tested: there is no screenshot testing in the project. The previews, rows and viewer states were checked by rendering them with Robolectric's native graphics (`captureToImage`) in a throwaway test. `ElementCanvasPreview` shows a sample tulip and notes column with every kind of road and element, in both styles, light and dark, for visual review.
 - `DataStoreRoadbookPositionRepositoryTest` covers stored, missing and invalid positions, read and write failures, and that a saved position is never overwritten by a later first read, with `FakeDataStore`. `DataStoreRoadbookPositionRepositoryIntegrationTest` reopens a real file.

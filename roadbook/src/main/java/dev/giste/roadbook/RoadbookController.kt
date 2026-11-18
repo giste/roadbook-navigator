@@ -21,11 +21,11 @@ import android.net.Uri
 import kotlinx.coroutines.flow.SharedFlow
 
 /**
- * The roadbook seen from outside its screen: what it reports to the app, and the commands the app
+ * The roadbook seen from outside its viewer: what it reports to the app, and the commands the app
  * can give it.
  *
  * Hilt binds it as a singleton in `SingletonComponent`, so it lives as long as the app process,
- * whether or not the roadbook screen is shown. Inject it where the app reacts to the roadbook
+ * whether or not the roadbook viewer is shown. Inject it where the app reacts to the roadbook
  * (e.g. a coordinator that changes the odometer) or drives it (e.g. the keys of a handlebar remote control).
  *
  * All functions are main-safe.
