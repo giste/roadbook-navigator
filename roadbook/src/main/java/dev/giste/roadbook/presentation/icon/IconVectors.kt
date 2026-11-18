@@ -106,7 +106,7 @@ internal fun IconType.toImageVector(colors: IconColors): ImageVector? = when (th
  * same, so a roadbook with many symbols does not rebuild them on every recomposition.
  *
  * @param type the symbol to draw.
- * @param colors the colors to draw with, usually from [iconColors].
+ * @param colors the colors to draw with, usually from `RoadbookColors.iconColors`.
  * @return the vector, or `null` for [IconType.UNKNOWN].
  */
 @Composable

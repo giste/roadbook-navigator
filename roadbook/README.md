@@ -4,7 +4,7 @@ Imports a Rally Navigator roadbook definition file (`.rn2`) and turns its waypoi
 
 `:roadbook` is a **reusable module** (AGENTS.md §4.1): its package is `dev.giste.roadbook`, and it contains nothing specific to Roadbook Navigator, so other rally apps can depend on it too. Its domain is the roadbook, so it uses rally terms (*roadbook, waypoint, moderator, partial, total, auto-advance, tulip, CAP/heading*). It must not get app-specific defaults or concepts from outside that domain: the app decides what to do with its events (e.g. how to change the odometer).
 
-> **Status:** being migrated from the previous project step by step. The public API contract, the domain model, the `.rn2` parser the import (reading the file, parsing it and saving the roadbook), the persisted position and the `RoadbookController` implementation are in place. The roadbook symbols are in place, but there is no screen yet, and `:app` does not use the module yet. Every section below is updated as each part lands.
+> **Status:** being migrated from the previous project step by step. The public API contract, the domain model, the `.rn2` parser the import (reading the file, parsing it and saving the roadbook), the persisted position and the `RoadbookController` implementation are in place. The roadbook symbols, the roadbook styles and the drawing of tulips and notes are in place, but there is no screen yet, and `:app` does not use the module yet. Every section below is updated as each part lands.
 
 ## Responsibility
 
@@ -19,7 +19,7 @@ Imports a Rally Navigator roadbook definition file (`.rn2`) and turns its waypoi
 ```
 dev/giste/roadbook/
 ├── RoadbookController, RoadbookEvent, ImportRoadbookResult,
-│   RoadbookSettings, RoadbookSettingsSource,
+│   RoadbookSettings, RoadbookSettingsSource, RoadbookStyle,
 │   ShortDistanceThreshold                                ← public API
 ├── domain/
 │   ├── roadbook/   Roadbook (aggregate root), Waypoint, WaypointNumber, DangerLevel,
@@ -36,6 +36,9 @@ dev/giste/roadbook/
 │                   RoadbookFileSerializer, DataStoreRoadbookRepository,
 │                   RoadbookStateDataStore, DataStoreRoadbookPositionRepository
 ├── presentation/
+│   ├── theme/      RoadbookColors, FIA_ROADBOOK_COLORS, roadbookColors, RoadbookTheme
+│   ├── drawing/    CanvasGeometry (pure), ElementDrawing, TulipCanvas + NotesCanvas,
+│   │               ElementCanvasPreview
 │   └── icon/       IconColors + FixedIconColors, IconType.toImageVector + rememberIconVector,
 │       │           IconGalleryPreview
 │       └── cross/, landmark/, sign/, speed/, terrain/   One vector per symbol
@@ -49,7 +52,8 @@ dev/giste/roadbook/
 | `RoadbookController` | Singleton facade for the app, independent of the screen. `events: SharedFlow<RoadbookEvent>` (hot, no replay, never completes), `suspend` `importRoadbook(uri: Uri): ImportRoadbookResult`, and `suspend` `moveToNextWaypoint()` / `moveToPreviousWaypoint()`. Moving does nothing at either end or without a roadbook, and persists the new position. Implemented by `DefaultRoadbookController`, bound as a singleton. |
 | `ImportRoadbookResult` | Sealed. `Success`, or `Failure(reason: ImportRoadbookFailure)`: `UNREADABLE` (the file cannot be opened or read), `MALFORMED`, `NO_WAYPOINTS`, or `NOT_SAVED` (valid, but it could not be written to storage). A failed import keeps the previous roadbook. |
 | `RoadbookEvent` | Sealed. `Loaded`: a new roadbook was imported. `SetPartialRequested(partial: Distance)`: the user long-pressed a waypoint's distance to set the partial. |
-| `RoadbookSettings` | Immutable settings: `shortDistanceThreshold`, default `ShortDistanceThreshold.DEFAULT`. |
+| `RoadbookSettings` | Immutable settings: `shortDistanceThreshold`, default `ShortDistanceThreshold.DEFAULT`, and `style`, default `RoadbookStyle.APP_THEME`. |
+| `RoadbookStyle` | How the roadbook is colored: `APP_THEME` (the app's colors, light or dark) or `FIA` (the colors of FIA paper roadbooks in both modes). Only the roadbook changes: the rest of the app keeps its theme. |
 | `RoadbookSettingsSource` | Input port for the settings flow, implemented by the app (in Roadbook Navigator, `:settings`). |
 | `ShortDistanceThreshold` | Value object over a `:geo` `Distance`, always within `RANGE` (50 m – 1 km), default 250 m. `of()` requires a value in range, `coerce()` clamps one that may not be. |
 
@@ -67,6 +71,7 @@ The screen entry point is not defined yet. It is added with the screen.
 | Setting | Type | Default | Range |
 |---|---|---|---|
 | `shortDistanceThreshold` | `ShortDistanceThreshold` | 250 m | 50 m – 1 km |
+| `style` | `RoadbookStyle` | `APP_THEME` | `APP_THEME`, `FIA` |
 
 A waypoint whose distance from the previous one is shorter than the threshold is highlighted, to warn that it comes soon.
 
@@ -142,9 +147,27 @@ A waypoint whose distance from the previous one is shorter than the threshold is
 
 - **Each symbol is a hand-made `ImageVector`,** one file per symbol, grouped as in the previous app (cross, landmark, sign, speed, terrain). The path data was carried over unchanged. Every symbol is a function of its `IconColors`, and is named after its `IconType` (`resetPartialIcon`, not the previous `resetDistance`).
 - **Theme colors and real-world colors are kept apart.** Lines, cut-outs, danger marks and secondary shapes come from the theme through `IconColors` (`onSurface`, `surface`, `error`, `outline`), so symbols work in the dark theme. Secondary shapes use `outline` rather than `onSurfaceVariant` for a bit more contrast. Colors that copy real signs and features (the red ring and gray face of a speed limit, the blue of a roundabout or of water) are named in `FixedIconColors` and do not change with the theme, so the rider recognizes them from the road. Compared with the previous app, the danger red and the gray of buildings now follow the theme, and the slightly different red of the stop sign is the same red as the other signs.
-- **The surface is a parameter.** Some symbols are filled with the background color to cut shapes out of others, so `iconColors(surface)` takes the color of whatever is behind the symbol (e.g. a highlighted waypoint), not always the theme's surface.
+- **The surface is a parameter.** Some symbols are filled with the background color to cut shapes out of others, so `RoadbookColors.iconColors(background)` takes the color of whatever is behind the symbol (e.g. a highlighted waypoint), not always the roadbook's surface.
 - **Vectors are built once.** The previous app rebuilt a vector on every call (except the danger marks, which kept one in a global variable whatever the colors). `rememberIconVector` keeps each vector in the composition for as long as its type and colors stay the same.
 - **`UNKNOWN` has no symbol** (`toImageVector` returns `null`): the screen shows its name or id from the file instead.
+
+### Styles
+
+- **The style colors only the roadbook.** The FIA standard describes roadbook content (tulips, notes, distances, danger marks), not the rest of an app, so `RoadbookStyle.FIA` does not change the app theme. A rider can keep a dark app with a FIA roadbook. The previous app had FIA as one of its app themes instead.
+- **One internal palette, two sources.** Everything in the roadbook is drawn with `RoadbookColors`, which `RoadbookTheme(style)` provides. `APP_THEME` takes them from the Material color scheme: `surface` and `onSurface` (paper and ink), `primary` (the track), `secondary` (the center line of a dual carriageway on the track), `error` (danger) and `outline` (secondary shapes of symbols). `FIA` uses `FIA_ROADBOOK_COLORS`, the same in light and dark modes: white paper, black ink, a blue track (`#0000FF`), a `#535F70` center line, red danger (`#FF0000`) and `#74777F` secondary shapes. These are the FIA values of the previous app, not checked against the FIA regulations.
+- **Choosing the palette is pure.** `roadbookColors(style, colorScheme)` is a plain function, so it is tested on the JVM; `RoadbookTheme` only passes it `MaterialTheme.colorScheme`.
+
+### Drawing
+
+- **Coordinates as in the file.** Road and track points are relative to the junction, so the drawing adds `JUNCTION` (100, 85) to them. Icon and text centers are already measured from the top-left corner of the canvas (see `CanvasPoint`).
+- **Roads in canvas units, symbols and texts in pixels.** Roads are paths, drawn under a scale transform. Symbols are drawn by vector painters, which render to a bitmap of their drawn size, and texts are laid out at their font size, so both are drawn at their size in pixels to stay sharp, as the previous app did.
+- **Geometry apart from drawing.** The road curves, end angles, arrow heads and end bars are computed by pure functions in `CanvasGeometry` (with `RoadSegment`s instead of a `Path`), so they are tested on the JVM. `ElementDrawing` only turns them into `DrawScope` calls. Tarmac roads and dual carriageways are drawn as the outline of a wider stroke, which needs Android's `Paint.getFillPath`.
+- **Changes from the previous app:**
+  - Symbols are scaled by `scaleX` and `scaleY`, and mirrored by a negative scale. The previous app multiplied the scale into the size in its parser and lost the mirroring.
+  - Danger marks are no longer tinted when drawn: their vectors already use the danger color.
+  - Texts on the canvas ignore the user's font scale (`toSp()`), so they keep fitting the drawing like the roads around them. The previous app let them grow out of their boxes.
+  - A symbol the app cannot draw shows its name from the file in a dashed frame, or `?` (a string resource) when the name does not fit. The previous app could also show the name of a known type without a vector, which can no longer happen.
+- **One painter per type of symbol** in a column, built once with `rememberIconVector` and `rememberVectorPainter`.
 
 ## Testing notes
 
@@ -159,5 +182,7 @@ A waypoint whose distance from the previous one is shorter than the threshold is
 - `RoadbookFileSerializerTest` round-trips `FULL_ROADBOOK` (every field and kind of element), checks the version 1 fixture both ways, and every way a file is unreadable. `DataStoreRoadbookRepositoryTest` uses `FakeDataStore` for read and write failures. `DataStoreRoadbookRepositoryIntegrationTest` uses a real DataStore file in a temporary folder.
 - `RoadbookTest` covers keeping a position within the waypoints, and moving from the ends and from past the last waypoint. `MoveRoadbookUseCaseTest` covers both directions, both ends, a position past the last waypoint and no or an unreadable roadbook, with `FakeRoadbookPositionRepository`.
 - `DefaultRoadbookControllerTest` uses the real use cases on fake repositories and a lambda `RoadbookSourceFactory`. It runs on Robolectric only because of `Uri`. It checks that `Loaded` is only emitted on success, after the position is reset, and that a command completes with no collector.
-- `IconVectorsTest` checks, on the JVM, that every `IconType` draws its own symbol (by vector name), that `UNKNOWN` has none, and that every symbol changes with the theme colors. `IconGalleryPreview` shows every symbol in the light and dark themes for visual review.
+- `IconVectorsTest` checks, on the JVM, that every `IconType` draws its own symbol (by vector name), that `UNKNOWN` has none, and that every symbol changes with the theme colors. `IconGalleryPreview` shows every symbol in both styles, light and dark, for visual review.
+- `RoadbookColorsTest` covers the palette of each style in light and dark modes, and the symbol colors with and without a highlighted background. `CanvasGeometryTest` covers road points from the junction, smooth curves through two, three and four points, end angles, arrow heads and end bars.
+- The drawing itself (`ElementDrawing`, `TulipCanvas`, `NotesCanvas`) is not unit-tested: there is no screenshot testing in the project. `ElementCanvasPreview` shows a sample tulip and notes column with every kind of road and element, in both styles, light and dark, for visual review.
 - `DataStoreRoadbookPositionRepositoryTest` covers stored, missing and invalid positions, read and write failures, and that a saved position is never overwritten by a later first read, with `FakeDataStore`. `DataStoreRoadbookPositionRepositoryIntegrationTest` reopens a real file.

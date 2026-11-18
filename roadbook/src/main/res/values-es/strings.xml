@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Roadbook strings (Spanish, used for every Spanish locale). Every key in values/strings.xml must exist here. -->
+<resources>
+    <!-- Drawing: shown in place of a symbol the app cannot draw, when its name does not fit. -->
+    <string name="roadbook_symbol_unknown">?</string>
+</resources>

@@ -25,7 +25,9 @@ package dev.giste.roadbook
  * @property shortDistanceThreshold a waypoint whose distance from the previous one is shorter
  * than this is highlighted, to warn the user that it comes soon. Defaults to
  * [ShortDistanceThreshold.DEFAULT].
+ * @property style how the roadbook is colored. Defaults to [RoadbookStyle.APP_THEME].
  */
 public data class RoadbookSettings(
     public val shortDistanceThreshold: ShortDistanceThreshold = ShortDistanceThreshold.DEFAULT,
+    public val style: RoadbookStyle = RoadbookStyle.APP_THEME,
 )

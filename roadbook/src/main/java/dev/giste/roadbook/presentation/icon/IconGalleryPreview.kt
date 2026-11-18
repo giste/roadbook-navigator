@@ -33,18 +33,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import dev.giste.core.ui.theme.GisteTheme
+import dev.giste.roadbook.RoadbookStyle
 import dev.giste.roadbook.domain.drawing.IconType
+import dev.giste.roadbook.presentation.theme.RoadbookTheme
 
 /**
- * Shows every symbol with the name of its type, so they can be reviewed in Android Studio in both
- * themes. Preview-only: the labels are sample data, not resources.
+ * Shows every symbol with the name of its type, so they can be reviewed in Android Studio in
+ * every roadbook style and mode. Preview-only: the labels are sample data, not resources.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun IconGallery() {
     val dimensions = GisteTheme.dimensions
-    val colors = iconColors()
-    Surface {
+    val colors = RoadbookTheme.colors.iconColors()
+    Surface(color = RoadbookTheme.colors.surface) {
         FlowRow(
             modifier = Modifier.padding(dimensions.spacingMedium),
             horizontalArrangement = Arrangement.spacedBy(dimensions.spacingSmall),
@@ -58,18 +60,35 @@ private fun IconGallery() {
                         contentDescription = null,
                         modifier = Modifier.size(dimensions.minTouchTarget),
                     )
-                    Text(text = type.name, style = MaterialTheme.typography.labelSmall)
+                    Text(
+                        text = type.name,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = RoadbookTheme.colors.onSurface,
+                    )
                 }
             }
         }
     }
 }
 
-@Preview(name = "Light", uiMode = Configuration.UI_MODE_NIGHT_NO, widthDp = 420)
-@Preview(name = "Dark", uiMode = Configuration.UI_MODE_NIGHT_YES, widthDp = 420)
+@Preview(name = "App theme, light", uiMode = Configuration.UI_MODE_NIGHT_NO, widthDp = 420)
+@Preview(name = "App theme, dark", uiMode = Configuration.UI_MODE_NIGHT_YES, widthDp = 420)
 @Composable
-private fun IconGalleryPreview() {
+private fun IconGalleryAppThemePreview() {
     GisteTheme {
-        IconGallery()
+        RoadbookTheme(style = RoadbookStyle.APP_THEME) {
+            IconGallery()
+        }
+    }
+}
+
+@Preview(name = "FIA, light", uiMode = Configuration.UI_MODE_NIGHT_NO, widthDp = 420)
+@Preview(name = "FIA, dark", uiMode = Configuration.UI_MODE_NIGHT_YES, widthDp = 420)
+@Composable
+private fun IconGalleryFiaPreview() {
+    GisteTheme {
+        RoadbookTheme(style = RoadbookStyle.FIA) {
+            IconGallery()
+        }
     }
 }

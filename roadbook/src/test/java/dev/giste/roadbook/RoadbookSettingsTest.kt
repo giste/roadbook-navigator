@@ -28,4 +28,11 @@ class RoadbookSettingsTest {
 
         assertEquals(ShortDistanceThreshold.DEFAULT, settings.shortDistanceThreshold)
     }
+
+    @Test
+    fun constructor_noArguments_usesAppThemeStyle() {
+        val settings = RoadbookSettings()
+
+        assertEquals(RoadbookStyle.APP_THEME, settings.style)
+    }
 }

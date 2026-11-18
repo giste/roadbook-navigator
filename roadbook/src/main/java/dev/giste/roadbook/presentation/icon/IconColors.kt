@@ -17,14 +17,12 @@
 
 package dev.giste.roadbook.presentation.icon
 
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
 
 /**
- * The theme colors the roadbook symbols are drawn with, so they follow the light and dark themes.
+ * The colors the roadbook symbols are drawn with, from the roadbook style (see
+ * `RoadbookColors.iconColors`), so they follow the light and dark themes or the FIA palette.
  *
  * Colors that must look like the real world (a speed limit's red ring, a river's blue) do not
  * change with the theme: they are in [FixedIconColors].
@@ -42,23 +40,6 @@ internal data class IconColors(
     val danger: Color,
     val muted: Color,
 )
-
-/**
- * The [IconColors] of the current theme, for symbols drawn on its surface.
- *
- * @param surface the background behind the symbols. Defaults to the theme's surface; pass the
- * background of the container when it is another color (e.g. a highlighted waypoint).
- * @return the colors to draw the symbols with.
- */
-@Composable
-@ReadOnlyComposable
-internal fun iconColors(surface: Color = MaterialTheme.colorScheme.surface): IconColors =
-    IconColors(
-        onSurface = MaterialTheme.colorScheme.onSurface,
-        surface = surface,
-        danger = MaterialTheme.colorScheme.error,
-        muted = MaterialTheme.colorScheme.outline,
-    )
 
 /**
  * Colors of symbols that copy real-world signs and features, so the rider recognizes them from
