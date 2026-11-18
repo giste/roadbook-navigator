@@ -4,7 +4,7 @@ Imports a Rally Navigator roadbook definition file (`.rn2`) and turns its waypoi
 
 `:roadbook` is a **reusable module** (AGENTS.md §4.1): its package is `dev.giste.roadbook`, and it contains nothing specific to Roadbook Navigator, so other rally apps can depend on it too. Its domain is the roadbook, so it uses rally terms (*roadbook, waypoint, moderator, partial, total, auto-advance, tulip, CAP/heading*). It must not get app-specific defaults or concepts from outside that domain: the app decides what to do with its events (e.g. how to change the odometer).
 
-> **Status:** being migrated from the previous project step by step. The public API contract, the domain model, the `.rn2` parser the import (reading the file, parsing it and saving the roadbook), the persisted position and the `RoadbookController` implementation are in place. The roadbook symbols, the roadbook styles and the drawing of tulips and notes are in place, but there is no screen yet, and `:app` does not use the module yet. Every section below is updated as each part lands.
+> **Status:** being migrated from the previous project step by step. The public API contract, the domain model, the `.rn2` parser the import (reading the file, parsing it and saving the roadbook), the persisted position and the `RoadbookController` implementation are in place. The roadbook symbols, the roadbook styles, the drawing of tulips and notes, and the waypoint row are in place, but there is no screen yet, and `:app` does not use the module yet. Every section below is updated as each part lands.
 
 ## Responsibility
 
@@ -39,6 +39,8 @@ dev/giste/roadbook/
 │   ├── theme/      RoadbookColors, FIA_ROADBOOK_COLORS, roadbookColors, RoadbookTheme
 │   ├── drawing/    CanvasGeometry (pure), ElementDrawing, TulipCanvas + NotesCanvas,
 │   │               ElementCanvasPreview
+│   ├── waypoint/   WaypointItem, DistanceSection, AutoSizeText, formatKilometers,
+│   │               WaypointItemPreview
 │   └── icon/       IconColors + FixedIconColors, IconType.toImageVector + rememberIconVector,
 │       │           IconGalleryPreview
 │       └── cross/, landmark/, sign/, speed/, terrain/   One vector per symbol
@@ -169,6 +171,18 @@ A waypoint whose distance from the previous one is shorter than the threshold is
   - A symbol the app cannot draw shows its name from the file in a dashed frame, or `?` (a string resource) when the name does not fit. The previous app could also show the name of a known type without a vector, which can no longer happen.
 - **One painter per type of symbol** in a column, built once with `rememberIconVector` and `rememberVectorPainter`.
 
+### Waypoint row
+
+- **Laid out as the previous app's, at its proportions.** `WaypointItem` shows the distance section, the tulip and the notes side by side, `135 + 200 + 200` canvas units wide for `135` high. The distance section shows the partial in large figures, a line under it and `0.00` when the waypoint resets the partial, a red bar for danger level 2, the distance from the previous waypoint in a frame, and the number on the inverse colors.
+- **Three layers.** The backgrounds (with the short-distance highlight behind the distances), then the border, then the content, as in the previous app, so the thick red border of danger level 3 does not hide distances or drawings.
+- **"Comes soon" is a domain rule.** `Waypoint.comesSoonAfterPrevious(threshold)` is true for a distance from the previous waypoint above zero and below the threshold, so the first waypoint is never highlighted.
+- **Distances are formatted for the locale,** with two decimals, no unit and no grouping (`1.25`, `1,25` in Spanish). Halves round up, from the exact decimal value of the meters (`BigDecimal`), so 1,255 m is `1.26` as with the previous app's `%.2f`.
+- **Auto-sized text clears the line height** of the Material styles. A fixed line height (44 sp for `displaySmall`) is taller than the small boxes at any font size, so auto-size would always fall back to the smallest one. Digits are tabular, so distances do not jump.
+- **Only a long press does something.** It sets the partial to `Waypoint.partialToSet` (zero at a waypoint that resets it), with haptic feedback; a tap does nothing, since riders touch the screen by accident. Only the distances react, as in the previous app.
+- **Minimal accessibility, on purpose.** The app is used while riding, which needs sight, so a full screen reader description of each waypoint would add strings and tests for users the app cannot really serve: the tulips and notes, which hold the instructions, are drawings. The distances are one element, read as their visible figures, and the long press has a translated label, which Switch Access, Voice Access and Android's accessibility checks also use. Describing tulips would matter more than describing distances, if a fuller description is ever wanted (e.g. to review a roadbook before an event).
+- **Fixed sizes:** `ROADBOOK_LINE_WIDTH` (1 dp, the lines of the roadbook) and `HIGH_DANGER_BORDER_WIDTH` (8 dp). Spacing comes from `GisteTheme.dimensions`. The previous app's public `RoadbookDimensions`, with compact and expanded variants, are gone: there is one size, until a larger layout needs another.
+- **FIA row colors:** pale green `#D2F8D2` behind waypoints that come soon (as the previous app's FIA theme), and white numbers on black. The app theme uses `tertiaryContainer` and `inverseSurface`.
+
 ## Testing notes
 
 - `ShortDistanceThreshold` and `RoadbookSettings` defaults are unit-tested in `src/test`.
@@ -184,5 +198,6 @@ A waypoint whose distance from the previous one is shorter than the threshold is
 - `DefaultRoadbookControllerTest` uses the real use cases on fake repositories and a lambda `RoadbookSourceFactory`. It runs on Robolectric only because of `Uri`. It checks that `Loaded` is only emitted on success, after the position is reset, and that a command completes with no collector.
 - `IconVectorsTest` checks, on the JVM, that every `IconType` draws its own symbol (by vector name), that `UNKNOWN` has none, and that every symbol changes with the theme colors. `IconGalleryPreview` shows every symbol in both styles, light and dark, for visual review.
 - `RoadbookColorsTest` covers the palette of each style in light and dark modes, and the symbol colors with and without a highlighted background. `CanvasGeometryTest` covers road points from the junction, smooth curves through two, three and four points, end angles, arrow heads and end bars.
-- The drawing itself (`ElementDrawing`, `TulipCanvas`, `NotesCanvas`) is not unit-tested: there is no screenshot testing in the project. `ElementCanvasPreview` shows a sample tulip and notes column with every kind of road and element, in both styles, light and dark, for visual review.
+- `WaypointItemTest` is a Compose UI test on Robolectric (`isIncludeAndroidResources` is on, so strings resolve): what each state shows, the long press (partial or zero) and the tap, the long-press label, the figures the merged element exposes, and the Spanish formatting and label. `DistanceFormatTest` covers the formatting on the JVM, and `WaypointTest` the "comes soon" rule.
+- The drawing itself (`ElementDrawing`, `TulipCanvas`, `NotesCanvas`) is not unit-tested: there is no screenshot testing in the project. The previews were checked once by rendering them with Robolectric's native graphics (`captureToImage`) in a throwaway test. `ElementCanvasPreview` shows a sample tulip and notes column with every kind of road and element, in both styles, light and dark, for visual review.
 - `DataStoreRoadbookPositionRepositoryTest` covers stored, missing and invalid positions, read and write failures, and that a saved position is never overwritten by a later first read, with `FakeDataStore`. `DataStoreRoadbookPositionRepositoryIntegrationTest` reopens a real file.

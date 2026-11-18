@@ -20,6 +20,7 @@ package dev.giste.roadbook.domain.roadbook
 import dev.giste.geo.Altitude
 import dev.giste.geo.Distance
 import dev.giste.geo.GeoPoint
+import dev.giste.roadbook.ShortDistanceThreshold
 import dev.giste.roadbook.domain.drawing.NoteElement
 import dev.giste.roadbook.domain.drawing.TulipElement
 
@@ -62,6 +63,17 @@ internal data class Waypoint(
      */
     val partialToSet: Distance
         get() = if (resetsPartial) Distance.ZERO else partial
+
+    /**
+     * Whether this waypoint comes soon after the previous one: closer than [threshold], so the
+     * roadbook highlights it. The first waypoint, which has no previous one, never does.
+     *
+     * @param threshold the short distance the user set.
+     * @return `true` when the distance from the previous waypoint is above zero and below
+     * [threshold].
+     */
+    fun comesSoonAfterPrevious(threshold: ShortDistanceThreshold): Boolean =
+        distanceFromPrevious > Distance.ZERO && distanceFromPrevious < threshold.distance
 }
 
 /** How dangerous a [Waypoint] is, as marked in the roadbook. */

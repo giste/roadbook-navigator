@@ -27,6 +27,10 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    testOptions {
+        // Robolectric needs the merged resources to resolve strings in Compose UI tests.
+        unitTests.isIncludeAndroidResources = true
+    }
     buildFeatures {
         // :roadbook draws the waypoints and moderators of the roadbook.
         compose = true
@@ -65,8 +69,10 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
-    // Runs the ContentResolver-based roadbook source on the JVM.
+    // Runs the ContentResolver-based roadbook source, and the Compose UI tests, on the JVM.
     testImplementation(libs.robolectric)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

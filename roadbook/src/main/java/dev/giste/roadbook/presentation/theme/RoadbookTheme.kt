@@ -38,8 +38,14 @@ import dev.giste.roadbook.presentation.icon.IconColors
  * roads.
  * @property trackSecondary the center line of a dual carriageway on the track.
  * @property roadSecondary the center line of a dual carriageway on another road.
- * @property danger danger marks, and symbols the app cannot draw.
+ * @property danger danger marks, the border of very dangerous waypoints, and symbols the app
+ * cannot draw.
  * @property muted secondary shapes of symbols, such as the walls of buildings.
+ * @property shortDistanceSurface the background of the distances of a waypoint that comes soon
+ * after the previous one.
+ * @property onShortDistanceSurface the distances drawn over [shortDistanceSurface].
+ * @property waypointNumberSurface the background of the waypoint number.
+ * @property onWaypointNumberSurface the waypoint number, over [waypointNumberSurface].
  */
 @Immutable
 internal data class RoadbookColors(
@@ -50,6 +56,10 @@ internal data class RoadbookColors(
     val roadSecondary: Color,
     val danger: Color,
     val muted: Color,
+    val shortDistanceSurface: Color,
+    val onShortDistanceSurface: Color,
+    val waypointNumberSurface: Color,
+    val onWaypointNumberSurface: Color,
 ) {
 
     /**
@@ -68,8 +78,9 @@ internal data class RoadbookColors(
 }
 
 /**
- * The colors of FIA paper roadbooks: black ink on white paper, a blue track and red danger marks.
- * They do not change with the light and dark modes.
+ * The colors of FIA paper roadbooks: black ink on white paper, a blue track, red danger marks, a
+ * pale green behind waypoints that come soon, and white numbers on black. They do not change with
+ * the light and dark modes.
  */
 internal val FIA_ROADBOOK_COLORS: RoadbookColors = RoadbookColors(
     surface = Color(0xFFFFFFFF),
@@ -79,6 +90,10 @@ internal val FIA_ROADBOOK_COLORS: RoadbookColors = RoadbookColors(
     roadSecondary = Color(0x80000000),
     danger = Color(0xFFFF0000),
     muted = Color(0xFF74777F),
+    shortDistanceSurface = Color(0xFFD2F8D2),
+    onShortDistanceSurface = Color(0xFF000000),
+    waypointNumberSurface = Color(0xFF000000),
+    onWaypointNumberSurface = Color(0xFFFFFFFF),
 )
 
 /** Alpha of the center line of a dual carriageway that is not the track, over the ink color. */
@@ -101,6 +116,10 @@ internal fun roadbookColors(style: RoadbookStyle, colorScheme: ColorScheme): Roa
             roadSecondary = colorScheme.onSurface.copy(alpha = ROAD_SECONDARY_ALPHA),
             danger = colorScheme.error,
             muted = colorScheme.outline,
+            shortDistanceSurface = colorScheme.tertiaryContainer,
+            onShortDistanceSurface = colorScheme.onTertiaryContainer,
+            waypointNumberSurface = colorScheme.inverseSurface,
+            onWaypointNumberSurface = colorScheme.inverseOnSurface,
         )
         RoadbookStyle.FIA -> FIA_ROADBOOK_COLORS
     }

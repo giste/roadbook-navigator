@@ -66,14 +66,4 @@ internal fun doNotEnterIcon(colors: IconColors): ImageVector = ImageVector.Build
             close()
         }
     }
-    path(
-        stroke = SolidColor(FixedIconColors.SIGN_WHITE),
-        strokeLineWidth = 0.1f
-    ) {
-        moveTo(0.05f, 0.05f)
-        horizontalLineToRelative(47.9f)
-        verticalLineToRelative(47.9f)
-        horizontalLineToRelative(-47.9f)
-        close()
-    }
 }.build()

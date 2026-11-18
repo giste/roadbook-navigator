@@ -43,6 +43,10 @@ class RoadbookColorsTest {
                 roadSecondary = light.onSurface.copy(alpha = 0.5f),
                 danger = light.error,
                 muted = light.outline,
+                shortDistanceSurface = light.tertiaryContainer,
+                onShortDistanceSurface = light.onTertiaryContainer,
+                waypointNumberSurface = light.inverseSurface,
+                onWaypointNumberSurface = light.inverseOnSurface,
             ),
             colors,
         )

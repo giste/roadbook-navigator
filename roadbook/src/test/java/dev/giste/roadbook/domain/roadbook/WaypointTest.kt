@@ -19,6 +19,7 @@ package dev.giste.roadbook.domain.roadbook
 
 import dev.giste.geo.Distance
 import dev.giste.geo.GeoPoint
+import dev.giste.roadbook.ShortDistanceThreshold
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -61,5 +62,40 @@ class WaypointTest {
         assertEquals(DangerLevel.NONE, waypoint.dangerLevel)
         assertTrue(waypoint.tulip.isEmpty())
         assertTrue(waypoint.notes.isEmpty())
+    }
+
+    private val threshold = ShortDistanceThreshold.of(Distance.meters(250.0))
+
+    @Test
+    fun comesSoonAfterPrevious_closerThanThreshold_isTrue() {
+        val waypoint = testWaypoint(2, distanceFromPrevious = Distance.meters(249.0))
+
+        assertTrue(waypoint.comesSoonAfterPrevious(threshold))
+    }
+
+    @Test
+    fun comesSoonAfterPrevious_exactlyAtThreshold_isFalse() {
+        val waypoint = testWaypoint(2, distanceFromPrevious = Distance.meters(250.0))
+
+        assertFalse(waypoint.comesSoonAfterPrevious(threshold))
+    }
+
+    @Test
+    fun comesSoonAfterPrevious_fartherThanThreshold_isFalse() {
+        val waypoint = testWaypoint(2, distanceFromPrevious = Distance.meters(1_000.0))
+
+        assertFalse(waypoint.comesSoonAfterPrevious(threshold))
+    }
+
+    @Test
+    fun comesSoonAfterPrevious_firstWaypoint_isFalse() {
+        assertFalse(testWaypoint(1).comesSoonAfterPrevious(threshold))
+    }
+
+    @Test
+    fun comesSoonAfterPrevious_samePositionAsPrevious_isFalse() {
+        val waypoint = testWaypoint(2, distanceFromPrevious = Distance.ZERO)
+
+        assertFalse(waypoint.comesSoonAfterPrevious(threshold))
     }
 }

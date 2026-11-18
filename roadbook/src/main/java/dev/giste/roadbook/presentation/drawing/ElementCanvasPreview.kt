@@ -50,7 +50,11 @@ private val SAMPLE_TULIP: List<TulipElement> = listOf(
     Road(start = null, end = CanvasPoint(0.0, -70.0), type = RoadType.LOW_VISIBILITY_TRACK),
     Road(start = null, end = CanvasPoint(40.0, 45.0), type = RoadType.SMALL_TRACK),
     Track(
-        roadIn = Road(start = CanvasPoint(0.0, 45.0), end = null, type = RoadType.DUAL_CARRIAGEWAY),
+        roadIn = Road(
+            start = null,
+            end = CanvasPoint(0.0, 45.0),
+            type = RoadType.DUAL_CARRIAGEWAY,
+        ),
         roadOut = Road(
             start = null,
             end = CanvasPoint(75.0, -20.0),
