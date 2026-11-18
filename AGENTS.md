@@ -216,7 +216,7 @@ core/
 - Expose state with `stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), initial)`. Collect it with `collectAsStateWithLifecycle()`.
 - ViewModels are `@HiltViewModel internal class`. They never hold a `Context`, `Activity` or `View`, and they **never expose text** (no strings and no resource IDs). UI state contains only typed data: domain values, enums and sealed reasons. **Composables resolve that state to text** with `stringResource`/`pluralStringResource`, typically through small `@Composable` mapping functions next to the screen, e.g. `ImportError.toMessage(): String`.
 - Composables:
-  - Use a stateful **`XxxRoute`** (gets the ViewModel and collects state) and a stateless **`XxxScreen`** (takes state and lambdas). Only the route and navigation entry points are public.
+  - The public entry point is **stateful**: it gets the ViewModel and collects its state. Name it after what it is (e.g. `RoadbookViewer`, `PermissionGate`). It delegates to an internal, **stateless** **`XxxContent`** (e.g. `RoadbookViewerContent`), which takes state and lambdas. Only the stateful entry points are public.
   - The first optional parameter is `modifier: Modifier = Modifier`, and it is applied to the root layout.
   - Hoist state and keep composables side-effect free. Use `LaunchedEffect` and similar APIs correctly.
   - Provide `@Preview`s for every screen state, in light and dark themes, using `:core` theme.
@@ -284,7 +284,7 @@ The test suite is exhaustive: **every functionality, branch, error path, sealed 
 |---|---|---|
 | Unit | `src/test` | Value objects and invariants, aggregates, use cases, mappers, parsers (valid, invalid and edge-case fixtures), domain algorithms, ViewModels (every state transition and action), repositories with fake data sources, `:app` coordinators with fakes of the modules' public APIs |
 | Integration (JVM) | `src/test` | Repositories with real DataStore in a temporary folder, parsers plus repositories on real fixture files, flow pipelines across layers |
-| UI | `src/androidTest` (or `src/test` with Robolectric if configured) | Each stateless `XxxScreen` in every UI state, user interactions and callbacks, accessibility (content descriptions, semantics) |
+| UI | `src/androidTest` (or `src/test` with Robolectric if configured) | Each stateless `XxxContent` in every UI state, user interactions and callbacks, accessibility (content descriptions, semantics) |
 | App integration | `:app` `src/androidTest` | Hilt-based tests of cross-module wiring and coordinators: roadbook load → odometer reset, odometer partial → roadbook auto-advance, settings changes propagating to features |
 
 ### 10.2 Conventions
@@ -313,7 +313,7 @@ The test suite is exhaustive: **every functionality, branch, error path, sealed 
 | Repository implementations | Descriptive prefix, not `Impl` | `DefaultRoadbookRepository`, `DataStoreOdometerStateRepository` |
 | Use cases | `VerbNounUseCase` | `ImportRoadbookUseCase` |
 | ViewModels / UI state / actions | `XxxViewModel`, `XxxUiState`, `XxxUiAction` | `RoadbookUiState` |
-| Composables | PascalCase nouns; stateful `XxxRoute`, stateless `XxxScreen` | `RoadbookRoute`, `WaypointItem` |
+| Composables | PascalCase nouns; stateful public entry point named after what it is, stateless `XxxContent` | `RoadbookViewer`, `RoadbookViewerContent`, `WaypointItem` |
 | Hilt modules | `XxxModule` in `di` | `OdometerDataModule` |
 | Constants | `UPPER_SNAKE_CASE` | `DEFAULT_ZOOM_LEVEL` |
 | Resources | `<module>_<type>_<name>` | `roadbook_error_invalid_file`, `roadbook_ic_reset_partial` |
