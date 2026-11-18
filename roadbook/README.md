@@ -4,7 +4,7 @@ Imports a Rally Navigator roadbook definition file (`.rn2`) and turns its waypoi
 
 `:roadbook` is a **reusable module** (AGENTS.md §4.1): its package is `dev.giste.roadbook`, and it contains nothing specific to Roadbook Navigator, so other rally apps can depend on it too. Its domain is the roadbook, so it uses rally terms (*roadbook, waypoint, moderator, partial, total, auto-advance, tulip, CAP/heading*). It must not get app-specific defaults or concepts from outside that domain: the app decides what to do with its events (e.g. how to change the odometer).
 
-> **Status:** being migrated from the previous project step by step. The public API contract, the domain model, the `.rn2` parser the import (reading the file, parsing it and saving the roadbook), the persisted position and the `RoadbookController` implementation are in place. There is no screen yet, and `:app` does not use the module yet. Every section below is updated as each part lands.
+> **Status:** being migrated from the previous project step by step. The public API contract, the domain model, the `.rn2` parser the import (reading the file, parsing it and saving the roadbook), the persisted position and the `RoadbookController` implementation are in place. The roadbook symbols are in place, but there is no screen yet, and `:app` does not use the module yet. Every section below is updated as each part lands.
 
 ## Responsibility
 
@@ -35,7 +35,10 @@ dev/giste/roadbook/
 │   └── persistence/ StoredRoadbookDto (saved format), StoredRoadbookMapper,
 │                   RoadbookFileSerializer, DataStoreRoadbookRepository,
 │                   RoadbookStateDataStore, DataStoreRoadbookPositionRepository
-├── presentation/   Not created yet
+├── presentation/
+│   └── icon/       IconColors + FixedIconColors, IconType.toImageVector + rememberIconVector,
+│       │           IconGalleryPreview
+│       └── cross/, landmark/, sign/, speed/, terrain/   One vector per symbol
 └── di/             RoadbookModule
 ```
 
@@ -135,6 +138,14 @@ A waypoint whose distance from the previous one is shorter than the threshold is
 - **Commands run one at a time** (a `Mutex`). An import and a move both read and write the roadbook and the position, so a move running during an import could move the new roadbook from the old position.
 - **Events are emitted after the command, outside the lock.** Collectors see the result of the command (when `Loaded` arrives, the position is already the first waypoint). `events` has no replay and no buffer, so emitting waits until every collector has taken the event. Doing it outside the lock means a collector still busy with an earlier event can give a command without blocking the emitter. With no collector, the event is dropped and the command completes.
 
+### Symbols
+
+- **Each symbol is a hand-made `ImageVector`,** one file per symbol, grouped as in the previous app (cross, landmark, sign, speed, terrain). The path data was carried over unchanged. Every symbol is a function of its `IconColors`, and is named after its `IconType` (`resetPartialIcon`, not the previous `resetDistance`).
+- **Theme colors and real-world colors are kept apart.** Lines, cut-outs, danger marks and secondary shapes come from the theme through `IconColors` (`onSurface`, `surface`, `error`, `outline`), so symbols work in the dark theme. Secondary shapes use `outline` rather than `onSurfaceVariant` for a bit more contrast. Colors that copy real signs and features (the red ring and gray face of a speed limit, the blue of a roundabout or of water) are named in `FixedIconColors` and do not change with the theme, so the rider recognizes them from the road. Compared with the previous app, the danger red and the gray of buildings now follow the theme, and the slightly different red of the stop sign is the same red as the other signs.
+- **The surface is a parameter.** Some symbols are filled with the background color to cut shapes out of others, so `iconColors(surface)` takes the color of whatever is behind the symbol (e.g. a highlighted waypoint), not always the theme's surface.
+- **Vectors are built once.** The previous app rebuilt a vector on every call (except the danger marks, which kept one in a global variable whatever the colors). `rememberIconVector` keeps each vector in the composition for as long as its type and colors stay the same.
+- **`UNKNOWN` has no symbol** (`toImageVector` returns `null`): the screen shows its name or id from the file instead.
+
 ## Testing notes
 
 - `ShortDistanceThreshold` and `RoadbookSettings` defaults are unit-tested in `src/test`.
@@ -148,4 +159,5 @@ A waypoint whose distance from the previous one is shorter than the threshold is
 - `RoadbookFileSerializerTest` round-trips `FULL_ROADBOOK` (every field and kind of element), checks the version 1 fixture both ways, and every way a file is unreadable. `DataStoreRoadbookRepositoryTest` uses `FakeDataStore` for read and write failures. `DataStoreRoadbookRepositoryIntegrationTest` uses a real DataStore file in a temporary folder.
 - `RoadbookTest` covers keeping a position within the waypoints, and moving from the ends and from past the last waypoint. `MoveRoadbookUseCaseTest` covers both directions, both ends, a position past the last waypoint and no or an unreadable roadbook, with `FakeRoadbookPositionRepository`.
 - `DefaultRoadbookControllerTest` uses the real use cases on fake repositories and a lambda `RoadbookSourceFactory`. It runs on Robolectric only because of `Uri`. It checks that `Loaded` is only emitted on success, after the position is reset, and that a command completes with no collector.
+- `IconVectorsTest` checks, on the JVM, that every `IconType` draws its own symbol (by vector name), that `UNKNOWN` has none, and that every symbol changes with the theme colors. `IconGalleryPreview` shows every symbol in the light and dark themes for visual review.
 - `DataStoreRoadbookPositionRepositoryTest` covers stored, missing and invalid positions, read and write failures, and that a saved position is never overwritten by a later first read, with `FakeDataStore`. `DataStoreRoadbookPositionRepositoryIntegrationTest` reopens a real file.
