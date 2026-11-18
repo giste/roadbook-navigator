@@ -21,8 +21,9 @@ package dev.giste.roadbook.domain.drawing
  * A road drawn in a tulip: a line or curve from [start] to [end], drawn in the style of its
  * [type].
  *
- * @property start where the road starts, or `null` to start at the center of the canvas (the
- * junction).
+ * Its points are relative to the junction of the tulip (see [CanvasPoint]).
+ *
+ * @property start where the road starts, or `null` to start at the junction.
  * @property end where the road ends, or `null` when the file gives no end. A road without an end
  * is not drawn.
  * @property type the kind of road, which decides how it is drawn.

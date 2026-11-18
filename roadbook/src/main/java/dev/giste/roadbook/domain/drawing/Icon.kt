@@ -25,7 +25,8 @@ package dev.giste.roadbook.domain.drawing
  * positive.
  * @property height the height of the symbol before scaling, in canvas units. Must be finite and
  * positive.
- * @property center where the center of the symbol is drawn.
+ * @property center where the center of the symbol is drawn, measured from the top-left corner of
+ * the canvas (see [CanvasPoint]).
  * @property angle the rotation of the symbol, in degrees clockwise.
  * @property scaleX the horizontal scale. Must be finite and not zero. A negative scale mirrors the
  * symbol.

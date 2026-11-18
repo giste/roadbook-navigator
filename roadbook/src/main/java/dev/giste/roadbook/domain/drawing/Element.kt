@@ -21,8 +21,9 @@ package dev.giste.roadbook.domain.drawing
  * Something drawn in a waypoint's tulip or notes column: the [Track] the rider follows, other
  * [Road]s, an [Icon] or a [Text].
  *
- * Positions are [CanvasPoint]s relative to the center of the column's canvas. The type of element
- * is its subtype, so there is no separate type field.
+ * Positions are [CanvasPoint]s. Road points are relative to the junction of the tulip, and icon
+ * and text centers are measured from the top-left corner of the canvas (see [CanvasPoint]). The
+ * type of element is its subtype, so there is no separate type field.
  *
  * Each column only allows some kinds of element: [TulipElement]s go in a tulip and
  * [NoteElement]s in a notes column. Code that draws any column works with [Element].

@@ -31,7 +31,8 @@ package dev.giste.roadbook.domain.drawing
  * @property height the height of the text box. Must be finite and not negative.
  * @property maxWidth the widest the text box may grow. Must be finite and not negative.
  * @property maxHeight the tallest the text box may grow. Must be finite and not negative.
- * @property center where the center of the text box is drawn.
+ * @property center where the center of the text box is drawn, measured from the top-left corner
+ * of the canvas (see [CanvasPoint]).
  * @throws IllegalArgumentException if a size is out of range.
  */
 internal data class Text(
