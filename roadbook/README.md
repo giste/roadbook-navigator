@@ -4,7 +4,7 @@ Imports a Rally Navigator roadbook definition file (`.rn2`) and turns its waypoi
 
 `:roadbook` is a **reusable module** (AGENTS.md §4.1): its package is `dev.giste.roadbook`, and it contains nothing specific to Roadbook Navigator, so other rally apps can depend on it too. Its domain is the roadbook, so it uses rally terms (*roadbook, waypoint, moderator, partial, total, auto-advance, tulip, CAP/heading*). It must not get app-specific defaults or concepts from outside that domain: the app decides what to do with its events (e.g. how to change the odometer).
 
-> **Status:** being migrated from the previous project step by step. The public API contract, the domain model, the `.rn2` parser and the import (reading the file, parsing it and saving the roadbook) are in place. Nothing implements `RoadbookController` yet, so it is not bound with Hilt; the waypoint position is not persisted and there is no screen. Every section below is updated as each part lands.
+> **Status:** being migrated from the previous project step by step. The public API contract, the domain model, the `.rn2` parser and the import (reading the file, parsing it and saving the roadbook) and the persisted position are in place. Nothing implements `RoadbookController` yet, so it is not bound with Hilt, and there is no screen. Every section below is updated as each part lands.
 
 ## Responsibility
 
@@ -24,14 +24,16 @@ dev/giste/roadbook/
 ├── domain/
 │   ├── roadbook/   Roadbook (aggregate root), Waypoint, WaypointNumber, DangerLevel,
 │   │               RoutePoint + toWaypoints, RoadbookParser + ParseRoadbookResult,
-│   │               RoadbookSource, RoadbookRepository + SavedRoadbook, ImportRoadbookUseCase
+│   │               RoadbookSource, RoadbookRepository + SavedRoadbook, ImportRoadbookUseCase,
+│   │               RoadbookPositionRepository
 │   └── drawing/    Element, Track, Road, RoadType, Icon, IconType, Text, CanvasPoint,
 │                   tulipExitPoint (drawn in the tulip and notes columns)
 ├── data/
 │   ├── rn2/        Rn2Dto (file DTOs), Rn2IconTypes, Rn2ElementMapper, Rn2RoadbookParser
 │   ├── source/     ContentResolverRoadbookSource + its factory
 │   └── persistence/ StoredRoadbookDto (saved format), StoredRoadbookMapper,
-│                   RoadbookFileSerializer, DataStoreRoadbookRepository
+│                   RoadbookFileSerializer, DataStoreRoadbookRepository,
+│                   RoadbookStateDataStore, DataStoreRoadbookPositionRepository
 ├── presentation/   Not created yet
 └── di/             RoadbookModule
 ```
@@ -69,8 +71,7 @@ A waypoint whose distance from the previous one is shorter than the threshold is
 | File | Content | Written by |
 |---|---|---|
 | `roadbook_route.json` (typed DataStore, in the app's `files/datastore/`) | The current roadbook, as versioned JSON (`{"version": 1, "roadbook": {…}}`). Empty or missing when no roadbook was imported. | Every successful import replaces it. |
-
-The waypoint position is not persisted yet.
+| `roadbook_state` (Preferences DataStore) | `top_waypoint_number` (`Int`): the position, the number of the waypoint shown at the top. Missing means the first waypoint. | Every change of position, at once. |
 
 ## Design decisions
 
@@ -119,6 +120,10 @@ The waypoint position is not persisted yet.
 - **The saved format is separate from the domain.** `StoredRoadbookDto` mirrors the domain, so the domain has no serialization annotations and a domain refactor does not change the format by accident. Every field is written, null included, and required on read. Enum values are stored by the name of their domain entry. `RoadbookFileSerializerTest` compares the written JSON with `src/test/resources/stored_roadbook_v1.json`, so a change of format fails a test.
 - **The format is versioned.** A file of a version the serializer does not know, damaged JSON, or values that break a domain invariant are read as `SavedRoadbook.Unreadable`, never thrown: the serializer does not throw `CorruptionException`, which would make DataStore silently replace the file. The file is kept until the next import replaces it. A change of format must raise `CURRENT_VERSION` and either migrate the previous version or let it be read as unreadable.
 - **A roadbook that cannot be saved is not imported** (`NOT_SAVED`), instead of being kept only in memory, so the user knows it would be lost on the next start.
+- **The position is the waypoint at the top, nothing more.** The previous app saved the index of the first visible list item and its scroll offset in pixels. The offset depends on the screen (size, density, font size, orientation), so it is transient UI state, not roadbook state (AGENTS.md §7): after a restart, the roadbook shows the saved waypoint at the top. The screen may keep its exact scroll in `SavedStateHandle`.
+- **The position has its own file.** It changes often, so it is a small Preferences DataStore (`roadbook_state`) instead of a field of `roadbook_route.json`, which would be rewritten on every move. Both files are not written atomically together, so the position may not belong to the roadbook (e.g. a crash between saving an imported roadbook and resetting the position): whoever uses the position keeps it within the roadbook's waypoints.
+- **The position repository does not know the roadbook.** It only stores a valid `WaypointNumber`: a stored value below 1 is read as the first waypoint with a warning. Keeping it within the waypoints of the current roadbook is not its job.
+- **Losing a position is not worth failing for.** `DataStoreRoadbookPositionRepository` keeps the position in memory, so a failed write is logged and the next change writes it again, and a failed read starts from the first waypoint. A corrupted file is replaced with an empty one. It is a singleton, because it holds the position.
 - **The typed DataStore comes with `androidx-datastore-preferences`,** which depends on it. The catalog has no separate entry for it.
 
 ## Testing notes
@@ -132,3 +137,4 @@ The waypoint position is not persisted yet.
 - `ImportRoadbookUseCaseTest` covers every step that can fail with `FakeRoadbookParser`, `FakeRoadbookRepository` and lambda `RoadbookSource`s. `ImportRoadbookIntegrationTest` imports `route_example.rn2` with the real parser and a real DataStore file, and reads it back after reopening the file.
 - `ContentResolverRoadbookSourceTest` runs on Robolectric (SDK 35, set in `src/test/resources/robolectric.properties`, because Robolectric does not support compileSdk 37 yet). It reads real `file://` URIs from a temporary folder, and registers what `content://` URIs return to simulate failures. Robolectric only returns a `null` stream through a registered provider, so that case uses a test `ContentProvider`.
 - `RoadbookFileSerializerTest` round-trips `FULL_ROADBOOK` (every field and kind of element), checks the version 1 fixture both ways, and every way a file is unreadable. `DataStoreRoadbookRepositoryTest` uses `FakeDataStore` for read and write failures. `DataStoreRoadbookRepositoryIntegrationTest` uses a real DataStore file in a temporary folder.
+- `DataStoreRoadbookPositionRepositoryTest` covers stored, missing and invalid positions, read and write failures, and that a saved position is never overwritten by a later first read, with `FakeDataStore`. `DataStoreRoadbookPositionRepositoryIntegrationTest` reopens a real file.

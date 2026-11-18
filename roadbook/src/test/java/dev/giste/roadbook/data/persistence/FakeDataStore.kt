@@ -28,7 +28,8 @@ import kotlinx.coroutines.flow.flow
  * In-memory [DataStore] for tests, which can be told to fail.
  *
  * A real DataStore cannot be made to fail on demand, so the error paths are tested with this
- * fake. [DataStoreRoadbookRepositoryIntegrationTest] covers the real one.
+ * fake. [DataStoreRoadbookRepositoryIntegrationTest] and
+ * [DataStoreRoadbookPositionRepositoryIntegrationTest] cover the real one.
  *
  * @param initial the value it starts with.
  */

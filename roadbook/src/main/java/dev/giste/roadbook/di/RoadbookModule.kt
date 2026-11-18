@@ -19,7 +19,12 @@ package dev.giste.roadbook.di
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.DataStoreFactory
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.dataStoreFile
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.preferencesDataStoreFile
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -27,10 +32,13 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dev.giste.core.coroutines.IoDispatcher
+import dev.giste.roadbook.data.persistence.DataStoreRoadbookPositionRepository
 import dev.giste.roadbook.data.persistence.DataStoreRoadbookRepository
 import dev.giste.roadbook.data.persistence.RoadbookFileSerializer
+import dev.giste.roadbook.data.persistence.RoadbookStateDataStore
 import dev.giste.roadbook.data.rn2.Rn2RoadbookParser
 import dev.giste.roadbook.domain.roadbook.RoadbookParser
+import dev.giste.roadbook.domain.roadbook.RoadbookPositionRepository
 import dev.giste.roadbook.domain.roadbook.RoadbookRepository
 import dev.giste.roadbook.domain.roadbook.SavedRoadbook
 import javax.inject.Singleton
@@ -57,6 +65,18 @@ internal interface RoadbookModule {
      */
     @Binds
     fun bindRoadbookRepository(repository: DataStoreRoadbookRepository): RoadbookRepository
+
+    /**
+     * Provides [DataStoreRoadbookPositionRepository] wherever a [RoadbookPositionRepository] is
+     * injected.
+     *
+     * A [Singleton], because it holds the position in memory.
+     */
+    @Binds
+    @Singleton
+    fun bindRoadbookPositionRepository(
+        repository: DataStoreRoadbookPositionRepository,
+    ): RoadbookPositionRepository
 
     /** Storage used by the bindings above. */
     companion object {
@@ -86,6 +106,31 @@ internal interface RoadbookModule {
             serializer = serializer,
             scope = CoroutineScope(ioDispatcher + SupervisorJob()),
             produceFile = { context.dataStoreFile(RoadbookFileSerializer.FILE_NAME) },
+        )
+
+        /**
+         * Provides the DataStore of the roadbook state: the position.
+         *
+         * A [Singleton], because DataStore allows only one instance per file. A corrupted file is
+         * replaced with an empty one, so the roadbook starts from its first waypoint instead of
+         * failing: losing the position is not worth more.
+         *
+         * @param context the application context, to locate the file.
+         * @param ioDispatcher the dispatcher DataStore reads and writes the file on.
+         * @return the DataStore stored in the `roadbook_state` file.
+         */
+        @Provides
+        @Singleton
+        @RoadbookStateDataStore
+        fun provideRoadbookStateDataStore(
+            @ApplicationContext context: Context,
+            @IoDispatcher ioDispatcher: CoroutineDispatcher,
+        ): DataStore<Preferences> = PreferenceDataStoreFactory.create(
+            corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
+            scope = CoroutineScope(ioDispatcher + SupervisorJob()),
+            produceFile = {
+                context.preferencesDataStoreFile(DataStoreRoadbookPositionRepository.FILE_NAME)
+            },
         )
     }
 }
