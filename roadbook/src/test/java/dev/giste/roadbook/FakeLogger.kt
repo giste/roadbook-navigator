@@ -20,8 +20,8 @@ package dev.giste.roadbook
 import dev.giste.core.logging.Logger
 
 /**
- * [Logger] for tests: prints nothing and records warnings, so tests can check that a problem was
- * logged.
+ * [Logger] for tests: prints nothing and records warnings and errors, so tests can check that a
+ * problem was logged.
  *
  * `:core` does not share its test doubles, so `:roadbook` keeps its own.
  */
@@ -29,6 +29,9 @@ internal class FakeLogger : Logger {
 
     /** The messages passed to [w], in call order, before formatting. */
     val warnings: MutableList<String> = mutableListOf()
+
+    /** The throwables passed to `e(t, …)`, in call order. */
+    val loggedErrors: MutableList<Throwable> = mutableListOf()
 
     override fun v(message: String, vararg args: Any?) = Unit
 
@@ -42,7 +45,9 @@ internal class FakeLogger : Logger {
 
     override fun e(message: String, vararg args: Any?) = Unit
 
-    override fun e(t: Throwable, message: String, vararg args: Any?) = Unit
+    override fun e(t: Throwable, message: String, vararg args: Any?) {
+        loggedErrors += t
+    }
 
     override fun withTag(tag: String): Logger = this
 }

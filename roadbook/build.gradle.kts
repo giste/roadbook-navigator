@@ -1,7 +1,7 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.compose)
-    // Generates the serializers of the .rn2 file DTOs.
+    // Generates the serializers of the .rn2 file DTOs and of the persisted roadbook.
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt.android)
@@ -52,6 +52,9 @@ dependencies {
     api(libs.kotlinx.coroutines.core)
     // Parses .rn2 roadbook files, which are JSON.
     implementation(libs.kotlinx.serialization.json)
+    // Persists the imported roadbook (AGENTS.md §7). It brings the typed DataStore with it, which
+    // the roadbook file uses: the catalog has no separate entry for it.
+    implementation(libs.androidx.datastore.preferences)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.material3)
@@ -62,6 +65,8 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
+    // Runs the ContentResolver-based roadbook source on the JVM.
+    testImplementation(libs.robolectric)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

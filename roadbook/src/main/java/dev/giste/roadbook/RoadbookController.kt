@@ -17,6 +17,7 @@
 
 package dev.giste.roadbook
 
+import android.net.Uri
 import kotlinx.coroutines.flow.SharedFlow
 
 /**
@@ -40,6 +41,22 @@ public interface RoadbookController {
      * scope). It never throws and never completes.
      */
     public val events: SharedFlow<RoadbookEvent>
+
+    /**
+     * Imports the roadbook file at [uri], which replaces the current roadbook when it succeeds.
+     *
+     * The file is read, parsed and saved, so the roadbook survives process death and restarts.
+     * When it succeeds, the roadbook is shown from its first waypoint, and [RoadbookEvent.Loaded]
+     * is emitted. When it fails, nothing changes.
+     *
+     * The supported format is Rally Navigator's `.rn2`.
+     *
+     * @param uri where the file is, usually a `content://` URI from the system file picker (e.g.
+     * `ActivityResultContracts.OpenDocument`). The app must be able to read it when this is
+     * called. `file://` URIs work too.
+     * @return [ImportRoadbookResult.Success], or why the import failed. It never throws.
+     */
+    public suspend fun importRoadbook(uri: Uri): ImportRoadbookResult
 
     /**
      * Moves the roadbook forward by one waypoint, so the next waypoint is shown at the top.
