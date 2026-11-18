@@ -4,7 +4,7 @@ Imports a Rally Navigator roadbook definition file (`.rn2`) and turns its waypoi
 
 `:roadbook` is a **reusable module** (AGENTS.md §4.1): its package is `dev.giste.roadbook`, and it contains nothing specific to Roadbook Navigator, so other rally apps can depend on it too. Its domain is the roadbook, so it uses rally terms (*roadbook, waypoint, moderator, partial, total, auto-advance, tulip, CAP/heading*). It must not get app-specific defaults or concepts from outside that domain: the app decides what to do with its events (e.g. how to change the odometer).
 
-> **Status:** being migrated from the previous project step by step. The public API contract, the domain model, the `.rn2` parser and the import (reading the file, parsing it and saving the roadbook) and the persisted position are in place. Nothing implements `RoadbookController` yet, so it is not bound with Hilt, and there is no screen. Every section below is updated as each part lands.
+> **Status:** being migrated from the previous project step by step. The public API contract, the domain model, the `.rn2` parser the import (reading the file, parsing it and saving the roadbook), the persisted position and the `RoadbookController` implementation are in place. There is no screen yet, and `:app` does not use the module yet. Every section below is updated as each part lands.
 
 ## Responsibility
 
@@ -25,12 +25,13 @@ dev/giste/roadbook/
 │   ├── roadbook/   Roadbook (aggregate root), Waypoint, WaypointNumber, DangerLevel,
 │   │               RoutePoint + toWaypoints, RoadbookParser + ParseRoadbookResult,
 │   │               RoadbookSource, RoadbookRepository + SavedRoadbook, ImportRoadbookUseCase,
-│   │               RoadbookPositionRepository
+│   │               RoadbookPositionRepository, MoveRoadbookUseCase + MoveDirection
 │   └── drawing/    Element, Track, Road, RoadType, Icon, IconType, Text, CanvasPoint,
 │                   tulipExitPoint (drawn in the tulip and notes columns)
-├── data/
+├── data/           DefaultRoadbookController
 │   ├── rn2/        Rn2Dto (file DTOs), Rn2IconTypes, Rn2ElementMapper, Rn2RoadbookParser
-│   ├── source/     ContentResolverRoadbookSource + its factory
+│   ├── source/     ContentResolverRoadbookSource, RoadbookSourceFactory +
+│   │               ContentResolverRoadbookSourceFactory
 │   └── persistence/ StoredRoadbookDto (saved format), StoredRoadbookMapper,
 │                   RoadbookFileSerializer, DataStoreRoadbookRepository,
 │                   RoadbookStateDataStore, DataStoreRoadbookPositionRepository
@@ -42,7 +43,7 @@ dev/giste/roadbook/
 
 | Type | What it is |
 |---|---|
-| `RoadbookController` | Singleton facade for the app, independent of the screen. `events: SharedFlow<RoadbookEvent>` (hot, no replay, never completes), `suspend` `importRoadbook(uri: Uri): ImportRoadbookResult`, and `suspend` `moveToNextWaypoint()` / `moveToPreviousWaypoint()`. Moving does nothing at either end or without a roadbook, and persists the new position. Not implemented yet. |
+| `RoadbookController` | Singleton facade for the app, independent of the screen. `events: SharedFlow<RoadbookEvent>` (hot, no replay, never completes), `suspend` `importRoadbook(uri: Uri): ImportRoadbookResult`, and `suspend` `moveToNextWaypoint()` / `moveToPreviousWaypoint()`. Moving does nothing at either end or without a roadbook, and persists the new position. Implemented by `DefaultRoadbookController`, bound as a singleton. |
 | `ImportRoadbookResult` | Sealed. `Success`, or `Failure(reason: ImportRoadbookFailure)`: `UNREADABLE` (the file cannot be opened or read), `MALFORMED`, `NO_WAYPOINTS`, or `NOT_SAVED` (valid, but it could not be written to storage). A failed import keeps the previous roadbook. |
 | `RoadbookEvent` | Sealed. `Loaded`: a new roadbook was imported. `SetPartialRequested(partial: Distance)`: the user long-pressed a waypoint's distance to set the partial. |
 | `RoadbookSettings` | Immutable settings: `shortDistanceThreshold`, default `ShortDistanceThreshold.DEFAULT`. |
@@ -126,6 +127,14 @@ A waypoint whose distance from the previous one is shorter than the threshold is
 - **Losing a position is not worth failing for.** `DataStoreRoadbookPositionRepository` keeps the position in memory, so a failed write is logged and the next change writes it again, and a failed read starts from the first waypoint. A corrupted file is replaced with an empty one. It is a singleton, because it holds the position.
 - **The typed DataStore comes with `androidx-datastore-preferences`,** which depends on it. The catalog has no separate entry for it.
 
+### Controller
+
+- **`DefaultRoadbookController` lives in `data`.** The public API takes an Android `Uri`, and the domain must not, so the controller adapts one to the other: it creates a `RoadbookSource` with `RoadbookSourceFactory` and calls the use cases. Its only other job is the events. (`:odometer`'s controller lives in its domain because its API has no Android types.)
+- **Importing resets the position.** `ImportRoadbookUseCase` saves the position at the first waypoint after saving the roadbook, so a new roadbook is always shown from its start. A failed import changes neither.
+- **The aggregate keeps a position within its waypoints.** `Roadbook.coerceWaypointNumber`, `waypointNumberAfter` and `waypointNumberBefore` are domain rules, so `MoveRoadbookUseCase` only reads, decides through the aggregate and saves. A stored position past the last waypoint (e.g. after a crash between saving a shorter roadbook and resetting the position) is read as the last waypoint, so moving back from it goes to the one before the last.
+- **Commands run one at a time** (a `Mutex`). An import and a move both read and write the roadbook and the position, so a move running during an import could move the new roadbook from the old position.
+- **Events are emitted after the command, outside the lock.** Collectors see the result of the command (when `Loaded` arrives, the position is already the first waypoint). `events` has no replay and no buffer, so emitting waits until every collector has taken the event. Doing it outside the lock means a collector still busy with an earlier event can give a command without blocking the emitter. With no collector, the event is dropped and the command completes.
+
 ## Testing notes
 
 - `ShortDistanceThreshold` and `RoadbookSettings` defaults are unit-tested in `src/test`.
@@ -137,4 +146,6 @@ A waypoint whose distance from the previous one is shorter than the threshold is
 - `ImportRoadbookUseCaseTest` covers every step that can fail with `FakeRoadbookParser`, `FakeRoadbookRepository` and lambda `RoadbookSource`s. `ImportRoadbookIntegrationTest` imports `route_example.rn2` with the real parser and a real DataStore file, and reads it back after reopening the file.
 - `ContentResolverRoadbookSourceTest` runs on Robolectric (SDK 35, set in `src/test/resources/robolectric.properties`, because Robolectric does not support compileSdk 37 yet). It reads real `file://` URIs from a temporary folder, and registers what `content://` URIs return to simulate failures. Robolectric only returns a `null` stream through a registered provider, so that case uses a test `ContentProvider`.
 - `RoadbookFileSerializerTest` round-trips `FULL_ROADBOOK` (every field and kind of element), checks the version 1 fixture both ways, and every way a file is unreadable. `DataStoreRoadbookRepositoryTest` uses `FakeDataStore` for read and write failures. `DataStoreRoadbookRepositoryIntegrationTest` uses a real DataStore file in a temporary folder.
+- `RoadbookTest` covers keeping a position within the waypoints, and moving from the ends and from past the last waypoint. `MoveRoadbookUseCaseTest` covers both directions, both ends, a position past the last waypoint and no or an unreadable roadbook, with `FakeRoadbookPositionRepository`.
+- `DefaultRoadbookControllerTest` uses the real use cases on fake repositories and a lambda `RoadbookSourceFactory`. It runs on Robolectric only because of `Uri`. It checks that `Loaded` is only emitted on success, after the position is reset, and that a command completes with no collector.
 - `DataStoreRoadbookPositionRepositoryTest` covers stored, missing and invalid positions, read and write failures, and that a saved position is never overwritten by a later first read, with `FakeDataStore`. `DataStoreRoadbookPositionRepositoryIntegrationTest` reopens a real file.

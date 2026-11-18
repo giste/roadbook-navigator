@@ -64,4 +64,43 @@ internal data class Roadbook(
                 "${waypoints.first().distanceFromPrevious}"
         }
     }
+
+    /** The number of the last waypoint, which is also how many waypoints there are. */
+    val lastWaypointNumber: WaypointNumber
+        get() = waypoints.last().number
+
+    /**
+     * Keeps [number] within the waypoints of this roadbook.
+     *
+     * A position may come from storage or from a previous roadbook, so it may be past the last
+     * waypoint (e.g. after importing a shorter roadbook). It can never be before the first one,
+     * because waypoint numbers start at 1.
+     *
+     * @param number a waypoint number, possibly past the last waypoint.
+     * @return [number], or [lastWaypointNumber] when [number] is past it.
+     */
+    fun coerceWaypointNumber(number: WaypointNumber): WaypointNumber =
+        minOf(number, lastWaypointNumber)
+
+    /**
+     * The waypoint after [number], or the last one when there is none.
+     *
+     * @param number the current waypoint. It is first kept within the roadbook with
+     * [coerceWaypointNumber].
+     * @return the number of the next waypoint, or [lastWaypointNumber] at the end.
+     */
+    fun waypointNumberAfter(number: WaypointNumber): WaypointNumber =
+        coerceWaypointNumber(WaypointNumber(coerceWaypointNumber(number).value + 1))
+
+    /**
+     * The waypoint before [number], or the first one when there is none.
+     *
+     * @param number the current waypoint. It is first kept within the roadbook with
+     * [coerceWaypointNumber].
+     * @return the number of the previous waypoint, or [WaypointNumber.FIRST] at the start.
+     */
+    fun waypointNumberBefore(number: WaypointNumber): WaypointNumber {
+        val current = coerceWaypointNumber(number)
+        return if (current == WaypointNumber.FIRST) current else WaypointNumber(current.value - 1)
+    }
 }

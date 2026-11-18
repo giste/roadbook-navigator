@@ -74,7 +74,12 @@ class ImportRoadbookIntegrationTest {
         val firstJob = Job()
         val firstRepository = repository(file, firstJob)
 
-        val result = ImportRoadbookUseCase(parser, firstRepository, logger)(
+        val result = ImportRoadbookUseCase(
+            parser,
+            firstRepository,
+            FakeRoadbookPositionRepository(),
+            logger,
+        )(
             RoadbookSource { ReadRoadbookSourceResult.Success(example()) },
         )
         val imported = firstRepository.roadbook.first()

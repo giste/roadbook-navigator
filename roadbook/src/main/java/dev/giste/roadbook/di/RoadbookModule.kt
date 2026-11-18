@@ -32,11 +32,15 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dev.giste.core.coroutines.IoDispatcher
+import dev.giste.roadbook.RoadbookController
+import dev.giste.roadbook.data.DefaultRoadbookController
 import dev.giste.roadbook.data.persistence.DataStoreRoadbookPositionRepository
 import dev.giste.roadbook.data.persistence.DataStoreRoadbookRepository
 import dev.giste.roadbook.data.persistence.RoadbookFileSerializer
 import dev.giste.roadbook.data.persistence.RoadbookStateDataStore
 import dev.giste.roadbook.data.rn2.Rn2RoadbookParser
+import dev.giste.roadbook.data.source.ContentResolverRoadbookSourceFactory
+import dev.giste.roadbook.data.source.RoadbookSourceFactory
 import dev.giste.roadbook.domain.roadbook.RoadbookParser
 import dev.giste.roadbook.domain.roadbook.RoadbookPositionRepository
 import dev.giste.roadbook.domain.roadbook.RoadbookRepository
@@ -50,6 +54,25 @@ import kotlinx.coroutines.SupervisorJob
 @Module
 @InstallIn(SingletonComponent::class)
 internal interface RoadbookModule {
+
+    /**
+     * Provides [DefaultRoadbookController] wherever a [RoadbookController] is injected.
+     *
+     * A [Singleton], so every collector gets the events of every command, and commands run one
+     * at a time.
+     */
+    @Binds
+    @Singleton
+    fun bindRoadbookController(controller: DefaultRoadbookController): RoadbookController
+
+    /**
+     * Provides [ContentResolverRoadbookSourceFactory] wherever a [RoadbookSourceFactory] is
+     * injected: roadbooks are imported from content and file URIs.
+     */
+    @Binds
+    fun bindRoadbookSourceFactory(
+        factory: ContentResolverRoadbookSourceFactory,
+    ): RoadbookSourceFactory
 
     /**
      * Provides [Rn2RoadbookParser] wherever a [RoadbookParser] is injected: `.rn2` is the only

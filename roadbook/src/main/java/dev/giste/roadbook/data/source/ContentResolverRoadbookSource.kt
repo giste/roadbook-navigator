@@ -77,7 +77,25 @@ internal class ContentResolverRoadbookSource(
 }
 
 /**
- * Creates the [ContentResolverRoadbookSource] of a URI, with the dependencies Hilt provides.
+ * Creates the [RoadbookSource] that reads the file at a URI.
+ *
+ * The roadbook is imported from a URI, which cannot be injected, so whoever imports gets a source
+ * from this factory instead. Tests replace it to control what is read.
+ */
+internal fun interface RoadbookSourceFactory {
+
+    /**
+     * Creates the source of the file at [uri]. Nothing is opened until it is read.
+     *
+     * @param uri where the file is.
+     * @return the source that reads it.
+     */
+    fun create(uri: Uri): RoadbookSource
+}
+
+/**
+ * [RoadbookSourceFactory] that creates [ContentResolverRoadbookSource]s, with the dependencies
+ * Hilt provides.
  *
  * @param context the application context, whose [ContentResolver] opens the files.
  * @param ioDispatcher the dispatcher files are read on.
@@ -87,14 +105,8 @@ internal class ContentResolverRoadbookSourceFactory @Inject constructor(
     @param:ApplicationContext private val context: Context,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     private val logger: Logger,
-) {
+) : RoadbookSourceFactory {
 
-    /**
-     * Creates the source of the file at [uri]. Nothing is opened until it is read.
-     *
-     * @param uri where the file is.
-     * @return the source that reads it.
-     */
-    fun create(uri: Uri): RoadbookSource =
+    override fun create(uri: Uri): RoadbookSource =
         ContentResolverRoadbookSource(uri, context.contentResolver, ioDispatcher, logger)
 }

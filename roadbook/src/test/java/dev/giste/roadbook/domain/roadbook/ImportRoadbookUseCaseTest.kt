@@ -33,8 +33,10 @@ class ImportRoadbookUseCaseTest {
 
     private val parser = FakeRoadbookParser(ParseRoadbookResult.Success(roadbook))
     private val repository = FakeRoadbookRepository(SavedRoadbook.Available(previous))
+    private val positionRepository = FakeRoadbookPositionRepository(WaypointNumber(7))
     private val logger = FakeLogger()
-    private val importRoadbook = ImportRoadbookUseCase(parser, repository, logger)
+    private val importRoadbook =
+        ImportRoadbookUseCase(parser, repository, positionRepository, logger)
 
     private val readableSource = RoadbookSource { ReadRoadbookSourceResult.Success(FILE_CONTENT) }
     private val unreadableSource = RoadbookSource { ReadRoadbookSourceResult.Unreadable }
@@ -45,6 +47,13 @@ class ImportRoadbookUseCaseTest {
 
         assertEquals(ImportRoadbookResult.Success, result)
         assertEquals(SavedRoadbook.Available(roadbook), repository.roadbook.value)
+    }
+
+    @Test
+    fun invoke_validFile_movesPositionToFirstWaypoint() = runTest {
+        importRoadbook(readableSource)
+
+        assertEquals(listOf(WaypointNumber.FIRST), positionRepository.saved)
     }
 
     @Test
@@ -61,6 +70,7 @@ class ImportRoadbookUseCaseTest {
         assertEquals(ImportRoadbookResult.Failure(ImportRoadbookFailure.UNREADABLE), result)
         assertTrue(parser.parsedContents.isEmpty())
         assertEquals(0, repository.saveCount)
+        assertTrue(positionRepository.saved.isEmpty())
     }
 
     @Test
@@ -72,6 +82,7 @@ class ImportRoadbookUseCaseTest {
         assertEquals(ImportRoadbookResult.Failure(ImportRoadbookFailure.MALFORMED), result)
         assertEquals(SavedRoadbook.Available(previous), repository.roadbook.value)
         assertEquals(0, repository.saveCount)
+        assertTrue(positionRepository.saved.isEmpty())
     }
 
     @Test
@@ -83,6 +94,7 @@ class ImportRoadbookUseCaseTest {
         assertEquals(ImportRoadbookResult.Failure(ImportRoadbookFailure.NO_WAYPOINTS), result)
         assertEquals(SavedRoadbook.Available(previous), repository.roadbook.value)
         assertEquals(0, repository.saveCount)
+        assertTrue(positionRepository.saved.isEmpty())
     }
 
     @Test
@@ -93,6 +105,7 @@ class ImportRoadbookUseCaseTest {
 
         assertEquals(ImportRoadbookResult.Failure(ImportRoadbookFailure.NOT_SAVED), result)
         assertEquals(SavedRoadbook.Available(previous), repository.roadbook.value)
+        assertTrue(positionRepository.saved.isEmpty())
     }
 
     @Test

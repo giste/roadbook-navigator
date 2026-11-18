@@ -23,19 +23,21 @@ import dev.giste.roadbook.ImportRoadbookResult
 import javax.inject.Inject
 
 /**
- * Imports a roadbook: reads its file from a [RoadbookSource], parses it, and saves it as the
- * current roadbook.
+ * Imports a roadbook: reads its file from a [RoadbookSource], parses it, saves it as the current
+ * roadbook, and moves the position to its first waypoint.
  *
  * Each step stops the import when it fails, so a file that cannot be read or parsed never
  * replaces the current roadbook. It never throws.
  *
  * @param parser turns the content of the file into a [Roadbook].
  * @param repository keeps the imported roadbook.
+ * @param positionRepository keeps the position, which starts again at the first waypoint.
  * @param logger logs the outcome.
  */
 internal class ImportRoadbookUseCase @Inject constructor(
     private val parser: RoadbookParser,
     private val repository: RoadbookRepository,
+    private val positionRepository: RoadbookPositionRepository,
     private val logger: Logger,
 ) {
 
@@ -44,6 +46,7 @@ internal class ImportRoadbookUseCase @Inject constructor(
      *
      * @param source where the file to import is read from.
      * @return [ImportRoadbookResult.Success] when the roadbook was saved, or the step that failed.
+     * The position only changes on success.
      */
     suspend operator fun invoke(source: RoadbookSource): ImportRoadbookResult {
         val content = when (val read = source.read()) {
@@ -56,6 +59,9 @@ internal class ImportRoadbookUseCase @Inject constructor(
         }
         return when (repository.save(roadbook)) {
             SaveRoadbookResult.Saved -> {
+                // Saving the position cannot fail: the repository keeps it in memory if it
+                // cannot write it.
+                positionRepository.save(WaypointNumber.FIRST)
                 logger.i("Imported a roadbook with %d waypoints", roadbook.waypoints.size)
                 ImportRoadbookResult.Success
             }

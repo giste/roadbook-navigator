@@ -131,4 +131,67 @@ class RoadbookTest {
 
         assertEquals(Distance.ZERO, roadbook.waypoints[1].distanceFromPrevious)
     }
+
+    private val threeWaypoints = Roadbook(
+        waypoints = listOf(testWaypoint(1), testWaypoint(2), testWaypoint(3)),
+    )
+
+    @Test
+    fun lastWaypointNumber_isNumberOfLastWaypoint() {
+        assertEquals(WaypointNumber(3), threeWaypoints.lastWaypointNumber)
+    }
+
+    @Test
+    fun coerceWaypointNumber_withinRoadbook_isUnchanged() {
+        assertEquals(WaypointNumber(2), threeWaypoints.coerceWaypointNumber(WaypointNumber(2)))
+    }
+
+    @Test
+    fun coerceWaypointNumber_lastWaypoint_isUnchanged() {
+        assertEquals(WaypointNumber(3), threeWaypoints.coerceWaypointNumber(WaypointNumber(3)))
+    }
+
+    @Test
+    fun coerceWaypointNumber_pastLastWaypoint_isLastWaypoint() {
+        assertEquals(WaypointNumber(3), threeWaypoints.coerceWaypointNumber(WaypointNumber(50)))
+    }
+
+    @Test
+    fun waypointNumberAfter_middleWaypoint_isNextOne() {
+        assertEquals(WaypointNumber(3), threeWaypoints.waypointNumberAfter(WaypointNumber(2)))
+    }
+
+    @Test
+    fun waypointNumberAfter_lastWaypoint_staysAtLastOne() {
+        assertEquals(WaypointNumber(3), threeWaypoints.waypointNumberAfter(WaypointNumber(3)))
+    }
+
+    @Test
+    fun waypointNumberAfter_pastLastWaypoint_isLastOne() {
+        assertEquals(WaypointNumber(3), threeWaypoints.waypointNumberAfter(WaypointNumber(50)))
+    }
+
+    @Test
+    fun waypointNumberBefore_middleWaypoint_isPreviousOne() {
+        assertEquals(WaypointNumber(1), threeWaypoints.waypointNumberBefore(WaypointNumber(2)))
+    }
+
+    @Test
+    fun waypointNumberBefore_firstWaypoint_staysAtFirstOne() {
+        val before = threeWaypoints.waypointNumberBefore(WaypointNumber.FIRST)
+
+        assertEquals(WaypointNumber.FIRST, before)
+    }
+
+    @Test
+    fun waypointNumberBefore_pastLastWaypoint_isOneBeforeLast() {
+        assertEquals(WaypointNumber(2), threeWaypoints.waypointNumberBefore(WaypointNumber(50)))
+    }
+
+    @Test
+    fun waypointNumberAfter_singleWaypoint_staysAtIt() {
+        val roadbook = Roadbook(waypoints = listOf(testWaypoint(1)))
+
+        assertEquals(WaypointNumber.FIRST, roadbook.waypointNumberAfter(WaypointNumber.FIRST))
+    }
 }
