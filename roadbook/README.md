@@ -4,7 +4,7 @@ Imports a Rally Navigator roadbook definition file (`.rn2`) and turns its waypoi
 
 `:roadbook` is a **reusable module** (AGENTS.md §4.1): its package is `dev.giste.roadbook`, and it contains nothing specific to Roadbook Navigator, so other rally apps can depend on it too. Its domain is the roadbook, so it uses rally terms (*roadbook, waypoint, moderator, partial, total, auto-advance, tulip, CAP/heading*). It must not get app-specific defaults or concepts from outside that domain: the app decides what to do with its events (e.g. how to change the odometer).
 
-> **Status:** being migrated from the previous project step by step. The public API contract, the domain model, the `.rn2` parser the import (reading the file, parsing it and saving the roadbook), the persisted position and the `RoadbookController` implementation are in place. The roadbook viewer is in place too, from its symbols and styles to `RoadbookViewer`. `:app` shows `RoadbookViewer` as its main screen with the default settings, but does not react to `RoadbookEvent`s yet, and auto-advance is not implemented. Every section below is updated as each part lands.
+> **Status:** being migrated from the previous project step by step. The public API contract, the domain model, the `.rn2` parser the import (reading the file, parsing it and saving the roadbook), the persisted position and the `RoadbookController` implementation are in place. The roadbook viewer is in place too, from its symbols and styles to `RoadbookViewer`. `:app` shows `RoadbookViewer` below the odometer with the default settings, applies its `RoadbookEvent`s to the odometer, and shows the import button only while stopped. Auto-advance is not implemented. Every section below is updated as each part lands.
 
 ## Responsibility
 

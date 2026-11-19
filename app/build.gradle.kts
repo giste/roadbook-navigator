@@ -33,6 +33,10 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    testOptions {
+        // Robolectric needs the merged resources to resolve strings in Compose UI tests.
+        unitTests.isIncludeAndroidResources = true
+    }
     buildFeatures {
         compose = true
     }
@@ -41,6 +45,7 @@ android {
 dependencies {
     implementation(project(":core"))
     implementation(project(":location"))
+    implementation(project(":odometer"))
     implementation(project(":roadbook"))
 
     implementation(libs.hilt.android)
@@ -53,9 +58,16 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
+    // hiltViewModel(), to get the dashboard's ViewModel from Hilt in a composable.
+    implementation(libs.androidx.hilt.lifecycle.viewmodel.compose)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
+    // Runs the Compose UI tests on the JVM.
+    testImplementation(libs.robolectric)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
 
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
