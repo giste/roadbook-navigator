@@ -20,8 +20,10 @@ package dev.giste.roadbook.presentation.viewer
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
@@ -43,6 +45,7 @@ import dev.giste.roadbook.ShortDistanceThreshold
 import dev.giste.roadbook.domain.roadbook.Roadbook
 import dev.giste.roadbook.domain.roadbook.WaypointNumber
 import dev.giste.roadbook.domain.roadbook.testWaypoint
+import kotlin.math.abs
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -252,7 +255,89 @@ class RoadbookViewerContentTest {
         assertTrue(scrollStops.last() > 0)
     }
 
+    @Test
+    fun userDrag_lessThanHalfARow_snapsBackToTheSameWaypoint() {
+        show(RoadbookUiState(roadbook = content(position = 1)))
+        scrollStops.clear()
+
+        dragUpAndHold(rowFraction = 0.3f)
+
+        assertTopRowAligned()
+        assertEquals(0, scrollStops.last())
+    }
+
+    @Test
+    fun userDrag_moreThanHalfARow_snapsToTheNextWaypoint() {
+        show(RoadbookUiState(roadbook = content(position = 1)))
+        scrollStops.clear()
+
+        dragUpAndHold(rowFraction = 0.7f)
+
+        assertTopRowAligned()
+        assertEquals(1, scrollStops.last())
+    }
+
+    @Test
+    fun userFling_leavesAWaypointAtTheTop() {
+        show(RoadbookUiState(roadbook = content(position = 1)))
+        scrollStops.clear()
+
+        rule.onNode(hasScrollAction()).performTouchInput { swipeUp() }
+        rule.waitForIdle()
+
+        assertTopRowAligned()
+    }
+
+    /**
+     * One node per waypoint shown: its distances, which take the whole height of the row. Rows
+     * the list keeps composed but not placed, to reuse them, are left out: their positions are
+     * stale.
+     */
+    private fun rows(): List<SemanticsNode> =
+        rule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsActions.OnLongClick))
+            .fetchSemanticsNodes()
+            .filter { it.layoutInfo.isPlaced }
+
+    /**
+     * Drags the list up by [rowFraction] of a row and holds still before lifting the finger, so
+     * the list is released without velocity, as after a slow drag.
+     */
+    private fun dragUpAndHold(rowFraction: Float) {
+        val rowHeight = rows().first().size.height
+        rule.onNode(hasScrollAction()).performTouchInput {
+            down(center)
+            // Small steps, so the whole distance scrolls the list once past the touch slop.
+            moveBy(Offset(0f, -viewConfiguration.touchSlop))
+            repeat(DRAG_STEPS) { moveBy(Offset(0f, -rowHeight * rowFraction / DRAG_STEPS)) }
+            advanceEventTime(HOLD_MILLIS)
+            up()
+        }
+        rule.waitForIdle()
+    }
+
+    /** Checks that a waypoint starts exactly at the top of the list, and none is cut by it. */
+    private fun assertTopRowAligned() {
+        val listTop = rule.onNode(hasScrollAction()).fetchSemanticsNode().positionInRoot.y
+        // Unclipped positions: a row half scrolled out of the list starts above it.
+        val tops = rows().map { it.positionInRoot.y to it.positionInRoot.y + it.size.height }
+        assertTrue(tops.any { (top, _) -> abs(top - listTop) < TOLERANCE_PX })
+        assertTrue(
+            tops.none { (top, bottom) ->
+                top < listTop - TOLERANCE_PX && bottom > listTop + TOLERANCE_PX
+            },
+        )
+    }
+
     private companion object {
+        /** Steps of a slow drag. */
+        const val DRAG_STEPS = 10
+
+        /** Longer than the velocity tracker remembers, so the finger is lifted without speed. */
+        const val HOLD_MILLIS = 500L
+
+        /** Rounding allowed when comparing positions in pixels. */
+        const val TOLERANCE_PX = 1f
+
         /** Longer than a short snackbar is shown. */
         const val SNACKBAR_DURATION_MILLIS = 10_000L
     }

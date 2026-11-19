@@ -18,6 +18,8 @@
 package dev.giste.roadbook.presentation.viewer
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.snapping.SnapPosition
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -158,6 +160,10 @@ internal fun RoadbookViewerContent(
  * stops, so the position is saved; reporting the waypoint already at the top changes nothing, so
  * the list does not scroll back.
  *
+ * When the user lets go, the list snaps so a waypoint starts exactly at the top: the nearest one
+ * after a slow drag, or one in the direction of a fling. A waypoint is never left half hidden, and
+ * what the user sees is what is saved, since the position has no offset.
+ *
  * Below the last waypoint there is empty space, the height of the list minus one row, so every
  * waypoint can be scrolled to the top, the last ones included. Otherwise the list would stop
  * short of a position near the end, report an earlier waypoint, and lose the position.
@@ -191,6 +197,7 @@ private fun RoadbookList(
         val rowHeight = maxWidth / ROW_ASPECT_RATIO
         LazyColumn(
             state = listState,
+            flingBehavior = rememberSnapFlingBehavior(listState, SnapPosition.Start),
             contentPadding = PaddingValues(bottom = (maxHeight - rowHeight).coerceAtLeast(0.dp)),
             modifier = Modifier.fillMaxSize(),
         ) {
