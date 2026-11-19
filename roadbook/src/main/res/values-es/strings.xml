@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Roadbook strings (Spanish, used for every Spanish locale). Every key in values/strings.xml must exist here. -->
+<resources>
+    <!-- Drawing: shown in place of a symbol the app cannot draw, when its name does not fit. -->
+    <string name="roadbook_symbol_unknown">?</string>
+
+    <!-- Waypoint -->
+    <string name="roadbook_waypoint_action_set_partial">Poner el parcial de esta viñeta</string>
+
+    <!-- Screen -->
+    <string name="roadbook_empty">No hay ningún roadbook cargado</string>
+    <string name="roadbook_unreadable">No se puede leer el roadbook guardado. Vuelve a importarlo.</string>
+    <string name="roadbook_action_import">Importar roadbook</string>
+    <string name="roadbook_import_failed_unreadable">No se puede leer el archivo.</string>
+    <string name="roadbook_import_failed_malformed">El archivo no es un roadbook válido.</string>
+    <string name="roadbook_import_failed_no_waypoints">El roadbook no tiene viñetas.</string>
+    <string name="roadbook_import_failed_not_saved">No se puede guardar el roadbook en este dispositivo.</string>
+</resources>

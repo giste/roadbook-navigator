@@ -1,0 +1,121 @@
+{
+  "version": 1,
+  "roadbook": {
+    "name": "Stage 1",
+    "description": "Loop around the dunes",
+    "startLocation": "Bivouac",
+    "endLocation": "Finish",
+    "waypoints": [
+      {
+        "number": 1,
+        "latitude": 37.125,
+        "longitude": -2.5,
+        "altitudeMeters": 512.5,
+        "partialMeters": 0.0,
+        "distanceFromPreviousMeters": 0.0,
+        "resetsPartial": false,
+        "dangerLevel": "NONE",
+        "tulip": [
+          {
+            "type": "track",
+            "roadIn": {
+              "start": { "x": 0.0, "y": 35.0 },
+              "end": null,
+              "roadType": "TRACK",
+              "handles": []
+            },
+            "roadOut": {
+              "start": null,
+              "end": { "x": 75.0, "y": -12.5 },
+              "roadType": "TARMAC_ROAD",
+              "handles": [
+                { "x": 10.0, "y": -5.0 },
+                { "x": 40.0, "y": -10.0 }
+              ]
+            }
+          },
+          {
+            "type": "road",
+            "start": null,
+            "end": { "x": -60.0, "y": 0.0 },
+            "roadType": "OFF_TRACK",
+            "handles": []
+          },
+          {
+            "type": "icon",
+            "iconType": "ROUNDABOUT",
+            "width": 35.67,
+            "height": 50.0,
+            "center": { "x": -20.0, "y": 15.5 },
+            "angle": 90,
+            "scaleX": -1.0,
+            "scaleY": 1.5,
+            "originalId": null,
+            "originalName": null
+          },
+          {
+            "type": "text",
+            "text": "CAP 120",
+            "fontSize": 22,
+            "lineHeight": 1.2,
+            "width": 80.0,
+            "height": 24.0,
+            "maxWidth": 180.0,
+            "maxHeight": 100.0,
+            "center": { "x": 30.0, "y": 40.0 }
+          }
+        ],
+        "notes": [
+          {
+            "type": "icon",
+            "iconType": "UNKNOWN",
+            "width": 50.0,
+            "height": 50.0,
+            "center": { "x": 0.0, "y": 0.0 },
+            "angle": 0,
+            "scaleX": 1.0,
+            "scaleY": 1.0,
+            "originalId": "x-42",
+            "originalName": "Camel"
+          }
+        ]
+      },
+      {
+        "number": 2,
+        "latitude": 37.13,
+        "longitude": -2.49,
+        "altitudeMeters": null,
+        "partialMeters": 1234.567,
+        "distanceFromPreviousMeters": 1234.567,
+        "resetsPartial": true,
+        "dangerLevel": "HIGH",
+        "tulip": [],
+        "notes": [
+          {
+            "type": "icon",
+            "iconType": "RESET_PARTIAL",
+            "width": 50.0,
+            "height": 50.0,
+            "center": { "x": 0.0, "y": -20.0 },
+            "angle": 0,
+            "scaleX": 1.0,
+            "scaleY": 1.0,
+            "originalId": null,
+            "originalName": null
+          },
+          {
+            "type": "text",
+            "text": "",
+            "fontSize": 18,
+            "lineHeight": 1.0,
+            "width": 0.0,
+            "height": 0.0,
+            "maxWidth": 180.0,
+            "maxHeight": 100.0,
+            "center": { "x": 0.0, "y": 30.0 }
+          }
+        ]
+      }
+    ]
+  }
+}

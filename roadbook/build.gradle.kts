@@ -1,0 +1,86 @@
+plugins {
+    alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.compose)
+    // Generates the serializers of the .rn2 file DTOs and of the persisted roadbook.
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt.android)
+}
+
+android {
+    // :roadbook is a reusable module, so its namespace is dev.giste.<module> (AGENTS.md §4.1).
+    namespace = "dev.giste.roadbook"
+    compileSdk {
+        version = release(37)
+    }
+
+    defaultConfig {
+        minSdk = 33
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    // Every resource in this module must start with "roadbook_" (AGENTS.md §8).
+    resourcePrefix = "roadbook_"
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+    testOptions {
+        // Robolectric needs the merged resources to resolve strings in Compose UI tests.
+        unitTests.isIncludeAndroidResources = true
+    }
+    buildFeatures {
+        // :roadbook draws the waypoints and moderators of the roadbook.
+        compose = true
+    }
+}
+
+kotlin {
+    // Library modules must declare visibility explicitly (AGENTS.md §2, rule 4).
+    explicitApi()
+}
+
+dependencies {
+    // :roadbook is a reusable feature module: it depends only on the reusable :core and :geo
+    // (AGENTS.md §4 and §4.1).
+    implementation(project(":core"))
+    // The public API will expose :geo value objects (Distance, …), so consumers need it too.
+    api(project(":geo"))
+
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    // The public API will expose roadbook events and the partial distance input as Flows, so
+    // consumers need coroutines too.
+    api(libs.kotlinx.coroutines.core)
+    // Parses .rn2 roadbook files, which are JSON.
+    implementation(libs.kotlinx.serialization.json)
+    // Persists the imported roadbook (AGENTS.md §7). It brings the typed DataStore with it, which
+    // the roadbook file uses: the catalog has no separate entry for it.
+    implementation(libs.androidx.datastore.preferences)
+
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    // hiltViewModel(), to get the roadbook screen's ViewModel from Hilt in a composable.
+    implementation(libs.androidx.hilt.lifecycle.viewmodel.compose)
+    // The system file picker, to import roadbooks from the screen.
+    implementation(libs.androidx.activity.compose)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
+    // Runs the ContentResolver-based roadbook source, and the Compose UI tests, on the JVM.
+    testImplementation(libs.robolectric)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.androidx.junit)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
+    debugImplementation(libs.androidx.compose.ui.tooling)
+}

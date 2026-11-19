@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Roadbook strings (English, default). -->
+<resources>
+    <!-- Drawing: shown in place of a symbol the app cannot draw, when its name does not fit. -->
+    <string name="roadbook_symbol_unknown">?</string>
+
+    <!-- Waypoint: what accessibility services say a long press on the distances of a waypoint does. -->
+    <string name="roadbook_waypoint_action_set_partial">Set the partial to this waypoint</string>
+
+    <!-- Screen: shown when no roadbook has been imported yet. -->
+    <string name="roadbook_empty">No roadbook loaded</string>
+    <!-- Screen: shown when the saved roadbook cannot be read back (e.g. after an update). -->
+    <string name="roadbook_unreadable">The saved roadbook can\'t be read. Import it again.</string>
+    <!-- Screen: button that opens the file picker to import a roadbook. -->
+    <string name="roadbook_action_import">Import roadbook</string>
+    <!-- Screen: shown when the picked file can't be opened or read. -->
+    <string name="roadbook_import_failed_unreadable">The file can\'t be read.</string>
+    <!-- Screen: shown when the picked file is not a valid roadbook. -->
+    <string name="roadbook_import_failed_malformed">The file is not a valid roadbook.</string>
+    <!-- Screen: shown when the picked roadbook has no waypoints to show. -->
+    <string name="roadbook_import_failed_no_waypoints">The roadbook has no waypoints.</string>
+    <!-- Screen: shown when the roadbook can't be saved on the device, e.g. because it is full. -->
+    <string name="roadbook_import_failed_not_saved">The roadbook can\'t be saved on this device.</string>
+</resources>
