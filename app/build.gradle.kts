@@ -41,6 +41,7 @@ android {
 dependencies {
     implementation(project(":core"))
     implementation(project(":location"))
+    implementation(project(":roadbook"))
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
