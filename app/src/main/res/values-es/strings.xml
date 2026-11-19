@@ -9,4 +9,9 @@
     <string name="app_permission_location_message">Roadbook Navigator usa tu ubicación precisa para medir distancias y centrar el mapa. Solo se usa mientras la aplicación está abierta y la pantalla encendida.</string>
     <string name="app_permission_location_rationale">Sin la ubicación precisa, el cuentakilómetros no puede medir distancias. Cuando se te pregunte, elige \"Precisa\" y \"Mientras se usa la aplicación\".</string>
     <string name="app_permission_location_permanently_denied_message">El acceso a la ubicación está desactivado. Abre los ajustes, ve a Permisos, Ubicación, elige \"Permitir solo mientras se usa la aplicación\" y activa \"Usar ubicación precisa\".</string>
+    <!-- Odometer on the dashboard -->
+    <string name="app_odometer_partial">Parcial</string>
+    <string name="app_odometer_total">Total</string>
+    <!-- Shown instead of a distance until it is read from storage -->
+    <string name="app_odometer_value_loading">–</string>
 </resources>

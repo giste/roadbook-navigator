@@ -28,7 +28,7 @@ import androidx.compose.ui.Modifier
 import dagger.hilt.android.AndroidEntryPoint
 import dev.giste.core.permission.PermissionGate
 import dev.giste.core.ui.theme.GisteTheme
-import dev.giste.roadbook.RoadbookViewer
+import dev.giste.roadbooknavigator.dashboard.Dashboard
 import dev.giste.roadbooknavigator.permission.PreciseLocationPermission
 
 /**
@@ -44,12 +44,7 @@ class MainActivity : ComponentActivity() {
                 // Every screen needs precise location, so the whole app waits behind the gate.
                 PermissionGate(permissions = listOf(PreciseLocationPermission)) {
                     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                        RoadbookViewer(
-                            // TODO: show the import button only when stopped. That rule needs the
-                            //  speed from :odometer, which is wired into :app in the next step.
-                            showImportButton = true,
-                            modifier = Modifier.fillMaxSize().padding(innerPadding),
-                        )
+                        Dashboard(modifier = Modifier.fillMaxSize().padding(innerPadding))
                     }
                 }
             }

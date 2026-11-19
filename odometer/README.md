@@ -53,8 +53,8 @@ Package `dev.giste.odometer`:
 
 ## Inputs and outputs
 
-- **Inputs:** an `OdometerLocationSource` and an `OdometerSettingsSource`, which the app must bind in `SingletonComponent`. Without them the Hilt graph does not compile as soon as something injects `OdometerController`. Commands through `OdometerController`, e.g. `:app` calls `resetTrip()` when `:roadbook` loads a new roadbook.
-- **Outputs:** `OdometerController.state`. In Roadbook Navigator, `:app` shows it and feeds the trip distance to `:roadbook` for waypoint auto-advance.
+- **Inputs:** an `OdometerLocationSource` and an `OdometerSettingsSource`, which the app must bind in `SingletonComponent`. Without them the Hilt graph does not compile as soon as something injects `OdometerController`. Commands through `OdometerController`, e.g. `:app` calls `resetAll()` when `:roadbook` loads a new roadbook, and `setTrip()` when the user sets the partial from a waypoint.
+- **Outputs:** `OdometerController.state`. In Roadbook Navigator, `:app` shows it on the dashboard (the trip as the partial), and will feed the trip distance to `:roadbook` for waypoint auto-advance. The dashboard collects it, so the odometer measures while the dashboard is shown.
 
 ## Settings
 
