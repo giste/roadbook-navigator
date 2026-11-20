@@ -28,27 +28,69 @@ class DistanceFormatTest {
 
     @Test
     fun formatKilometers_partialInEnglish_hasTwoDecimalsWithAPoint() {
-        assertEquals("12.35", Distance.meters(12_345.0).formatKilometers(PARTIAL_DECIMALS, Locale.US))
+        assertEquals("12.35", Distance.meters(12_345.0).formatKilometers(PARTIAL_DECIMALS, PARTIAL_INTEGER_DIGITS, Locale.US))
     }
 
     @Test
     fun formatKilometers_totalInSpanish_hasOneDecimalWithAComma() {
-        assertEquals("234,6", Distance.meters(234_567.0).formatKilometers(TOTAL_DECIMALS, spanish))
+        assertEquals("234,6", Distance.meters(234_567.0).formatKilometers(TOTAL_DECIMALS, TOTAL_INTEGER_DIGITS, spanish))
     }
 
     @Test
     fun formatKilometers_half_roundsUp() {
         // 1.255 is not exact in binary floating point: it must still round up.
-        assertEquals("1.26", Distance.meters(1_255.0).formatKilometers(2, Locale.US))
+        assertEquals("1.26", Distance.meters(1_255.0).formatKilometers(2, 3, Locale.US))
     }
 
     @Test
     fun formatKilometers_zero_keepsTheDecimals() {
-        assertEquals("0.00", Distance.ZERO.formatKilometers(2, Locale.US))
+        assertEquals("0.00", Distance.ZERO.formatKilometers(2, 3, Locale.US))
     }
 
     @Test
-    fun formatKilometers_thousandsOfKilometers_hasNoGrouping() {
-        assertEquals("1234,6", Distance.meters(1_234_567.0).formatKilometers(1, spanish))
+    fun formatKilometers_thousandsInEnglish_groupsWithAComma() {
+        assertEquals("1,234.6", Distance.meters(1_234_567.0).formatKilometers(1, 4, Locale.US))
+    }
+
+    @Test
+    fun formatKilometers_thousandsInSpanish_groupsWithAPoint() {
+        assertEquals("1.234,6", Distance.meters(1_234_567.0).formatKilometers(1, 4, spanish))
+    }
+
+    @Test
+    fun formatKilometers_largestValue_isShownAsIs() {
+        assertEquals("999.99", Distance.meters(999_990.0).formatKilometers(2, 3, Locale.US))
+    }
+
+    @Test
+    fun formatKilometers_partialAboveItsLargestValue_isCapped() {
+        assertEquals(
+            "999.99",
+            Distance.meters(1_234_567.0).formatKilometers(PARTIAL_DECIMALS, PARTIAL_INTEGER_DIGITS, Locale.US),
+        )
+    }
+
+    @Test
+    fun formatKilometers_totalAboveItsLargestValue_isCapped() {
+        assertEquals(
+            "9.999,9",
+            Distance.meters(12_345_678.0).formatKilometers(TOTAL_DECIMALS, TOTAL_INTEGER_DIGITS, spanish),
+        )
+    }
+
+    @Test
+    fun formatKilometers_roundsUpPastTheLargestValue_isCapped() {
+        // 999.996 km rounds to 1000.00, which has one digit too many.
+        assertEquals("999.99", Distance.meters(999_996.0).formatKilometers(2, 3, Locale.US))
+    }
+
+    @Test
+    fun maxKilometersText_partialInEnglish_isAllNinesWithAPoint() {
+        assertEquals("999.99", maxKilometersText(PARTIAL_DECIMALS, PARTIAL_INTEGER_DIGITS, Locale.US))
+    }
+
+    @Test
+    fun maxKilometersText_totalInSpanish_isAllNinesWithAComma() {
+        assertEquals("9.999,9", maxKilometersText(TOTAL_DECIMALS, TOTAL_INTEGER_DIGITS, spanish))
     }
 }

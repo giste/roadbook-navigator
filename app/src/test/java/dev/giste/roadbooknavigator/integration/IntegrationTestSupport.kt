@@ -22,6 +22,7 @@ import android.location.LocationManager
 import android.net.Uri
 import android.os.Looper
 import android.os.SystemClock
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import dev.giste.roadbook.ImportRoadbookResult
@@ -52,7 +53,7 @@ fun RoadbookController.importExample() {
 /** Waits until the partial reading on the dashboard shows [value], e.g. `"0.11"`. */
 fun ComposeTestRule.awaitPartial(value: String) {
     waitUntil(TIMEOUT_MILLIS) {
-        onAllNodes(hasText("Partial") and hasText(value)).fetchSemanticsNodes().isNotEmpty()
+        onAllNodes(hasContentDescription("Partial") and hasText(value)).fetchSemanticsNodes().isNotEmpty()
     }
 }
 

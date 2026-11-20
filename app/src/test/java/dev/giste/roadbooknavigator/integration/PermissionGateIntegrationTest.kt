@@ -18,6 +18,7 @@
 package dev.giste.roadbooknavigator.integration
 
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
@@ -44,6 +45,6 @@ class PermissionGateIntegrationTest {
     @Test
     fun launch_locationNotGranted_showsTheGateInsteadOfTheDashboard() {
         composeRule.onNodeWithText("Precise location needed").assertExists()
-        composeRule.onNodeWithText("Partial").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("Partial").assertDoesNotExist()
     }
 }
