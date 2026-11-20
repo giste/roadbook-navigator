@@ -66,7 +66,7 @@ Package `dev.giste.core.ui.component`:
 
 | Type | Purpose |
 |---|---|
-| `AutoSizeText(text, color, modifier, style, fontWeight, textAlign)` | One line of text that grows or shrinks (8 sp to 100 sp) to fill the box its `modifier` gives it, with tabular digits. For values that must be read at a glance, such as distances. Too long text is clipped, never wrapped. `textAlign` defaults to centered. |
+| `AutoSizeText(text, color, modifier, style, fontWeight, textAlign, widestText)` | One line of text that grows or shrinks (8 sp to 100 sp) to fill the box its `modifier` gives it, with tabular digits. For values that must be read at a glance, such as distances. Too long text is clipped, never wrapped. `textAlign` defaults to centered. With `widestText` (e.g. `999.99`), the size is computed for that text instead, so it stays the same for every value that is not wider. |
 
 Package `dev.giste.core.permission`:
 
@@ -129,6 +129,7 @@ None.
 - **Shared only when reused.** A composable moves here when a second module needs it. `AutoSizeText` came from `:roadbook`, which uses it for waypoint distances, because the app's odometer needs the same behavior.
 - **`AutoSizeText` clears the line height** of the given style. A fixed line height, as the Material styles have (44 sp for `displaySmall`), is taller than small boxes at any font size, so auto-size would always fall back to the smallest one.
 - **Tabular digits.** Every digit has the same width, so a changing number keeps its width and does not jump.
+- **Optional fixed size.** By default the size follows the text, so a number shrinks when it gains a digit. `widestText` sizes it for its widest value instead, so the digits keep their size as the value changes. Compose's `TextAutoSize` cannot do this, because it always measures the text it draws, so `AutoSizeText` measures `widestText` itself with a `TextMeasurer` (a binary search over the same 8 sp to 100 sp range and 0.25 sp steps) and draws the text at that fixed size.
 - **Fixed limits.** 8 sp is the smallest size that stays legible, and 100 sp is enough for the largest boxes on a tablet. They are not parameters until a caller needs other values.
 
 ### Permissions
