@@ -32,7 +32,7 @@ dev/giste/core/
 └── ui/
     ├── theme/      GisteTheme, Dimensions   ← public API
     │   └── presentation/  BeerColorScheme, LocalDimensions, previews
-    └── component/  (planned) common composables
+    └── component/  AutoSizeText   ← public API
 ```
 
 Capabilities use each other only through their public API. Kotlin's `internal` is module-wide, so this is enforced by review, not by the compiler.
@@ -61,6 +61,12 @@ Package `dev.giste.core.ui.theme`:
 | `GisteTheme(darkTheme) { … }` | Material 3 theme with the beer palette. Wrap every screen and `@Preview` in it. `darkTheme` defaults to the system setting. |
 | `GisteTheme.dimensions` | The current `Dimensions`. Read colors and typography through `MaterialTheme`. |
 | `Dimensions` | Spacing tokens (`spacingExtraSmall` 4 dp … `spacingExtraLarge` 32 dp) and `minTouchTarget` (56 dp). Only the theme creates it. |
+
+Package `dev.giste.core.ui.component`:
+
+| Type | Purpose |
+|---|---|
+| `AutoSizeText(text, color, modifier, style, fontWeight, textAlign)` | One line of text that grows or shrinks (8 sp to 100 sp) to fill the box its `modifier` gives it, with tabular digits. For values that must be read at a glance, such as distances. Too long text is clipped, never wrapped. `textAlign` defaults to centered. |
 
 Package `dev.giste.core.permission`:
 
@@ -118,6 +124,13 @@ None.
 - **Glove-friendly touch targets.** `minTouchTarget` is 56 dp, above the Material 48 dp minimum, because the app is used while driving.
 - **Layout.** The color schemes and `LocalDimensions` are `internal`, so they live in `ui/theme/presentation/`. The root package only holds the public theme API.
 
+### Common components
+
+- **Shared only when reused.** A composable moves here when a second module needs it. `AutoSizeText` came from `:roadbook`, which uses it for waypoint distances, because the app's odometer needs the same behavior.
+- **`AutoSizeText` clears the line height** of the given style. A fixed line height, as the Material styles have (44 sp for `displaySmall`), is taller than small boxes at any font size, so auto-size would always fall back to the smallest one.
+- **Tabular digits.** Every digit has the same width, so a changing number keeps its width and does not jump.
+- **Fixed limits.** 8 sp is the smallest size that stays legible, and 100 sp is enough for the largest boxes on a tablet. They are not parameters until a caller needs other values.
+
 ### Permissions
 
 - **Permission agnostic.** `:core` knows no permission in particular. Each `RequiredPermission` carries its manifest permissions and its texts, and the module that needs it defines it and declares the manifest permissions. Precise location, for example, is defined in `:app` (until `:location` exists) as `required = {FINE}`, `requested = {FINE, COARSE}`, so approximate location alone keeps the gate closed.
@@ -134,4 +147,5 @@ None.
 - **AutomaticTagTree:** `callerTag` is tested with synthetic stack traces. The `stackTrace` constructor parameter lets tests drive `createStackElementTag` without depending on the real JUnit stack.
 - **Coroutines:** `CoroutinesModuleTest` calls the `provide*` functions directly instead of going through Hilt. It builds the application scope on a `StandardTestDispatcher` and checks that a failing child leaves the scope and its siblings running.
 - **Theme:** `BeerColorSchemeTest` (JVM) checks scheme selection, the WCAG AA contrast of every content/background pair, a minimum CIELAB distance between each brand color and its error counterpart, and that no role is left at its Material default, in both schemes. A palette change that hurts readability or reintroduces a lookalike or a leaking default fails the build. `GisteThemeTest` (`androidTest`) checks that the composable provides the right scheme and the dimensions. It needs a device or emulator.
+- **Common components:** `AutoSizeTextTest` runs on the JVM with Robolectric and `@GraphicsMode(NATIVE)`. The default graphics mode returns the same text size for any font size, so auto-size could not be observed. Auto-size does not report the font size it picks, so the tests compare the line height of the shown text with a `TextMeasurer` reference at 8 sp and 100 sp. Robolectric runs on SDK 35 (`src/test/resources/robolectric.properties`), since it does not support compileSdk 37 yet.
 - **Permissions:** `PermissionStatusTest`, `RequiredPermissionTest`, `PendingPermissionTest` and `PermissionGateStateTest` (JVM) cover the resolver, the `RequiredPermission` invariants, the message per status and every state transition, using `FakePermissionChecker` and the sample permissions in `TestPermissions` (in `src/test`). `PermissionScreenTest` and `PermissionGateContentTest` (`androidTest`) cover every screen state, every button, the text resolution and the content switch. The instrumented tests use test-only strings (`src/androidTest/res`) and declare the location permissions in `src/androidTest/AndroidManifest.xml`, since `:core` itself declares none. `PermissionGateTest` and `ActivityPermissionCheckerTest` (`androidTest`) run the real gate and checker with location granted through `UiAutomation`. Revoking a runtime permission kills the app process and would stop the instrumentation, so the denied paths are covered by the stateless and JVM tests. Note that AGP installs connected-test APKs with every runtime permission granted.
