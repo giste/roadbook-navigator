@@ -42,7 +42,7 @@ dev/giste/roadbook/
 │   ├── theme/      RoadbookColors, FIA_ROADBOOK_COLORS, roadbookColors, RoadbookTheme
 │   ├── drawing/    CanvasGeometry (pure), ElementDrawing, TulipCanvas + NotesCanvas,
 │   │               ElementCanvasPreview
-│   ├── waypoint/   WaypointItem, DistanceSection, AutoSizeText, formatKilometers,
+│   ├── waypoint/   WaypointItem, DistanceSection, formatKilometers,
 │   │               WaypointItemPreview
 │   └── icon/       IconColors + FixedIconColors, IconType.toImageVector + rememberIconVector,
 │       │           IconGalleryPreview
@@ -180,7 +180,7 @@ A waypoint whose distance from the previous one is shorter than the threshold is
 - **Three layers.** The backgrounds (with the short-distance highlight behind the distances), then the border, then the content, as in the previous app, so the thick red border of danger level 3 does not hide distances or drawings.
 - **"Comes soon" is a domain rule.** `Waypoint.comesSoonAfterPrevious(threshold)` is true for a distance from the previous waypoint above zero and below the threshold, so the first waypoint is never highlighted.
 - **Distances are formatted for the locale,** with two decimals, no unit and no grouping (`1.25`, `1,25` in Spanish). Halves round up, from the exact decimal value of the meters (`BigDecimal`), so 1,255 m is `1.26` as with the previous app's `%.2f`.
-- **Auto-sized text clears the line height** of the Material styles. A fixed line height (44 sp for `displaySmall`) is taller than the small boxes at any font size, so auto-size would always fall back to the smallest one. Digits are tabular, so distances do not jump.
+- **Distances and waypoint numbers use `:core`'s `AutoSizeText`**, so they are as large as their box allows, with tabular digits that do not jump. It clears the line height of the Material styles, which would otherwise force the smallest size in small boxes (see the `:core` README).
 - **Only a long press does something.** It sets the partial to `Waypoint.partialToSet` (zero at a waypoint that resets it), with haptic feedback; a tap does nothing, since riders touch the screen by accident. Only the distances react, as in the previous app.
 - **Minimal accessibility, on purpose.** The app is used while riding, which needs sight, so a full screen reader description of each waypoint would add strings and tests for users the app cannot really serve: the tulips and notes, which hold the instructions, are drawings. The distances are one element, read as their visible figures, and the long press has a translated label, which Switch Access, Voice Access and Android's accessibility checks also use. Describing tulips would matter more than describing distances, if a fuller description is ever wanted (e.g. to review a roadbook before an event).
 - **Fixed sizes:** `ROADBOOK_LINE_WIDTH` (1 dp, the lines of the roadbook) and `HIGH_DANGER_BORDER_WIDTH` (8 dp). Spacing comes from `GisteTheme.dimensions`. The previous app's public `RoadbookDimensions`, with compact and expanded variants, are gone: there is one size, until a larger layout needs another.
