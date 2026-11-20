@@ -17,25 +17,36 @@
 
 package dev.giste.core.ui.component
 
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 
 /** Font feature that gives every digit the same width, so numbers do not jump as they change. */
 private const val TABULAR_FIGURES: String = "tnum"
 
-/** The smallest the text may shrink to fit its box. */
-private val MIN_FONT_SIZE = 8.sp
+/** The smallest the text may shrink to fit its box, in sp. */
+private const val MIN_FONT_SIZE_SP: Float = 8f
 
-/** The largest the text may grow to fill its box. */
-private val MAX_FONT_SIZE = 100.sp
+/** The largest the text may grow to fill its box, in sp. */
+private const val MAX_FONT_SIZE_SP: Float = 100f
+
+/** The difference between two font sizes tried, in sp, as in Compose's step-based auto-size. */
+private const val FONT_SIZE_STEP_SP: Float = 0.25f
 
 /**
  * A single line of text that grows or shrinks to fill its box, with digits of equal width.
@@ -49,6 +60,12 @@ private val MAX_FONT_SIZE = 100.sp
  * Digits use tabular figures (the `tnum` font feature), so a changing number keeps its width and
  * does not jump.
  *
+ * By default the font size depends on [text], so it changes when the text gets longer or shorter
+ * (e.g. from `9.99` to `10.00`). Give [widestText] to keep it fixed: the size is then the largest
+ * at which [widestText] fits, and every text that is not wider is drawn at that same size. For a
+ * number, the widest text is its largest value (e.g. `999.99`), because tabular digits all have
+ * the same width. A text wider than [widestText] is clipped.
+ *
  * The box comes from [modifier]: give the text a bounded size (e.g. `fillMaxSize()` or `weight()`
  * in a bounded parent). With unbounded constraints the text takes the largest size.
  *
@@ -59,6 +76,8 @@ private val MAX_FONT_SIZE = 100.sp
  * by the font's own, which scales with the size.
  * @param fontWeight the weight, e.g. bold to highlight a value. `null` keeps the one in [style].
  * @param textAlign how the text is aligned in its box.
+ * @param widestText the text the font size is computed for, instead of [text], or `null` to
+ * compute it for [text] itself.
  */
 @Composable
 public fun AutoSizeText(
@@ -68,20 +87,86 @@ public fun AutoSizeText(
     style: TextStyle = TextStyle.Default,
     fontWeight: FontWeight? = null,
     textAlign: TextAlign = TextAlign.Center,
+    widestText: String? = null,
 ) {
-    Text(
-        text = text,
-        modifier = modifier,
-        // A fixed line height, as the Material styles have, would be taller than small boxes at any
-        // font size, so auto-size would always fall back to the smallest one.
-        style = style.copy(lineHeight = TextUnit.Unspecified).merge(
-            color = color,
-            fontWeight = fontWeight,
-            textAlign = textAlign,
-            fontFeatureSettings = TABULAR_FIGURES,
-        ),
-        autoSize = TextAutoSize.StepBased(minFontSize = MIN_FONT_SIZE, maxFontSize = MAX_FONT_SIZE),
-        maxLines = 1,
-        softWrap = false,
+    // A fixed line height, as the Material styles have, would be taller than small boxes at any
+    // font size, so auto-size would always fall back to the smallest one.
+    val textStyle = style.copy(lineHeight = TextUnit.Unspecified).merge(
+        color = color,
+        fontWeight = fontWeight,
+        textAlign = textAlign,
+        fontFeatureSettings = TABULAR_FIGURES,
     )
+    if (widestText == null) {
+        Text(
+            text = text,
+            modifier = modifier,
+            style = textStyle,
+            autoSize = TextAutoSize.StepBased(
+                minFontSize = MIN_FONT_SIZE_SP.sp,
+                maxFontSize = MAX_FONT_SIZE_SP.sp,
+                stepSize = FONT_SIZE_STEP_SP.sp,
+            ),
+            maxLines = 1,
+            softWrap = false,
+        )
+    } else {
+        // Compose's auto-size always measures the text it draws, so the size for widestText is
+        // computed here, for the box the modifier gives, and the text is drawn at that fixed size.
+        BoxWithConstraints(modifier = modifier) {
+            val measurer = rememberTextMeasurer()
+            // Text merges its style into LocalTextStyle, so measure with the same merged style.
+            val measuredStyle = LocalTextStyle.current.merge(textStyle)
+            val fontSize = remember(measurer, widestText, measuredStyle, constraints) {
+                measurer.largestFittingFontSize(widestText, measuredStyle, constraints)
+            }
+            Text(
+                text = text,
+                modifier = Modifier.fillMaxSize(),
+                style = textStyle.copy(fontSize = fontSize),
+                maxLines = 1,
+                softWrap = false,
+            )
+        }
+    }
+}
+
+/**
+ * The largest font size, between [MIN_FONT_SIZE_SP] and [MAX_FONT_SIZE_SP] in steps of
+ * [FONT_SIZE_STEP_SP], at which [text] fits [constraints] on one line, or the smallest one if it
+ * never fits.
+ *
+ * Fitting is monotonic (a text that fits at one size fits at every smaller one), so this is a
+ * binary search over the step index: about 9 measurements for the 369 sizes. Unbounded
+ * constraints never overflow, so they give the largest size.
+ *
+ * @param text the text to fit.
+ * @param style the style the text is drawn with. Its font size is ignored.
+ * @param constraints the box the text must fit.
+ * @return the font size, in sp.
+ */
+private fun TextMeasurer.largestFittingFontSize(
+    text: String,
+    style: TextStyle,
+    constraints: Constraints,
+): TextUnit {
+    val box = Constraints(maxWidth = constraints.maxWidth, maxHeight = constraints.maxHeight)
+    fun sizeAt(step: Int): Float = MIN_FONT_SIZE_SP + step * FONT_SIZE_STEP_SP
+    fun fitsAt(step: Int): Boolean = !measure(
+        text = text,
+        style = style.copy(fontSize = sizeAt(step).sp),
+        overflow = TextOverflow.Clip,
+        softWrap = false,
+        maxLines = 1,
+        constraints = box,
+    ).hasVisualOverflow
+
+    // Invariant: every step up to `low` fits (or `low` is 0), and no step above `high` fits.
+    var low = 0
+    var high = ((MAX_FONT_SIZE_SP - MIN_FONT_SIZE_SP) / FONT_SIZE_STEP_SP).toInt()
+    while (low < high) {
+        val middle = (low + high + 1) / 2
+        if (fitsAt(middle)) low = middle else high = middle - 1
+    }
+    return sizeAt(low).sp
 }

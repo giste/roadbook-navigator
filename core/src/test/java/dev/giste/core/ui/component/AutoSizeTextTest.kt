@@ -17,6 +17,7 @@
 
 package dev.giste.core.ui.component
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,7 +59,7 @@ class AutoSizeTextTest {
     /** Measures reference text at known font sizes, with the density of the test screen. */
     private lateinit var measurer: TextMeasurer
 
-    /** Shows [text] in a box of [width] × [height], with the given style arguments. */
+    /** Shows [text] in a box of [width] × [height], with the given style and sizing arguments. */
     private fun show(
         text: String,
         width: Dp = 200.dp,
@@ -66,6 +67,7 @@ class AutoSizeTextTest {
         style: TextStyle = TextStyle.Default,
         fontWeight: FontWeight? = null,
         textAlign: TextAlign? = null,
+        widestText: String? = null,
     ) {
         rule.setContent {
             measurer = rememberTextMeasurer()
@@ -76,6 +78,7 @@ class AutoSizeTextTest {
                     modifier = Modifier.size(width, height),
                     style = style,
                     fontWeight = fontWeight,
+                    widestText = widestText,
                 )
             } else {
                 AutoSizeText(
@@ -85,6 +88,7 @@ class AutoSizeTextTest {
                     style = style,
                     fontWeight = fontWeight,
                     textAlign = textAlign,
+                    widestText = widestText,
                 )
             }
         }
@@ -216,5 +220,71 @@ class AutoSizeTextTest {
         show("12,34", width = 200.dp, height = 30.dp, style = TextStyle(lineHeight = 44.sp))
 
         assertTrue(shownLineHeight("12,34") > lineHeightAt("12,34", 8.sp))
+    }
+
+    // In a box this narrow, "999,99" is limited by the width and "1" only by the height.
+    private val WIDTH_LIMITED_BOX_WIDTH = 60.dp
+
+    @Test
+    fun autoSizeText_widestTextGiven_usesTheWidestTextSize() {
+        rule.setContent {
+            Column {
+                AutoSizeText(text = "999,99", color = Color.Red, modifier = Modifier.size(WIDTH_LIMITED_BOX_WIDTH, 40.dp))
+                AutoSizeText(
+                    text = "1",
+                    color = Color.Red,
+                    modifier = Modifier.size(WIDTH_LIMITED_BOX_WIDTH, 40.dp),
+                    widestText = "999,99",
+                )
+            }
+        }
+
+        assertEquals(shownLineHeight("999,99"), shownLineHeight("1"))
+    }
+
+    @Test
+    fun autoSizeText_widestTextGiven_isSmallerThanTheTextAlone() {
+        rule.setContent {
+            measurer = rememberTextMeasurer()
+            Column {
+                AutoSizeText(text = "1", color = Color.Red, modifier = Modifier.size(WIDTH_LIMITED_BOX_WIDTH, 40.dp))
+                AutoSizeText(
+                    text = "2",
+                    color = Color.Red,
+                    modifier = Modifier.size(WIDTH_LIMITED_BOX_WIDTH, 40.dp),
+                    widestText = "999,99",
+                )
+            }
+        }
+
+        val alone = shownLineHeight("1")
+        val sizedForWidest = shownLineHeight("2")
+        assertTrue("$sizedForWidest px is not smaller than $alone px", sizedForWidest < alone)
+    }
+
+    @Test
+    fun autoSizeText_widestTextGivenAndTextGrows_keepsFontSize() {
+        var text by mutableStateOf("1")
+        rule.setContent {
+            AutoSizeText(
+                text = text,
+                color = Color.Red,
+                modifier = Modifier.size(WIDTH_LIMITED_BOX_WIDTH, 40.dp),
+                widestText = "999,99",
+            )
+        }
+        val shortTextSize = shownLineHeight("1")
+
+        text = "999,99"
+        rule.waitForIdle()
+
+        assertEquals(shortTextSize, shownLineHeight("999,99"))
+    }
+
+    @Test
+    fun autoSizeText_textWiderThanWidestText_staysOnOneLine() {
+        show("1234567890", width = 120.dp, height = 40.dp, widestText = "1")
+
+        assertEquals(1, layoutOf("1234567890").lineCount)
     }
 }
