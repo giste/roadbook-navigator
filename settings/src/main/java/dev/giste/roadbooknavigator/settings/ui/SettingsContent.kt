@@ -324,6 +324,12 @@ private fun RoadbookStyle.label(): String = stringResource(
 /** Samsung Galaxy Tab Active3 in landscape: 1920 × 1200 px at 240 dpi. */
 private const val TAB_ACTIVE3_LANDSCAPE = "spec:width=1280dp,height=800dp,dpi=240"
 
+/**
+ * The app makes every text 1.25 times the Material size (its `RiderTypography`), which this
+ * module cannot see, so the previews scale the text by the same factor to look as on the device.
+ */
+private const val APP_FONT_SCALE = 1.25f
+
 /** A typical phone in portrait. */
 private const val PHONE_PORTRAIT = "spec:width=411dp,height=891dp,dpi=420"
 
@@ -363,23 +369,23 @@ private fun SettingsPreview(state: SettingsUiState) {
     }
 }
 
-@Preview(name = "Phone, defaults, light", device = PHONE_PORTRAIT, uiMode = Configuration.UI_MODE_NIGHT_NO)
-@Preview(name = "Phone, defaults, dark", device = PHONE_PORTRAIT, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Preview(name = "Tab Active3, defaults, light", device = TAB_ACTIVE3_LANDSCAPE, uiMode = Configuration.UI_MODE_NIGHT_NO)
+@Preview(name = "Phone, defaults, light", device = PHONE_PORTRAIT, uiMode = Configuration.UI_MODE_NIGHT_NO, fontScale = APP_FONT_SCALE)
+@Preview(name = "Phone, defaults, dark", device = PHONE_PORTRAIT, uiMode = Configuration.UI_MODE_NIGHT_YES, fontScale = APP_FONT_SCALE)
+@Preview(name = "Tab Active3, defaults, light", device = TAB_ACTIVE3_LANDSCAPE, uiMode = Configuration.UI_MODE_NIGHT_NO, fontScale = APP_FONT_SCALE)
 @Composable
 private fun SettingsDefaultsPreview() {
     SettingsPreview(DEFAULTS)
 }
 
-@Preview(name = "Phone, changed, light", device = PHONE_PORTRAIT, uiMode = Configuration.UI_MODE_NIGHT_NO)
-@Preview(name = "Phone, changed, dark", device = PHONE_PORTRAIT, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(name = "Phone, changed, light", device = PHONE_PORTRAIT, uiMode = Configuration.UI_MODE_NIGHT_NO, fontScale = APP_FONT_SCALE)
+@Preview(name = "Phone, changed, dark", device = PHONE_PORTRAIT, uiMode = Configuration.UI_MODE_NIGHT_YES, fontScale = APP_FONT_SCALE)
 @Composable
 private fun SettingsChangedPreview() {
     SettingsPreview(CHANGED)
 }
 
-@Preview(name = "Phone, loading, light", device = PHONE_PORTRAIT, uiMode = Configuration.UI_MODE_NIGHT_NO)
-@Preview(name = "Phone, loading, dark", device = PHONE_PORTRAIT, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(name = "Phone, loading, light", device = PHONE_PORTRAIT, uiMode = Configuration.UI_MODE_NIGHT_NO, fontScale = APP_FONT_SCALE)
+@Preview(name = "Phone, loading, dark", device = PHONE_PORTRAIT, uiMode = Configuration.UI_MODE_NIGHT_YES, fontScale = APP_FONT_SCALE)
 @Composable
 private fun SettingsLoadingPreview() {
     SettingsPreview(SettingsUiState.Loading)

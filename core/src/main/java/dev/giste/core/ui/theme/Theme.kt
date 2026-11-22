@@ -38,17 +38,21 @@ import dev.giste.core.ui.theme.ui.beerColorScheme
  *
  * @param darkTheme whether to use the dark (stout) color scheme instead of the light (foam)
  * one. Defaults to the system setting.
+ * @param typography the text styles. Defaults to the Material 3 ones. An app that needs other
+ * sizes, e.g. larger text for a screen read at arm's length, passes its own, so every screen,
+ * including those of other modules, uses them.
  * @param content the composable content the theme applies to.
  */
 @Composable
 public fun GisteTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    typography: Typography = Typography(),
     content: @Composable () -> Unit,
 ) {
     CompositionLocalProvider(LocalDimensions provides Dimensions()) {
         MaterialTheme(
             colorScheme = beerColorScheme(darkTheme),
-            typography = Typography(),
+            typography = typography,
             content = content,
         )
     }

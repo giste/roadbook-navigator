@@ -59,6 +59,7 @@ import dev.giste.core.ui.theme.GisteTheme
 import dev.giste.geo.Distance
 import dev.giste.roadbook.RoadbookViewer
 import dev.giste.roadbooknavigator.R
+import dev.giste.roadbooknavigator.ui.RiderTypography
 
 /** Landscape: share of the width taken by the side column (total, partial and map). */
 internal const val LANDSCAPE_SIDE_COLUMN_WEIGHT: Float = 0.3f
@@ -449,7 +450,8 @@ private val LARGEST_DISTANCES = DashboardUiState(
 /** The dashboard in [state], with placeholders instead of the roadbook and the map. */
 @Composable
 private fun DashboardPreview(state: DashboardUiState) {
-    GisteTheme {
+    // The app's text sizes, as on the device.
+    GisteTheme(typography = RiderTypography) {
         DashboardContent(
             state = state,
             onSetPartial = {},

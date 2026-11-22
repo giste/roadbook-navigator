@@ -17,7 +17,8 @@ It does **not** hold rules about one module's concept, such as how distance is m
 ```
 dev/giste/roadbooknavigator/
 ├── RoadbookNavigatorApplication, MainActivity
-├── ui/             AppNavHost (+ DashboardRoute, SettingsRoute), ThemeMode.isDarkTheme
+├── ui/             AppNavHost (+ DashboardRoute, SettingsRoute), ThemeMode.isDarkTheme,
+│                   RiderTypography
 │   └── dashboard/  Dashboard + DashboardContent + DashboardTestTags, DashboardViewModel,
 │                   DashboardUiState + OdometerUiState, SetPartialDialog, ResetAllDialog,
 │                   PartialInput (parser and numpad keys), DistanceFormat
@@ -53,7 +54,7 @@ The settings sources of `:location`, `:odometer` and `:roadbook` come from `:set
 
 ## Screens
 
-- **`MainActivity`** shows everything inside `GisteTheme` and `:core`'s `PermissionGate` with `PreciseLocationPermission`: every screen needs precise location, so nothing runs before it is granted. Approximate location keeps the gate closed, because it cannot measure distances. The theme follows `AppSettingsSource`: dark or light as the rider chose, or the system's (also until the settings are read).
+- **`MainActivity`** shows everything inside `GisteTheme` and `:core`'s `PermissionGate` with `PreciseLocationPermission`: every screen needs precise location, so nothing runs before it is granted. Approximate location keeps the gate closed, because it cannot measure distances. The theme follows `AppSettingsSource`: dark or light as the rider chose, or the system's (also until the settings are read). Its text uses `RiderTypography`.
 - **Navigation** (`AppNavHost`, Navigation Compose with type-safe routes): the dashboard is the start screen, and the settings open on top of it. Back, from the settings' back button or the system gesture, returns to the dashboard.
 - **Dashboard** (`ui/dashboard/`): the total, the partial, the map (a placeholder until `:map` exists) and `:roadbook`'s `RoadbookViewer`.
   - The layout follows the aspect ratio of the space it gets (`BoxWithConstraints`), not a window size class: landscape puts the distances and the map in a side column; portrait stacks distances, map and roadbook. The shares are the `LANDSCAPE_*` and `PORTRAIT_*` constants.
@@ -73,12 +74,13 @@ None. Each module persists its own state (AGENTS.md §7). The open dashboard dia
 ## Design decisions
 
 - **Rules stay small and on public APIs.** Coordinators and the ViewModel only call the modules' public APIs. A rule about one module's concept moved into that module: the stopped/moving detection is `:location`'s `LocationSource.motion`, and `:app` only decides what to do with it.
+- **Larger text, decided here.** The app is read at arm's length on a tablet on the handlebars, so `RiderTypography` scales every Material text style by `RIDER_TEXT_SCALE` (1.25: everyday text about 18–20 sp) and `MainActivity` passes it to `GisteTheme`. It lives in `:app`, not `:core`, because other apps reusing `:core` may not need it; `:core` only offers the `typography` parameter. Screens of `:settings` and `:roadbook` use it too, since they render inside the app's theme. Sizes stay in `sp`, so the system font size still scales them. The app's previews pass it as well, and `:settings` previews use `fontScale = 1.25`.
 - **The permission is defined here,** not in `:location`, because its texts are specific to this app and a reusable module must not contain them (AGENTS.md §4.1).
 - **No screen-reader semantics** (AGENTS.md §5.3). The readings have test tags (`DashboardTestTags`) instead of content descriptions.
 
 ## Testing notes
 
 - **Unit tests** (`src/test`): `DashboardViewModelTest`, `PartialInputTest`, `DistanceFormatTest`, `RoadbookOdometerCoordinatorTest`, `LocationOdometerLocationSourceTest`, and `PreciseLocationPermissionTest`, with `FakeOdometerController`, `FakeLocationSource` and `FakeRoadbookController`. `MainDispatcherRule` replaces Main; create ViewModels inside each test, after the rule has run, because `viewModelScope` takes Main's dispatcher when the ViewModel is created.
-- **UI tests** run on Robolectric in `src/test`: `DashboardContentTest` (layouts, readings, long presses, dialogs, state restoration), `SetPartialDialogTest` (keys, haptics, layouts, key sizes, Spanish separator), `ResetAllDialogTest` and `ThemeModesTest` (each theme mode on a light and a dark system). They find readings by `DashboardTestTags`, the typed partial and the delete key by `SetPartialTestTags`, the numpad keys by their label plus a click action (`NumpadTestSupport`), and everything else by visible text.
+- **UI tests** run on Robolectric in `src/test`: `DashboardContentTest` (layouts, readings, long presses, dialogs, state restoration), `SetPartialDialogTest` (keys, haptics, layouts, key sizes, Spanish separator), `ResetAllDialogTest` and `ThemeModesTest` (each theme mode on a light and a dark system). `RiderTypographyTest` checks that every style is scaled, and that weights and letter spacing are kept. They find readings by `DashboardTestTags`, the typed partial and the delete key by `SetPartialTestTags`, the numpad keys by their label plus a click action (`NumpadTestSupport`), and everything else by visible text.
 - **App integration tests** (`src/test/.../integration`) run the real Hilt graph on Robolectric with location granted: the permission gate, opening the settings, leaving them with the system back gesture, storing the chosen theme mode, roadbook import resetting the odometer, a waypoint long press setting the partial, the set-partial and reset-all dialogs, and the import button hidden while moving. Only the GPS (Robolectric's location manager) and the file picker are replaced. `HiltTestApplication` replaces the app's `Application`, so the tests start the coordinator themselves.
 - `:app` has no instrumented tests (`src/androidTest`).

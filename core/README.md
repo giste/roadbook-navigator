@@ -58,7 +58,7 @@ Package `dev.giste.core.ui.theme`:
 
 | Type | Purpose |
 |---|---|
-| `GisteTheme(darkTheme) { … }` | Material 3 theme with the beer palette. Wrap every screen and `@Preview` in it. `darkTheme` defaults to the system setting. |
+| `GisteTheme(darkTheme, typography) { … }` | Material 3 theme with the beer palette. Wrap every screen and `@Preview` in it. `darkTheme` defaults to the system setting, and `typography` to the Material 3 one. |
 | `GisteTheme.dimensions` | The current `Dimensions`. Read colors and typography through `MaterialTheme`. |
 | `Dimensions` | Spacing tokens (`spacingExtraSmall` 4 dp … `spacingExtraLarge` 32 dp) and `minTouchTarget` (56 dp). Only the theme creates it. |
 
@@ -121,7 +121,7 @@ None.
 - **No dynamic color.** The palette is the apps' identity, and fixed colors keep content equally readable on every device.
 - **Accessible contrast.** Every content color reaches WCAG AA (4.5:1) on its background in both schemes, including primary drawn directly on surfaces (text buttons, links, icons).
 - **Palette preview.** `ThemePreviews.kt` shows the whole palette in light and dark: every role with its hex value and the contrast of the color drawn on it, marked ✓ or ✗ against its minimum (4.5:1 for text, 3:1 for outlines), plus the buttons in their default colors. Open it in Android Studio to review a color change before running `BeerColorSchemeTest`.
-- **Default typography.** Material 3 defaults with the system font. Feature-specific styles (e.g. large odometer digits) belong to their feature until several features share them.
+- **Typography is the app's choice.** `GisteTheme` uses the Material 3 defaults with the system font unless the app passes its own `typography`. Text sizes depend on how each app is used (Roadbook Navigator scales them up for a tablet on the handlebars), so `:core` stays neutral and offers the parameter. Feature-specific styles (e.g. large odometer digits) belong to their feature until several features share them.
 - **Glove-friendly touch targets.** `minTouchTarget` is 56 dp, above the Material 48 dp minimum, because the app is used while driving.
 - **Layout.** The color schemes and `LocalDimensions` are `internal`, so they live in the `ui/theme/ui/` layer package. The root package only holds the public theme API.
 
