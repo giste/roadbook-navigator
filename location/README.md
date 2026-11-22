@@ -24,7 +24,7 @@ dev/giste/location/
 └── di/             LocationModule
 ```
 
-There is no `presentation` package, because `:location` has no UI yet.
+There is no `ui` package, because `:location` has no UI yet.
 
 ## Public API
 

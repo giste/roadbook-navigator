@@ -28,10 +28,10 @@ dev/giste/core/
 ├── permission/     RequiredPermission, PermissionGate   ← public API
 │   ├── domain/     PermissionStatus, PermissionChecker
 │   ├── data/       ActivityPermissionChecker, app settings
-│   └── presentation/  PermissionGateState, PermissionScreen
+│   └── ui/         PermissionGateState, PermissionScreen
 └── ui/
     ├── theme/      GisteTheme, Dimensions   ← public API
-    │   └── presentation/  BeerColorScheme, LocalDimensions, previews
+    │   └── ui/     BeerColorScheme, LocalDimensions, previews
     └── component/  AutoSizeText   ← public API
 ```
 
@@ -122,7 +122,7 @@ None.
 - **Accessible contrast.** Every content color reaches WCAG AA (4.5:1) on its background in both schemes, including primary drawn directly on surfaces (text buttons, links, icons).
 - **Default typography.** Material 3 defaults with the system font. Feature-specific styles (e.g. large odometer digits) belong to their feature until several features share them.
 - **Glove-friendly touch targets.** `minTouchTarget` is 56 dp, above the Material 48 dp minimum, because the app is used while driving.
-- **Layout.** The color schemes and `LocalDimensions` are `internal`, so they live in `ui/theme/presentation/`. The root package only holds the public theme API.
+- **Layout.** The color schemes and `LocalDimensions` are `internal`, so they live in the `ui/theme/ui/` layer package. The root package only holds the public theme API.
 
 ### Common components
 

@@ -36,7 +36,7 @@ dev/giste/roadbook/
 │   └── persistence/ StoredRoadbookDto (saved format), StoredRoadbookMapper,
 │                   RoadbookFileSerializer, DataStoreRoadbookRepository,
 │                   RoadbookStateDataStore, DataStoreRoadbookPositionRepository
-├── presentation/
+├── ui/
 │   ├── viewer/     RoadbookViewModel, RoadbookUiState, RoadbookViewerContent,
 │   │               RoadbookViewerContentPreview
 │   ├── theme/      RoadbookColors, FIA_ROADBOOK_COLORS, roadbookColors, RoadbookTheme

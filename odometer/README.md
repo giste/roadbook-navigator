@@ -35,7 +35,7 @@ dev/giste/odometer/
 └── di/             OdometerModule
 ```
 
-There is no `presentation` package, because `:odometer` has no UI.
+There is no `ui` package, because `:odometer` has no UI.
 
 ## Public API
 

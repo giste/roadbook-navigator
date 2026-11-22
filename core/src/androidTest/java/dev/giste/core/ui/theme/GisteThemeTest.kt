@@ -22,8 +22,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import dev.giste.core.ui.theme.presentation.DarkBeerColorScheme
-import dev.giste.core.ui.theme.presentation.LightBeerColorScheme
+import dev.giste.core.ui.theme.ui.DarkBeerColorScheme
+import dev.giste.core.ui.theme.ui.LightBeerColorScheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
 import org.junit.Rule

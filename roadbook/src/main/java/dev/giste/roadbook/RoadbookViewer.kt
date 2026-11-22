@@ -24,8 +24,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import dev.giste.roadbook.presentation.viewer.RoadbookViewerContent
-import dev.giste.roadbook.presentation.viewer.RoadbookViewModel
+import dev.giste.roadbook.ui.viewer.RoadbookViewModel
+import dev.giste.roadbook.ui.viewer.RoadbookViewerContent
 
 /** MIME types the file picker offers: any file, as `.rn2` files have no registered type. */
 private val ROADBOOK_MIME_TYPES = arrayOf("*/*")
