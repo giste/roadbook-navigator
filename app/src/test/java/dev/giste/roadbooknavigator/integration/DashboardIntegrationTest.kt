@@ -19,8 +19,13 @@ package dev.giste.roadbooknavigator.integration
 
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
@@ -30,6 +35,7 @@ import dev.giste.odometer.OdometerController
 import dev.giste.roadbook.RoadbookController
 import dev.giste.roadbooknavigator.MainActivity
 import dev.giste.roadbooknavigator.coordination.RoadbookOdometerCoordinator
+import dev.giste.roadbooknavigator.dashboard.DashboardTestTags
 import javax.inject.Inject
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
@@ -107,5 +113,27 @@ class DashboardIntegrationTest {
 
         simulateFixAt(kilometersPerHour = 2f, metersNorth = 10.0)
         composeRule.awaitText("Import roadbook")
+    }
+
+    @Test
+    fun setPartialDialog_partialTyped_setsTheOdometer() {
+        composeRule.awaitPartial("0.00")
+
+        composeRule.onNodeWithTag(DashboardTestTags.PARTIAL).performTouchInput { longClick() }
+        composeRule.onNode(hasSetTextAction()).performTextInput("12.35")
+        composeRule.onNodeWithText("Set").performClick()
+
+        composeRule.awaitPartial("12.35")
+    }
+
+    @Test
+    fun resetAllDialog_confirmed_resetsTheOdometer() {
+        runBlocking { odometer.setTrip(Distance.meters(500.0)) }
+        composeRule.awaitPartial("0.50")
+
+        composeRule.onNodeWithTag(DashboardTestTags.TOTAL).performTouchInput { longClick() }
+        composeRule.onNodeWithText("Reset").performClick()
+
+        composeRule.awaitPartial("0.00")
     }
 }

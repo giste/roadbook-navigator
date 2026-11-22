@@ -24,6 +24,7 @@ import dev.giste.roadbooknavigator.FakeLocationSource
 import dev.giste.roadbooknavigator.FakeOdometerController
 import dev.giste.roadbooknavigator.MainDispatcherRule
 import dev.giste.roadbooknavigator.fixAt
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -36,7 +37,9 @@ class DashboardViewModelTest {
 
     private val odometer = FakeOdometerController()
     private val locationSource = FakeLocationSource()
-    private val viewModel = DashboardViewModel(odometer, locationSource)
+    // Created in each test, after the rule has replaced Main: viewModelScope takes Main's
+    // immediate dispatcher when the ViewModel is created.
+    private val viewModel by lazy { DashboardViewModel(odometer, locationSource) }
 
     private val distances = OdometerState(trip = Distance.meters(1_200.0), total = Distance.meters(9_000.0))
 
@@ -83,5 +86,21 @@ class DashboardViewModelTest {
 
             assertEquals(true, awaitItem().showImportButton)
         }
+    }
+
+    @Test
+    fun setPartial_setsTheOdometerTrip() = runTest {
+        viewModel.setPartial(Distance.meters(12_350.0))
+        advanceUntilIdle()
+
+        assertEquals(listOf("setTrip 12350.0 m"), odometer.calls)
+    }
+
+    @Test
+    fun resetAll_resetsTheOdometer() = runTest {
+        viewModel.resetAll()
+        advanceUntilIdle()
+
+        assertEquals(listOf("resetAll"), odometer.calls)
     }
 }
