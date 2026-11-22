@@ -31,7 +31,7 @@ dev/giste/core/
 │   └── ui/         PermissionGateState, PermissionScreen
 └── ui/
     ├── theme/      GisteTheme, Dimensions   ← public API
-    │   └── ui/     BeerColorScheme, LocalDimensions, previews
+    │   └── ui/     BeerColorScheme, LocalDimensions, palette preview
     └── component/  AutoSizeText   ← public API
 ```
 
@@ -115,11 +115,12 @@ None.
 
 ### Theme
 
-- **Beer palette.** Built from four seeds: beer gold (primary, nudged toward amber), hops green (secondary), roasted malt (tertiary) and warm foam/stout neutrals. Each seed gives a tonal palette, and every role uses its Material 3 baseline tone (e.g. primary is tone 40 in light, tone 80 in dark). The light scheme shows the bright gold as `primaryContainer`, because white text on bright gold is unreadable.
+- **Beer palette.** Built from four seeds: beer gold (primary, nudged toward amber), golden lager straw (secondary), roasted malt (tertiary) and warm foam/stout neutrals. Each seed gives a tonal palette, and every role uses its Material 3 baseline tone (e.g. primary is tone 80 in dark). The light `primary` is the one exception: a deep amber (`#9A4F01`) instead of the gold's tone 40, which looks khaki-brown; it still reaches 4.5:1 with white text and as text on the foam surface. The secondary was a hops green, which clashed with the beer colors; the lager hue keeps its dark tones brown, not olive. The light scheme shows the bright gold as `primaryContainer`, because white text on bright gold is unreadable.
 - **Every role is set.** Including `background`, the surface containers and the `inverse*` roles, so no Material default purple leaks into `Scaffold`, cards, dialogs or bars.
 - **Error stays Material red.** Warnings must never blend with the palette. Malt shares the reddish hue of the error colors, so its hue is shifted toward coffee brown to keep it clearly distinct.
 - **No dynamic color.** The palette is the apps' identity, and fixed colors keep content equally readable on every device.
 - **Accessible contrast.** Every content color reaches WCAG AA (4.5:1) on its background in both schemes, including primary drawn directly on surfaces (text buttons, links, icons).
+- **Palette preview.** `ThemePreviews.kt` shows the whole palette in light and dark: every role with its hex value and the contrast of the color drawn on it, marked ✓ or ✗ against its minimum (4.5:1 for text, 3:1 for outlines), plus the buttons in their default colors. Open it in Android Studio to review a color change before running `BeerColorSchemeTest`.
 - **Default typography.** Material 3 defaults with the system font. Feature-specific styles (e.g. large odometer digits) belong to their feature until several features share them.
 - **Glove-friendly touch targets.** `minTouchTarget` is 56 dp, above the Material 48 dp minimum, because the app is used while driving.
 - **Layout.** The color schemes and `LocalDimensions` are `internal`, so they live in the `ui/theme/ui/` layer package. The root package only holds the public theme API.
