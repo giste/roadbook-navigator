@@ -4,7 +4,7 @@ The composition root of Roadbook Navigator: the `Application`, the only activity
 
 ## Responsibility
 
-- Build the Hilt graph and bind what the modules need from the app: settings sources and adapters between their ports (AGENTS.md §4.2).
+- Build the Hilt graph and bind what the modules need from the app: adapters between their ports (AGENTS.md §4.2). `:settings` binds the settings sources.
 - Apply the **cross-module rules**, which decide how modules react to each other (AGENTS.md §4.3), and the **application rules**, this app's own policies on top of the modules' concepts.
 - Show the dashboard: the odometer, the map and the roadbook, behind the precise-location permission gate.
 - Translate the modules' neutral terms to rally terms: `:odometer`'s *trip* distance is the *partial*.
@@ -23,10 +23,7 @@ dev/giste/roadbooknavigator/
 ├── coordination/   RoadbookOdometerCoordinator
 ├── adapter/        LocationOdometerLocationSource
 ├── permission/     PreciseLocationPermission
-├── settings/       DefaultLocationSettingsSource, DefaultOdometerSettingsSource,
-│                   DefaultRoadbookSettingsSource   (temporary)
-└── di/             AdapterModule, LocationSettingsModule, OdometerSettingsModule,
-                    RoadbookSettingsModule
+└── di/             AdapterModule
 ```
 
 This is the `:app` layout of AGENTS.md §5.1. There is no `domain` package yet: the only application rule, offering imports only while stopped, is one line in `DashboardViewModel`. It will be created with the first rule that has real logic.
@@ -40,11 +37,8 @@ None: nothing depends on `:app`. Everything is `internal` or `private`, except t
 | Module needs | `:app` provides | Where |
 |---|---|---|
 | `:odometer`'s `OdometerLocationSource` | The fixes of `:location`'s `LocationSource.events` | `LocationOdometerLocationSource`, bound in `AdapterModule` |
-| `:location`'s `LocationSettingsSource` | The default `LocationSettings` | `DefaultLocationSettingsSource`, bound in `LocationSettingsModule` |
-| `:odometer`'s `OdometerSettingsSource` | The default `OdometerSettings` | `DefaultOdometerSettingsSource`, bound in `OdometerSettingsModule` |
-| `:roadbook`'s `RoadbookSettingsSource` | The default `RoadbookSettings` | `DefaultRoadbookSettingsSource`, bound in `RoadbookSettingsModule` |
 
-The three settings sources and their modules are **temporary**: each emits its module's defaults once. Delete them when `:settings` binds the real sources.
+The settings sources of `:location`, `:odometer` and `:roadbook` come from `:settings`, which `:app` depends on so that its Hilt bindings are part of the graph.
 
 ## Rules
 
@@ -67,7 +61,7 @@ The three settings sources and their modules are **temporary**: each emits its m
 
 ## Settings
 
-None of its own. The settings sources above stand in for `:settings`.
+None of its own yet. The modules' settings are stored and provided by `:settings`.
 
 ## Persisted state
 
@@ -81,7 +75,7 @@ None. Each module persists its own state (AGENTS.md §7). The open dashboard dia
 
 ## Testing notes
 
-- **Unit tests** (`src/test`): `DashboardViewModelTest`, `PartialInputTest`, `DistanceFormatTest`, `RoadbookOdometerCoordinatorTest`, `LocationOdometerLocationSourceTest`, `PreciseLocationPermissionTest` and the `Default*SettingsSourceTest`s, with `FakeOdometerController`, `FakeLocationSource` and `FakeRoadbookController`. `MainDispatcherRule` replaces Main; create ViewModels inside each test, after the rule has run, because `viewModelScope` takes Main's dispatcher when the ViewModel is created.
+- **Unit tests** (`src/test`): `DashboardViewModelTest`, `PartialInputTest`, `DistanceFormatTest`, `RoadbookOdometerCoordinatorTest`, `LocationOdometerLocationSourceTest`, and `PreciseLocationPermissionTest`, with `FakeOdometerController`, `FakeLocationSource` and `FakeRoadbookController`. `MainDispatcherRule` replaces Main; create ViewModels inside each test, after the rule has run, because `viewModelScope` takes Main's dispatcher when the ViewModel is created.
 - **UI tests** run on Robolectric in `src/test`: `DashboardContentTest` (layouts, readings, long presses, dialogs, state restoration), `SetPartialDialogTest` (keys, haptics, layouts, key sizes, Spanish separator) and `ResetAllDialogTest`. They find readings by `DashboardTestTags`, the typed partial and the delete key by `SetPartialTestTags`, the numpad keys by their label plus a click action (`NumpadTestSupport`), and everything else by visible text.
 - **App integration tests** (`src/test/.../integration`) run the real Hilt graph on Robolectric with location granted: the permission gate, roadbook import resetting the odometer, a waypoint long press setting the partial, the set-partial and reset-all dialogs, and the import button hidden while moving. Only the GPS (Robolectric's location manager) and the file picker are replaced. `HiltTestApplication` replaces the app's `Application`, so the tests start the coordinator themselves.
 - `:app` has no instrumented tests (`src/androidTest`).

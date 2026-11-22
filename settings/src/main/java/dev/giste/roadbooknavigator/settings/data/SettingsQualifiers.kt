@@ -15,20 +15,21 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.giste.roadbooknavigator.settings
+package dev.giste.roadbooknavigator.settings.data
 
-import dev.giste.roadbook.RoadbookSettings
-import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.test.runTest
-import org.junit.Assert.assertEquals
-import org.junit.Test
+import javax.inject.Qualifier
 
-class DefaultRoadbookSettingsSourceTest {
+/** Qualifies the DataStore of the `:location` settings (file `settings_location`). */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+internal annotation class LocationSettingsDataStore
 
-    @Test
-    fun settings_collected_emitsDefaultsOnce() = runTest {
-        val source = DefaultRoadbookSettingsSource()
+/** Qualifies the DataStore of the `:odometer` settings (file `settings_odometer`). */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+internal annotation class OdometerSettingsDataStore
 
-        assertEquals(listOf(RoadbookSettings()), source.settings.toList())
-    }
-}
+/** Qualifies the DataStore of the `:roadbook` settings (file `settings_roadbook`). */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+internal annotation class RoadbookSettingsDataStore
