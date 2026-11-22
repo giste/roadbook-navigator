@@ -19,6 +19,7 @@ package dev.giste.roadbooknavigator.dashboard
 
 import android.content.res.Configuration
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -31,13 +32,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -76,6 +83,16 @@ internal const val PORTRAIT_TOTAL_WEIGHT: Float = 0.45f
 /** Portrait: share of the distances row's width taken by the partial, on the right. */
 internal const val PORTRAIT_PARTIAL_WEIGHT: Float = 0.55f
 
+/** Test tags of the dashboard parts that show no text of their own to find them by. */
+internal object DashboardTestTags {
+
+    /** The partial reading. */
+    const val PARTIAL: String = "dashboard_partial"
+
+    /** The total reading. */
+    const val TOTAL: String = "dashboard_total"
+}
+
 /**
  * The main screen: the odometer, the map and the roadbook, with their state from Hilt.
  *
@@ -90,6 +107,8 @@ internal fun Dashboard(modifier: Modifier = Modifier) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     DashboardContent(
         state = state,
+        onSetPartial = viewModel::setPartial,
+        onResetAll = viewModel::resetAll,
         modifier = modifier,
         roadbook = { showImportButton, roadbookModifier ->
             RoadbookViewer(showImportButton = showImportButton, modifier = roadbookModifier)
@@ -114,9 +133,16 @@ internal fun Dashboard(modifier: Modifier = Modifier) {
  * The distances have no visible label, so their digits can be as large as their boxes allow. Each is
  * sized for its largest value (999.99 km for the partial, 9,999.9 km for the total), so the digits
  * keep their size as the distance grows, and a longer distance is shown as that largest value.
- * Screen readers still read each one with its label (e.g. "Partial, 12.35").
+ * Tests find them by their [DashboardTestTags].
+ *
+ * Long-pressing a distance opens its control: the partial opens [SetPartialDialog], and the total
+ * opens [ResetAllDialog], which asks before resetting both distances. Both work while the distances
+ * are still loading, because the odometer applies commands in order. Which dialog is open, and the
+ * text typed in it, survive configuration changes.
  *
  * @param state what to show.
+ * @param onSetPartial called with the new partial when the rider sets it.
+ * @param onResetAll called when the rider confirms resetting the partial and the total.
  * @param modifier applied to the root layout.
  * @param roadbook draws the roadbook in the modifier it is given, and shows its import button only
  * when told to. A slot, so tests and previews can use a placeholder instead of the Hilt-backed
@@ -126,6 +152,8 @@ internal fun Dashboard(modifier: Modifier = Modifier) {
 @Composable
 internal fun DashboardContent(
     state: DashboardUiState,
+    onSetPartial: (Distance) -> Unit,
+    onResetAll: () -> Unit,
     modifier: Modifier = Modifier,
     roadbook: @Composable (showImportButton: Boolean, modifier: Modifier) -> Unit,
     map: @Composable (modifier: Modifier) -> Unit,
@@ -141,28 +169,36 @@ internal fun DashboardContent(
     // The digits are sized for the largest value, so they keep their size as the distance grows.
     val widestPartial = maxKilometersText(PARTIAL_DECIMALS, PARTIAL_INTEGER_DIGITS, locale)
     val widestTotal = maxKilometersText(TOTAL_DECIMALS, TOTAL_INTEGER_DIGITS, locale)
-    val partialLabel = stringResource(R.string.app_odometer_partial)
-    val totalLabel = stringResource(R.string.app_odometer_total)
+    var openDialog by rememberSaveable { mutableStateOf<OdometerDialog?>(null) }
+    var partialText by rememberSaveable { mutableStateOf("") }
 
     // The total is plain; the partial, which the rider looks at most, is highlighted.
     val totalReading: @Composable (Modifier) -> Unit = { readingModifier ->
         DistanceReading(
-            label = totalLabel,
             value = total,
             widestValue = widestTotal,
             color = MaterialTheme.colorScheme.onSurface,
             highlighted = false,
-            modifier = readingModifier.background(MaterialTheme.colorScheme.surface),
+            onLongPress = { openDialog = OdometerDialog.RESET_ALL },
+            modifier = readingModifier
+                .background(MaterialTheme.colorScheme.surface)
+                .testTag(DashboardTestTags.TOTAL),
         )
     }
     val partialReading: @Composable (Modifier) -> Unit = { readingModifier ->
         DistanceReading(
-            label = partialLabel,
             value = partial,
             widestValue = widestPartial,
             color = MaterialTheme.colorScheme.onPrimary,
             highlighted = true,
-            modifier = readingModifier.background(MaterialTheme.colorScheme.primary),
+            onLongPress = {
+                // Each time the dialog opens, it starts empty.
+                partialText = ""
+                openDialog = OdometerDialog.SET_PARTIAL
+            },
+            modifier = readingModifier
+                .background(MaterialTheme.colorScheme.primary)
+                .testTag(DashboardTestTags.PARTIAL),
         )
     }
     val roadbookSlot: @Composable (Modifier) -> Unit = { roadbookModifier ->
@@ -190,6 +226,36 @@ internal fun DashboardContent(
             )
         }
     }
+
+    when (openDialog) {
+        OdometerDialog.SET_PARTIAL -> SetPartialDialog(
+            text = partialText,
+            onTextChange = { partialText = it },
+            onConfirm = { partial ->
+                openDialog = null
+                onSetPartial(partial)
+            },
+            onDismiss = { openDialog = null },
+        )
+        OdometerDialog.RESET_ALL -> ResetAllDialog(
+            onConfirm = {
+                openDialog = null
+                onResetAll()
+            },
+            onDismiss = { openDialog = null },
+        )
+        null -> Unit
+    }
+}
+
+/** The odometer dialogs [DashboardContent] can show, one at a time. */
+private enum class OdometerDialog {
+
+    /** [SetPartialDialog], opened by long-pressing the partial. */
+    SET_PARTIAL,
+
+    /** [ResetAllDialog], opened by long-pressing the total. */
+    RESET_ALL,
 }
 
 /**
@@ -243,27 +309,40 @@ private fun PortraitLayout(
 }
 
 /**
- * One distance, as large as its box allows and without a visible label. Screen readers read it as
- * a single item with its label (e.g. "Partial, 12.35").
+ * One distance, as large as its box allows and without a visible label.
  *
- * @param label what the distance is, read by screen readers only.
+ * The long press uses a plain gesture detector instead of `combinedClickable`, so a tap does
+ * nothing and shows no ripple. It vibrates, so the rider feels it was taken even with gloves.
+ *
  * @param value the formatted distance.
  * @param widestValue the widest [value] can be, which sets the font size for every value.
  * @param color the text color, readable on the background set by [modifier].
  * @param highlighted whether to draw the value in bold.
+ * @param onLongPress called when the reading is long-pressed.
  * @param modifier applied to the root layout. It gives the reading its box and background.
  */
 @Composable
 private fun DistanceReading(
-    label: String,
     value: String,
     widestValue: String,
     color: Color,
     highlighted: Boolean,
+    onLongPress: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val haptics = LocalHapticFeedback.current
+    // The gesture detector keeps running across recompositions, so it reads the latest callback.
+    val currentOnLongPress by rememberUpdatedState(onLongPress)
     Box(
-        modifier = modifier.semantics(mergeDescendants = true) { contentDescription = label },
+        modifier = modifier
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onLongPress = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        currentOnLongPress()
+                    },
+                )
+            },
         contentAlignment = Alignment.Center,
     ) {
         AutoSizeText(
@@ -327,6 +406,8 @@ private fun DashboardPreview(state: DashboardUiState) {
     GisteTheme {
         DashboardContent(
             state = state,
+            onSetPartial = {},
+            onResetAll = {},
             roadbook = { showImportButton, modifier ->
                 Box(modifier = modifier, contentAlignment = Alignment.Center) {
                     Text(
