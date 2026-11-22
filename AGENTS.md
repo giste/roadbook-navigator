@@ -221,6 +221,9 @@ core/
   - Hoist state and keep composables side-effect free. Use `LaunchedEffect` and similar APIs correctly.
   - Provide `@Preview`s for every screen state, in light and dark themes, using `:core` theme.
   - Use `:core` theme tokens and common components. Do not hardcode colors or dimensions.
+- **Design for riders, not for screen readers.** The app is read in glances while riding, with gloves, vibration and direct sunlight. Someone who cannot see the screen cannot navigate with it, so the app does not target screen-reader users:
+  - Do not add content descriptions, click or long-click labels, headings or other semantics meant for screen readers. Icons pass `contentDescription = null`.
+  - Put that effort into what riders need: touch targets of at least `GisteTheme.dimensions.minTouchTarget` (larger for controls used while riding, such as keypads), contrast that stays readable in sunlight in both light and dark themes, large digits, haptic feedback on long presses, and a long press or a confirmation for anything destructive or hard to undo.
 - One-shot UI effects (snackbars, navigation) are modeled as state where possible, following Android guidance.
 
 ### 5.4 Coroutines and flows
@@ -257,7 +260,7 @@ core/
 
 - All user-facing text lives in `res/values/strings.xml` (English, the default) **and** `res/values-es/strings.xml` (Spanish, used for every Spanish locale). Every key must exist in both files.
 - Add a regional folder (e.g. `values-es-rMX`) only for the strings whose wording differs in that region. It overrides `values-es` and does not need every key.
-- This includes content descriptions, error messages, units shown to users, notification text and labels. Use `plurals` and placeholders (`%1$s`, `%1$d`) instead of string concatenation.
+- This includes error messages, units shown to users, notification text and labels. Use `plurals` and placeholders (`%1$s`, `%1$d`) instead of string concatenation.
 - Format numbers and distances with the current locale.
 - **Accepted exceptions** (no resource needed): log messages, exception or `require` messages meant for developers, DataStore keys, intent extras and other identifiers, MIME types, file extensions, test names and test data, `@Preview` sample data, and format patterns that are not user-visible.
 - Each Android module sets `resourcePrefix` to its module name (e.g. `odometer_`), and every resource name uses it.
@@ -284,7 +287,7 @@ The test suite is exhaustive: **every functionality, branch, error path, sealed 
 |---|---|---|
 | Unit | `src/test` | Value objects and invariants, aggregates, use cases, mappers, parsers (valid, invalid and edge-case fixtures), domain algorithms, ViewModels (every state transition and action), repositories with fake data sources, `:app` coordinators with fakes of the modules' public APIs |
 | Integration (JVM) | `src/test` | Repositories with real DataStore in a temporary folder, parsers plus repositories on real fixture files, flow pipelines across layers |
-| UI | `src/androidTest` (or `src/test` with Robolectric if configured) | Each stateless `XxxContent` in every UI state, user interactions and callbacks, accessibility (content descriptions, semantics) |
+| UI | `src/androidTest` (or `src/test` with Robolectric if configured) | Each stateless `XxxContent` in every UI state, user interactions and callbacks |
 | App integration | `:app` `src/androidTest` | Hilt-based tests of cross-module wiring and coordinators: roadbook load → odometer reset, odometer partial → roadbook auto-advance, settings changes propagating to features |
 
 ### 10.2 Conventions
@@ -296,6 +299,7 @@ The test suite is exhaustive: **every functionality, branch, error path, sealed 
 - Tests are deterministic: no real time, network, location or `Thread.sleep`. Inject clocks and time sources.
 - Test fixtures (e.g. sample input files) go in `src/test/resources`.
 - Bug fixes start with a failing test that reproduces the bug.
+- **Finding nodes in UI tests:** use the **visible text** when the element has meaningful text of its own (buttons, titles, error messages), so the test also checks that text. Use a **test tag** for elements whose identity is not in their text (e.g. a box that only shows a number, a slot or a container), and assert what it shows by text inside it (e.g. `hasText("12.35") and hasAnyAncestor(hasTestTag(...))`). Declare tags once, in an `internal object XxxTestTags` next to the composable, and use it from both the code and the tests. Never add a content description only so a test can find a node.
 
 ---
 
@@ -318,6 +322,7 @@ The test suite is exhaustive: **every functionality, branch, error path, sealed 
 | Constants | `UPPER_SNAKE_CASE` | `DEFAULT_ZOOM_LEVEL` |
 | Resources | `<module>_<type>_<name>` | `roadbook_error_invalid_file`, `roadbook_ic_reset_partial` |
 | Test doubles | `FakeXxx` | `FakeLocationSource` |
+| Test tags | `internal object XxxTestTags` with `UPPER_SNAKE_CASE` constants whose values are `<screen>_<element>` | `DashboardTestTags.PARTIAL = "dashboard_partial"` |
 
 ---
 
@@ -360,7 +365,7 @@ The test suite is exhaustive: **every functionality, branch, error path, sealed 
 ### 12.4 Pull requests and merging
 
 - Every change reaches `main` through a pull request. Keep pull requests small and focused on one task.
-- The description states what changed, why, how it was tested, and includes screenshots for UI changes. Go through the Definition of done in [§13](#13-agent-workflow) before requesting review.
+- The description states what changed, why and how it was tested. For UI changes, name the `@Preview`s that show them. Screenshots are optional. Go through the Definition of done in [§13](#13-agent-workflow) before requesting review.
 - Merge only when the review is approved and all checks (CI, lint, tests) are green.
 - Prefer **squash merge** with a Conventional Commits title, so `main` keeps one meaningful commit per change.
 - **Write a proper squash commit message.** Squashing discards the branch commits, so this message is the only record of the change in the Git history. Replace the auto-generated list of branch commit messages ("wip", "fix typo", "address review") with:
@@ -418,6 +423,7 @@ The test suite is exhaustive: **every functionality, branch, error path, sealed 
    - [ ] All new user-facing strings exist in `values` and `values-es`.
    - [ ] Public API has full KDoc. Internal and private code is documented.
    - [ ] Unit and integration tests cover every branch and error path. UI tests cover every screen state.
+   - [ ] UI follows the rider-ergonomics rules in [§5.3](#53-presentation-compose--udf), with no screen-reader semantics.
    - [ ] The module `README.md` is updated if the public API, settings, persisted state or design decisions changed.
    - [ ] `libs.versions.toml` is untouched, or contains only the changes the developer approved.
    - [ ] Changes are on a task branch, not on `main`, and are committed only after the developer approved each commit (see [§12](#12-git-workflow)).
