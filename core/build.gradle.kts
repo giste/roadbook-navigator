@@ -8,7 +8,9 @@ plugins {
 android {
     namespace = "dev.giste.core"
     compileSdk {
-        version = release(37)
+        version = release(37) {
+            minorApiLevel = 2
+        }
     }
 
     defaultConfig {
