@@ -28,7 +28,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import dev.giste.roadbook.ImportRoadbookResult
 import dev.giste.roadbook.RoadbookController
-import dev.giste.roadbooknavigator.dashboard.DashboardTestTags
+import dev.giste.roadbooknavigator.ui.dashboard.DashboardTestTags
 import java.io.File
 import java.time.Duration
 import kotlinx.coroutines.runBlocking

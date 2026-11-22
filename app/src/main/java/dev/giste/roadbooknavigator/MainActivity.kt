@@ -28,8 +28,8 @@ import androidx.compose.ui.Modifier
 import dagger.hilt.android.AndroidEntryPoint
 import dev.giste.core.permission.PermissionGate
 import dev.giste.core.ui.theme.GisteTheme
-import dev.giste.roadbooknavigator.dashboard.Dashboard
 import dev.giste.roadbooknavigator.permission.PreciseLocationPermission
+import dev.giste.roadbooknavigator.ui.dashboard.Dashboard
 
 /**
  * The only activity. A Hilt entry point, so the composables it hosts can get Hilt view models.
