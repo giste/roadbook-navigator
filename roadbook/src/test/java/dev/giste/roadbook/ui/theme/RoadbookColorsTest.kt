@@ -20,9 +20,11 @@ package dev.giste.roadbook.ui.theme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import dev.giste.roadbook.RoadbookStyle
 import dev.giste.roadbook.ui.icon.IconColors
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RoadbookColorsTest {
@@ -39,7 +41,7 @@ class RoadbookColorsTest {
                 surface = light.surface,
                 onSurface = light.onSurface,
                 track = light.primary,
-                trackSecondary = light.secondary,
+                trackSecondary = light.onPrimary,
                 roadSecondary = light.onSurface.copy(alpha = 0.5f),
                 danger = light.error,
                 muted = light.outline,
@@ -58,6 +60,20 @@ class RoadbookColorsTest {
 
         assertEquals(dark.surface, colors.surface)
         assertEquals(dark.onSurface, colors.onSurface)
+    }
+
+    @Test
+    fun roadbookColors_appTheme_centerLineStandsOutOnTheTrackInLightMode() {
+        val colors = roadbookColors(RoadbookStyle.APP_THEME, light)
+
+        assertTrue(contrastRatio(colors.trackSecondary, colors.track) >= MIN_LINE_CONTRAST)
+    }
+
+    @Test
+    fun roadbookColors_appTheme_centerLineStandsOutOnTheTrackInDarkMode() {
+        val colors = roadbookColors(RoadbookStyle.APP_THEME, dark)
+
+        assertTrue(contrastRatio(colors.trackSecondary, colors.track) >= MIN_LINE_CONTRAST)
     }
 
     @Test
@@ -99,5 +115,17 @@ class RoadbookColorsTest {
         val colors = FIA_ROADBOOK_COLORS.iconColors(background = Color.Green)
 
         assertEquals(Color.Green, colors.surface)
+    }
+
+    /** WCAG 2 contrast ratio: (lighter + 0.05) / (darker + 0.05), from 1 to 21. */
+    private fun contrastRatio(a: Color, b: Color): Double {
+        val la = a.luminance().toDouble()
+        val lb = b.luminance().toDouble()
+        return (maxOf(la, lb) + 0.05) / (minOf(la, lb) + 0.05)
+    }
+
+    private companion object {
+        /** WCAG minimum contrast for graphics, such as a line drawn over another color. */
+        const val MIN_LINE_CONTRAST = 3.0
     }
 }

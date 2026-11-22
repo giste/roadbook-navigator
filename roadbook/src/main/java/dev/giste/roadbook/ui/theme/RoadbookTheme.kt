@@ -112,7 +112,9 @@ internal fun roadbookColors(style: RoadbookStyle, colorScheme: ColorScheme): Roa
             surface = colorScheme.surface,
             onSurface = colorScheme.onSurface,
             track = colorScheme.primary,
-            trackSecondary = colorScheme.secondary,
+            // Drawn over the track, so it takes the track's content color: the secondary color
+            // has the same lightness as primary and would only stand out by its hue.
+            trackSecondary = colorScheme.onPrimary,
             roadSecondary = colorScheme.onSurface.copy(alpha = ROAD_SECONDARY_ALPHA),
             danger = colorScheme.error,
             muted = colorScheme.outline,
