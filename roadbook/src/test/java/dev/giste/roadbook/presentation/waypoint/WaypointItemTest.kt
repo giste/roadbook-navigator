@@ -17,16 +17,13 @@
 
 package dev.giste.roadbook.presentation.waypoint
 
-import androidx.compose.ui.semantics.SemanticsActions
-import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.semantics.getOrNull
-import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performTouchInput
 import dev.giste.core.ui.theme.GisteTheme
@@ -73,9 +70,8 @@ class WaypointItemTest {
         }
     }
 
-    /** The distances, the only element of the row that screen readers and gestures reach. */
-    private fun distances(): SemanticsNodeInteraction =
-        rule.onNode(SemanticsMatcher.keyIsDefined(SemanticsActions.OnLongClick))
+    /** The distance section, the only part of the row that reacts to gestures. */
+    private fun distances(): SemanticsNodeInteraction = rule.onNodeWithTag(WaypointTestTags.DISTANCES)
 
     @Test
     fun waypointItem_showsPartialDistanceFromPreviousAndNumber() {
@@ -129,31 +125,10 @@ class WaypointItemTest {
     }
 
     @Test
-    fun longPressAction_hasLabelForScreenReaders() {
-        show(plain)
-
-        val action = distances().fetchSemanticsNode().config.getOrNull(SemanticsActions.OnLongClick)
-
-        assertEquals("Set the partial to this waypoint", action?.label)
-    }
-
-    @Test
-    fun distances_areOneElementWithTheVisibleFigures() {
-        show(plain)
-
-        val texts = distances().fetchSemanticsNode().config[SemanticsProperties.Text]
-
-        assertEquals(listOf("25.43", "1.27", "12"), texts.map { it.text })
-    }
-
-    @Test
     @Config(qualifiers = "es")
-    fun waypointItem_spanish_formatsAndLabelsInSpanish() {
+    fun waypointItem_spanish_usesDecimalComma() {
         show(plain)
-
-        val action = distances().fetchSemanticsNode().config.getOrNull(SemanticsActions.OnLongClick)
 
         rule.onNodeWithText("25,43").assertExists()
-        assertEquals("Poner el parcial de esta viñeta", action?.label)
     }
 }

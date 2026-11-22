@@ -22,9 +22,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
-import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
-import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -32,6 +30,7 @@ import androidx.compose.ui.test.hasProgressBarRangeInfo
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
@@ -45,6 +44,7 @@ import dev.giste.roadbook.ShortDistanceThreshold
 import dev.giste.roadbook.domain.roadbook.Roadbook
 import dev.giste.roadbook.domain.roadbook.WaypointNumber
 import dev.giste.roadbook.domain.roadbook.testWaypoint
+import dev.giste.roadbook.presentation.waypoint.WaypointTestTags
 import kotlin.math.abs
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -214,7 +214,7 @@ class RoadbookViewerContentTest {
     fun longPress_waypointDistances_setsItsPartial() {
         show(RoadbookUiState(roadbook = content(position = 3)))
 
-        rule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsActions.OnLongClick))
+        rule.onAllNodesWithTag(WaypointTestTags.DISTANCES)
             .onFirst()
             .performTouchInput { longClick() }
 
@@ -289,12 +289,12 @@ class RoadbookViewerContentTest {
     }
 
     /**
-     * One node per waypoint shown: its distances, which take the whole height of the row. Rows
+     * One node per waypoint shown: its distance section, which takes the whole height of the row. Rows
      * the list keeps composed but not placed, to reuse them, are left out: their positions are
      * stale.
      */
     private fun rows(): List<SemanticsNode> =
-        rule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsActions.OnLongClick))
+        rule.onAllNodesWithTag(WaypointTestTags.DISTANCES)
             .fetchSemanticsNodes()
             .filter { it.layoutInfo.isPlaced }
 

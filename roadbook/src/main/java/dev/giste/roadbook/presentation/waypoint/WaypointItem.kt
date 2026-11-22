@@ -17,10 +17,9 @@
 
 package dev.giste.roadbook.presentation.waypoint
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,15 +29,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.giste.geo.Distance
-import dev.giste.roadbook.R
 import dev.giste.roadbook.ShortDistanceThreshold
 import dev.giste.roadbook.domain.roadbook.DangerLevel
 import dev.giste.roadbook.domain.roadbook.Waypoint
@@ -47,6 +48,13 @@ import dev.giste.roadbook.presentation.drawing.CANVAS_WIDTH
 import dev.giste.roadbook.presentation.drawing.NotesCanvas
 import dev.giste.roadbook.presentation.drawing.TulipCanvas
 import dev.giste.roadbook.presentation.theme.RoadbookTheme
+
+/** Test tags of the waypoint parts that tests cannot find by their own text. */
+internal object WaypointTestTags {
+
+    /** The distance section of a waypoint: the part that is long-pressed to set the partial. */
+    const val DISTANCES: String = "waypoint_distances"
+}
 
 /**
  * Width of the lines of the roadbook: the borders of a waypoint, and the lines between its
@@ -69,8 +77,7 @@ internal const val ROW_ASPECT_RATIO: Float = (CANVAS_HEIGHT + 2 * CANVAS_WIDTH) 
  *
  * The distances are highlighted when the waypoint comes soon after the previous one, and a
  * waypoint with danger level 3 gets a thick red border. Long-pressing the distances asks to set
- * the partial to the one the roadbook gives at this waypoint. For accessibility services, the
- * distances are one element, read as its visible figures, with a labeled long-press action.
+ * the partial to the one the roadbook gives at this waypoint.
  *
  * @param waypoint the waypoint to show.
  * @param shortDistanceThreshold below which distance from the previous waypoint it is
@@ -122,13 +129,16 @@ internal fun WaypointItem(
  * The columns of a waypoint row: its distances, tulip and notes, with lines between them. They
  * have no background, so whatever is under them shows through.
  *
+ * The long press uses a plain gesture detector instead of `combinedClickable`, so a tap, which is
+ * how riders touch the screen by accident, does nothing and shows no ripple. It vibrates, so the
+ * rider feels it was taken even with gloves.
+ *
  * @param waypoint the waypoint to show.
  * @param comesSoon whether it comes soon after the previous one.
  * @param onSetPartial called with `Waypoint.partialToSet` when the user long-presses the
  * distances.
  * @param modifier the modifier applied to the columns.
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun WaypointContent(
     waypoint: Waypoint,
@@ -139,7 +149,9 @@ private fun WaypointContent(
     val colors = RoadbookTheme.colors
     val locale = LocalConfiguration.current.locales[0]
     val haptics = LocalHapticFeedback.current
-    val setPartialLabel = stringResource(R.string.roadbook_waypoint_action_set_partial)
+    // The gesture detector keeps running across recompositions, so it reads the latest values.
+    val currentOnSetPartial by rememberUpdatedState(onSetPartial)
+    val currentPartialToSet by rememberUpdatedState(waypoint.partialToSet)
 
     Row(modifier = modifier) {
         DistanceSection(
@@ -149,16 +161,15 @@ private fun WaypointContent(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
-                .combinedClickable(
-                    onLongClickLabel = setPartialLabel,
-                    onLongClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onSetPartial(waypoint.partialToSet)
-                    },
-                    // Only the long press does something: a tap is how riders touch the screen
-                    // by accident.
-                    onClick = {},
-                ),
+                .testTag(WaypointTestTags.DISTANCES)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onLongPress = {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            currentOnSetPartial(currentPartialToSet)
+                        },
+                    )
+                },
         )
         VerticalDivider(thickness = ROADBOOK_LINE_WIDTH, color = colors.onSurface)
         TulipCanvas(elements = waypoint.tulip, modifier = Modifier.fillMaxHeight())
