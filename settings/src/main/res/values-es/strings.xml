@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Settings strings (Spanish, used for every Spanish locale). Every key in values/strings.xml must exist here. -->
+<resources>
+    <string name="settings_title">Ajustes</string>
+
+    <!-- Appearance -->
+    <string name="settings_section_appearance">Apariencia</string>
+    <string name="settings_theme_title">Tema</string>
+    <string name="settings_theme_system">Sistema</string>
+    <string name="settings_theme_light">Claro</string>
+    <string name="settings_theme_dark">Oscuro</string>
+
+    <!-- Roadbook -->
+    <string name="settings_section_roadbook">Roadbook</string>
+    <string name="settings_roadbook_style_title">Colores del roadbook</string>
+    <string name="settings_roadbook_style_app_theme">Tema de la app</string>
+    <string name="settings_roadbook_style_fia">FIA</string>
+    <string name="settings_short_distance_title">Resaltar viñetas cercanas</string>
+    <string name="settings_short_distance_description">Se resaltan las viñetas a menos de esta distancia de la anterior.</string>
+    <!-- A distance in whole meters: %1$d is the number -->
+    <string name="settings_distance_meters">%1$d m</string>
+    <!-- Stepper buttons that make a value smaller or larger -->
+    <string name="settings_action_decrease">−</string>
+    <string name="settings_action_increase">+</string>
+
+    <!-- Shown when a changed setting could not be stored -->
+    <string name="settings_error_not_saved">No se ha podido guardar el ajuste. Inténtalo de nuevo.</string>
+</resources>

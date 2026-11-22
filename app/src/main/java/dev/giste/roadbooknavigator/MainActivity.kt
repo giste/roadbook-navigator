@@ -22,30 +22,43 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import dev.giste.core.permission.PermissionGate
 import dev.giste.core.ui.theme.GisteTheme
 import dev.giste.roadbooknavigator.permission.PreciseLocationPermission
-import dev.giste.roadbooknavigator.ui.dashboard.Dashboard
+import dev.giste.roadbooknavigator.settings.AppSettings
+import dev.giste.roadbooknavigator.settings.AppSettingsSource
+import dev.giste.roadbooknavigator.ui.AppNavHost
+import dev.giste.roadbooknavigator.ui.isDarkTheme
+import javax.inject.Inject
 
 /**
  * The only activity. A Hilt entry point, so the composables it hosts can get Hilt view models.
+ *
+ * It shows the app in the theme mode of the [AppSettings], following every change, and every
+ * screen behind the location permission gate.
  */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    /** The app settings, for the theme mode. Injected by Hilt in [onCreate]. */
+    @Inject
+    internal lateinit var appSettingsSource: AppSettingsSource
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            GisteTheme {
+            // Until the stored settings are read, the defaults apply (the system's theme).
+            val appSettings by appSettingsSource.settings
+                .collectAsStateWithLifecycle(initialValue = AppSettings())
+            GisteTheme(darkTheme = appSettings.themeMode.isDarkTheme()) {
                 // Every screen needs precise location, so the whole app waits behind the gate.
                 PermissionGate(permissions = listOf(PreciseLocationPermission)) {
-                    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                        Dashboard(modifier = Modifier.fillMaxSize().padding(innerPadding))
-                    }
+                    AppNavHost(modifier = Modifier.fillMaxSize())
                 }
             }
         }

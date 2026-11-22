@@ -28,6 +28,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -44,6 +47,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -91,6 +95,9 @@ internal object DashboardTestTags {
 
     /** The total reading. */
     const val TOTAL: String = "dashboard_total"
+
+    /** The settings button, which shows an icon instead of text. */
+    const val SETTINGS: String = "dashboard_settings"
 }
 
 /**
@@ -99,16 +106,18 @@ internal object DashboardTestTags {
  * Showing it makes the odometer measure (see [DashboardViewModel]), so it must only be shown once
  * the location permission is granted.
  *
+ * @param onOpenSettings called when the rider opens the settings.
  * @param modifier applied to the root layout.
  */
 @Composable
-internal fun Dashboard(modifier: Modifier = Modifier) {
+internal fun Dashboard(onOpenSettings: () -> Unit, modifier: Modifier = Modifier) {
     val viewModel: DashboardViewModel = hiltViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     DashboardContent(
         state = state,
         onSetPartial = viewModel::setPartial,
         onResetAll = viewModel::resetAll,
+        onOpenSettings = onOpenSettings,
         modifier = modifier,
         roadbook = { showImportButton, roadbookModifier ->
             RoadbookViewer(showImportButton = showImportButton, modifier = roadbookModifier)
@@ -140,9 +149,13 @@ internal fun Dashboard(modifier: Modifier = Modifier) {
  * are still loading, because the odometer applies commands in order. Which dialog is open, and the
  * text typed in it, survive configuration changes.
  *
+ * While [DashboardUiState.showStoppedActions] is set, a settings button floats in the top corner of
+ * the map, and the roadbook offers its import button.
+ *
  * @param state what to show.
  * @param onSetPartial called with the new partial when the rider sets it.
  * @param onResetAll called when the rider confirms resetting the partial and the total.
+ * @param onOpenSettings called when the rider presses the settings button.
  * @param modifier applied to the root layout.
  * @param roadbook draws the roadbook in the modifier it is given, and shows its import button only
  * when told to. A slot, so tests and previews can use a placeholder instead of the Hilt-backed
@@ -154,6 +167,7 @@ internal fun DashboardContent(
     state: DashboardUiState,
     onSetPartial: (Distance) -> Unit,
     onResetAll: () -> Unit,
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
     roadbook: @Composable (showImportButton: Boolean, modifier: Modifier) -> Unit,
     map: @Composable (modifier: Modifier) -> Unit,
@@ -202,7 +216,21 @@ internal fun DashboardContent(
         )
     }
     val roadbookSlot: @Composable (Modifier) -> Unit = { roadbookModifier ->
-        roadbook(state.showImportButton, roadbookModifier)
+        roadbook(state.showStoppedActions, roadbookModifier)
+    }
+    // The settings button floats over the map's corner, only while stopped.
+    val mapSlot: @Composable (Modifier) -> Unit = { mapModifier ->
+        Box(modifier = mapModifier) {
+            map(Modifier.fillMaxSize())
+            if (state.showStoppedActions) {
+                SettingsButton(
+                    onClick = onOpenSettings,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(GisteTheme.dimensions.spacingSmall),
+                )
+            }
+        }
     }
 
     BoxWithConstraints(
@@ -214,14 +242,14 @@ internal fun DashboardContent(
             LandscapeLayout(
                 total = totalReading,
                 partial = partialReading,
-                map = map,
+                map = mapSlot,
                 roadbook = roadbookSlot,
             )
         } else {
             PortraitLayout(
                 total = totalReading,
                 partial = partialReading,
-                map = map,
+                map = mapSlot,
                 roadbook = roadbookSlot,
             )
         }
@@ -309,6 +337,24 @@ private fun PortraitLayout(
 }
 
 /**
+ * The button that opens the settings: a gear, at least the minimum touch target in size.
+ *
+ * @param onClick called when the button is pressed.
+ * @param modifier applied to the button.
+ */
+@Composable
+private fun SettingsButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    FilledTonalIconButton(
+        onClick = onClick,
+        modifier = modifier
+            .size(GisteTheme.dimensions.minTouchTarget)
+            .testTag(DashboardTestTags.SETTINGS),
+    ) {
+        Icon(painter = painterResource(R.drawable.app_ic_settings), contentDescription = null)
+    }
+}
+
+/**
  * One distance, as large as its box allows and without a visible label.
  *
  * The long press uses a plain gesture detector instead of `combinedClickable`, so a tap does
@@ -388,7 +434,7 @@ private val MOVING = DashboardUiState(
         partial = Distance.meters(12_345.0),
         total = Distance.meters(234_567.0),
     ),
-    showImportButton = false,
+    showStoppedActions = false,
 )
 
 /** Preview sample: stopped, with the largest distances shown (999.99 and 9,999.9). */
@@ -397,7 +443,7 @@ private val LARGEST_DISTANCES = DashboardUiState(
         partial = Distance.meters(999_990.0),
         total = Distance.meters(9_999_900.0),
     ),
-    showImportButton = true,
+    showStoppedActions = true,
 )
 
 /** The dashboard in [state], with placeholders instead of the roadbook and the map. */
@@ -408,6 +454,7 @@ private fun DashboardPreview(state: DashboardUiState) {
             state = state,
             onSetPartial = {},
             onResetAll = {},
+            onOpenSettings = {},
             roadbook = { showImportButton, modifier ->
                 Box(modifier = modifier, contentAlignment = Alignment.Center) {
                     Text(

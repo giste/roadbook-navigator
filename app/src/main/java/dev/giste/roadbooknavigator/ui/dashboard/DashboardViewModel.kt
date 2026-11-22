@@ -61,8 +61,12 @@ internal class DashboardViewModel @Inject constructor(
             .onStart { emit(OdometerUiState.Loading) },
         locationSource.motion,
     ) { odometerState, motion ->
-        // Importing is only offered while stopped, so the rider is not tempted to do it riding.
-        DashboardUiState(odometer = odometerState, showImportButton = motion == MotionState.STOPPED)
+        // Importing and the settings are only offered while stopped, so the rider is not tempted
+        // to use them while riding.
+        DashboardUiState(
+            odometer = odometerState,
+            showStoppedActions = motion == MotionState.STOPPED,
+        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
