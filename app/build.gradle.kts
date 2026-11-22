@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    // Generates the serializers of the type-safe navigation routes.
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt.android)
 }
@@ -64,6 +66,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     // hiltViewModel(), to get the dashboard's ViewModel from Hilt in a composable.
     implementation(libs.androidx.hilt.lifecycle.viewmodel.compose)
+    // Moves between the dashboard and the settings screen, with type-safe routes.
+    implementation(libs.androidx.navigation.compose)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

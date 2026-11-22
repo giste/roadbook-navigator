@@ -31,6 +31,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertLeftPositionInRootIsEqualTo
 import androidx.compose.ui.test.assertTopPositionInRootIsEqualTo
 import androidx.compose.ui.test.assertWidthIsEqualTo
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -48,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import dev.giste.core.ui.theme.GisteTheme
 import dev.giste.geo.Distance
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -68,11 +70,12 @@ class DashboardContentTest {
             partial = Distance.meters(12_345.0),
             total = Distance.meters(234_567.0),
         ),
-        showImportButton = false,
+        showStoppedActions = false,
     )
 
     private val partialsSet = mutableListOf<Distance>()
     private var resets = 0
+    private var settingsOpened = 0
 
     /** Shows the dashboard for [state] in a [width] × [height] box, with tagged placeholders. */
     private fun show(state: DashboardUiState, width: Dp = 500.dp, height: Dp = 1_000.dp) {
@@ -88,6 +91,7 @@ class DashboardContentTest {
                     state = state,
                     onSetPartial = { partialsSet += it },
                     onResetAll = { resets++ },
+                    onOpenSettings = { settingsOpened++ },
                     roadbook = { showImportButton, modifier ->
                         Box(modifier = modifier.testTag(ROADBOOK_TAG)) {
                             Text("roadbook, import $showImportButton")
@@ -142,7 +146,7 @@ class DashboardContentTest {
                     partial = Distance.meters(1_234_567.0),
                     total = Distance.meters(12_345_678.0),
                 ),
-                showImportButton = false,
+                showStoppedActions = false,
             ),
         )
 
@@ -337,6 +341,41 @@ class DashboardContentTest {
 
         composeRule.onNodeWithText("Set partial").assertIsDisplayed()
         composeRule.onNode(shownInPartialDisplay("3.5 km")).assertIsDisplayed()
+    }
+
+    @Test
+    fun dashboardContent_stopped_showsTheSettingsButton() {
+        show(DashboardUiState.INITIAL)
+
+        composeRule.onNodeWithTag(DashboardTestTags.SETTINGS).assertIsDisplayed()
+    }
+
+    @Test
+    fun dashboardContent_moving_hidesTheSettingsButton() {
+        show(moving)
+
+        composeRule.onNodeWithTag(DashboardTestTags.SETTINGS).assertDoesNotExist()
+    }
+
+    @Test
+    fun dashboardContent_settingsButtonPressed_opensTheSettings() {
+        show(DashboardUiState.INITIAL)
+
+        composeRule.onNodeWithTag(DashboardTestTags.SETTINGS).performClick()
+
+        assertEquals(1, settingsOpened)
+    }
+
+    @Test
+    fun dashboardContent_settingsButton_sitsInTheMapsTopEndCorner() {
+        show(DashboardUiState.INITIAL, width = 500.dp, height = 1_000.dp)
+
+        val map = composeRule.onNodeWithTag(MAP_TAG).getUnclippedBoundsInRoot()
+        val button = composeRule.onNodeWithTag(DashboardTestTags.SETTINGS).getUnclippedBoundsInRoot()
+
+        assertTrue(button.top >= map.top && button.right <= map.right)
+        assertTrue(button.left > map.left + (map.right - map.left) / 2)
+        assertTrue(button.bottom - button.top >= 56.dp)
     }
 
     private companion object {

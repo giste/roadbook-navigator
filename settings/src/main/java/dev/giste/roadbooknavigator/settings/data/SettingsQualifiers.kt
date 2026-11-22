@@ -19,6 +19,11 @@ package dev.giste.roadbooknavigator.settings.data
 
 import javax.inject.Qualifier
 
+/** Qualifies the DataStore of the app's own settings (file `settings_app`). */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+internal annotation class AppSettingsDataStore
+
 /** Qualifies the DataStore of the `:location` settings (file `settings_location`). */
 @Qualifier
 @Retention(AnnotationRetention.BINARY)

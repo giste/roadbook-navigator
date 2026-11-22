@@ -71,7 +71,7 @@ class DashboardViewModelTest {
 
             locationSource.motion.value = MotionState.MOVING
 
-            assertEquals(DashboardUiState(OdometerUiState.Loading, showImportButton = false), awaitItem())
+            assertEquals(DashboardUiState(OdometerUiState.Loading, showStoppedActions = false), awaitItem())
         }
     }
 
@@ -84,7 +84,7 @@ class DashboardViewModelTest {
 
             locationSource.motion.value = MotionState.STOPPED
 
-            assertEquals(true, awaitItem().showImportButton)
+            assertEquals(true, awaitItem().showStoppedActions)
         }
     }
 

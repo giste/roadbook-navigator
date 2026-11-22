@@ -33,25 +33,47 @@ import dagger.hilt.components.SingletonComponent
 import dev.giste.core.coroutines.IoDispatcher
 import dev.giste.location.LocationSettingsSource
 import dev.giste.odometer.OdometerSettingsSource
+import dev.giste.roadbook.RoadbookSettings
 import dev.giste.roadbook.RoadbookSettingsSource
+import dev.giste.roadbooknavigator.settings.AppSettings
+import dev.giste.roadbooknavigator.settings.AppSettingsSource
+import dev.giste.roadbooknavigator.settings.data.AppSettingsDataStore
+import dev.giste.roadbooknavigator.settings.data.DataStoreAppSettingsRepository
 import dev.giste.roadbooknavigator.settings.data.DataStoreLocationSettingsRepository
 import dev.giste.roadbooknavigator.settings.data.DataStoreOdometerSettingsRepository
 import dev.giste.roadbooknavigator.settings.data.DataStoreRoadbookSettingsRepository
 import dev.giste.roadbooknavigator.settings.data.LocationSettingsDataStore
 import dev.giste.roadbooknavigator.settings.data.OdometerSettingsDataStore
 import dev.giste.roadbooknavigator.settings.data.RoadbookSettingsDataStore
+import dev.giste.roadbooknavigator.settings.domain.SettingsRepository
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 
 /**
- * Binds the settings source of every feature module to its DataStore repository, for the whole
- * app (AGENTS.md §4.4).
+ * Binds the settings source of every feature module and of the app to its DataStore repository,
+ * for the whole app (AGENTS.md §4.4), and the repositories the settings screen changes.
  */
 @Module
 @InstallIn(SingletonComponent::class)
 internal interface SettingsModule {
+
+    /** Provides the stored app settings wherever an [AppSettingsSource] is injected. */
+    @Binds
+    fun bindAppSettingsSource(repository: DataStoreAppSettingsRepository): AppSettingsSource
+
+    /** Provides the app settings repository to the settings screen, which changes them. */
+    @Binds
+    fun bindAppSettingsRepository(
+        repository: DataStoreAppSettingsRepository,
+    ): SettingsRepository<AppSettings>
+
+    /** Provides the `:roadbook` settings repository to the settings screen, which changes them. */
+    @Binds
+    fun bindRoadbookSettingsRepository(
+        repository: DataStoreRoadbookSettingsRepository,
+    ): SettingsRepository<RoadbookSettings>
 
     /** Provides the stored `:location` settings wherever a [LocationSettingsSource] is injected. */
     @Binds
@@ -78,6 +100,22 @@ internal interface SettingsModule {
      * is replaced with an empty one, so the module falls back to its defaults instead of failing.
      */
     companion object {
+
+        /**
+         * Provides the DataStore of the app's own settings.
+         *
+         * @param context the application context, to locate the file.
+         * @param ioDispatcher the dispatcher DataStore reads and writes the file on.
+         * @return the DataStore stored in the `settings_app` file.
+         */
+        @Provides
+        @Singleton
+        @AppSettingsDataStore
+        fun provideAppSettingsDataStore(
+            @ApplicationContext context: Context,
+            @IoDispatcher ioDispatcher: CoroutineDispatcher,
+        ): DataStore<Preferences> =
+            settingsDataStore(context, ioDispatcher, DataStoreAppSettingsRepository.FILE_NAME)
 
         /**
          * Provides the DataStore of the `:location` settings.

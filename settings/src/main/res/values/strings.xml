@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Settings strings (English, default). -->
+<resources>
+    <string name="settings_title">Settings</string>
+
+    <!-- Appearance -->
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_theme_title">Theme</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+
+    <!-- Roadbook -->
+    <string name="settings_section_roadbook">Roadbook</string>
+    <string name="settings_roadbook_style_title">Roadbook colors</string>
+    <string name="settings_roadbook_style_app_theme">App theme</string>
+    <string name="settings_roadbook_style_fia">FIA</string>
+    <string name="settings_short_distance_title">Highlight close waypoints</string>
+    <string name="settings_short_distance_description">Waypoints closer than this to the previous one are highlighted.</string>
+    <!-- A distance in whole meters: %1$d is the number -->
+    <string name="settings_distance_meters">%1$d m</string>
+    <!-- Stepper buttons that make a value smaller or larger -->
+    <string name="settings_action_decrease">−</string>
+    <string name="settings_action_increase">+</string>
+
+    <!-- Shown when a changed setting could not be stored -->
+    <string name="settings_error_not_saved">The setting couldn\'t be saved. Try again.</string>
+</resources>

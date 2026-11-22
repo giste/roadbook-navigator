@@ -25,7 +25,9 @@ import dev.giste.location.LocationSettings
 import dev.giste.odometer.OdometerSettings
 import dev.giste.roadbook.RoadbookSettings
 import dev.giste.roadbook.RoadbookStyle
+import dev.giste.roadbooknavigator.settings.AppSettings
 import dev.giste.roadbooknavigator.settings.FakeLogger
+import dev.giste.roadbooknavigator.settings.ThemeMode
 import dev.giste.roadbooknavigator.settings.domain.SettingsUpdateResult
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -126,5 +128,14 @@ class DataStoreSettingsRepositoryTest {
         val settings = DataStoreOdometerSettingsRepository(store, logger).settings.first()
 
         assertEquals(OdometerSettings(minSpeed = Speed.metersPerSecond(1.0)), settings)
+    }
+
+    @Test
+    fun appRepository_storedValues_emitsThem() = runTest {
+        val store = FakePreferencesDataStore(preferencesOf(AppSettingsCodec.THEME_MODE_KEY to "DARK"))
+
+        val settings = DataStoreAppSettingsRepository(store, logger).settings.first()
+
+        assertEquals(AppSettings(themeMode = ThemeMode.DARK), settings)
     }
 }

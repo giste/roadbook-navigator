@@ -23,17 +23,18 @@ import dev.giste.geo.Distance
  * What the dashboard shows.
  *
  * @property odometer the partial and total distances.
- * @property showImportButton whether the roadbook may offer to import a roadbook: only while the
- * vehicle is stopped, so the rider is not tempted to do it while riding.
+ * @property showStoppedActions whether the actions offered only while the vehicle is stopped are
+ * shown: importing a roadbook and opening the settings, so the rider is not tempted to use them
+ * while riding.
  */
 internal data class DashboardUiState(
     val odometer: OdometerUiState,
-    val showImportButton: Boolean,
+    val showStoppedActions: Boolean,
 ) {
     companion object {
         /** Before anything is known: the distances are loading and the vehicle counts as stopped. */
         val INITIAL: DashboardUiState =
-            DashboardUiState(odometer = OdometerUiState.Loading, showImportButton = true)
+            DashboardUiState(odometer = OdometerUiState.Loading, showStoppedActions = true)
     }
 }
 
