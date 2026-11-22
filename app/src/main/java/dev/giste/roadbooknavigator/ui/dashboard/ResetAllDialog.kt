@@ -27,6 +27,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import dev.giste.core.ui.theme.GisteTheme
 import dev.giste.roadbooknavigator.R
+import dev.giste.roadbooknavigator.ui.RiderTypography
 
 /**
  * Asks the rider to confirm that the partial and the total should both go back to zero. The total
@@ -66,7 +67,8 @@ internal fun ResetAllDialog(
 @Preview(name = "Dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun ResetAllDialogPreview() {
-    GisteTheme {
+    // The app's text sizes, as on the device.
+    GisteTheme(typography = RiderTypography) {
         ResetAllDialog(onConfirm = {}, onDismiss = {})
     }
 }

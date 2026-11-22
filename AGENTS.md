@@ -242,6 +242,7 @@ The same visibility rules apply: everything is `internal` or `private`.
 - **Design for riders, not for screen readers.** The app is read in glances while riding, with gloves, vibration and direct sunlight. Someone who cannot see the screen cannot navigate with it, so the app does not target screen-reader users:
   - Do not add content descriptions, click or long-click labels, headings or other semantics meant for screen readers. Icons pass `contentDescription = null`.
   - Put that effort into what riders need: touch targets of at least `GisteTheme.dimensions.minTouchTarget` (larger for controls used while riding, such as keypads), contrast that stays readable in sunlight in both light and dark themes, large digits, haptic feedback on long presses, and a long press or a confirmation for anything destructive or hard to undo.
+  - Large text: `:app` passes its `RiderTypography` (the Material styles scaled 1.25×, so everyday text is about 18–20 sp) to `GisteTheme`. Composables take text styles from `MaterialTheme.typography` and never hardcode font sizes, so every module follows it. `:core` stays neutral: other apps keep the Material sizes.
 - One-shot UI effects (snackbars, navigation) are modeled as state where possible, following Android guidance.
 
 ### 5.4 Coroutines and flows

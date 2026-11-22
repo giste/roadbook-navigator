@@ -32,14 +32,15 @@ import dev.giste.roadbooknavigator.permission.PreciseLocationPermission
 import dev.giste.roadbooknavigator.settings.AppSettings
 import dev.giste.roadbooknavigator.settings.AppSettingsSource
 import dev.giste.roadbooknavigator.ui.AppNavHost
+import dev.giste.roadbooknavigator.ui.RiderTypography
 import dev.giste.roadbooknavigator.ui.isDarkTheme
 import javax.inject.Inject
 
 /**
  * The only activity. A Hilt entry point, so the composables it hosts can get Hilt view models.
  *
- * It shows the app in the theme mode of the [AppSettings], following every change, and every
- * screen behind the location permission gate.
+ * It shows the app in the theme mode of the [AppSettings], following every change, with the
+ * larger [RiderTypography], and every screen behind the location permission gate.
  */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -55,7 +56,10 @@ class MainActivity : ComponentActivity() {
             // Until the stored settings are read, the defaults apply (the system's theme).
             val appSettings by appSettingsSource.settings
                 .collectAsStateWithLifecycle(initialValue = AppSettings())
-            GisteTheme(darkTheme = appSettings.themeMode.isDarkTheme()) {
+            GisteTheme(
+                darkTheme = appSettings.themeMode.isDarkTheme(),
+                typography = RiderTypography,
+            ) {
                 // Every screen needs precise location, so the whole app waits behind the gate.
                 PermissionGate(permissions = listOf(PreciseLocationPermission)) {
                     AppNavHost(modifier = Modifier.fillMaxSize())

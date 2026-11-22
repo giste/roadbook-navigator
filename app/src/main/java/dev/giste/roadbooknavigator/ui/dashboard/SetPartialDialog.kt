@@ -55,6 +55,7 @@ import dev.giste.core.ui.component.AutoSizeText
 import dev.giste.core.ui.theme.GisteTheme
 import dev.giste.geo.Distance
 import dev.giste.roadbooknavigator.R
+import dev.giste.roadbooknavigator.ui.RiderTypography
 import java.text.DecimalFormatSymbols
 import java.util.Locale
 
@@ -392,7 +393,8 @@ private const val PHONE_LANDSCAPE = "spec:width=891dp,height=411dp,dpi=420"
 /** The panel with [text] typed, filling the preview like the dialog fills the screen. */
 @Composable
 private fun SetPartialPreview(text: String) {
-    GisteTheme {
+    // The app's text sizes, as on the device.
+    GisteTheme(typography = RiderTypography) {
         Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.scrim)) {
             SetPartialPanel(
                 text = text,
