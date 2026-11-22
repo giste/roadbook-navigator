@@ -17,11 +17,10 @@
 
 package dev.giste.roadbooknavigator.integration
 
-import androidx.compose.ui.semantics.SemanticsActions
-import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -96,9 +95,8 @@ class DashboardIntegrationTest {
         composeRule.awaitText("2")
         composeRule.awaitPartial("0.00")
 
-        // The second waypoint's distance section: 0.11 km from the start.
-        composeRule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsActions.OnLongClick))[1]
-            .performTouchInput { longClick() }
+        // The second waypoint, 0.11 km from the start: its distance section shows that partial.
+        composeRule.onAllNodesWithText("0.11")[0].performTouchInput { longClick() }
 
         composeRule.awaitPartial("0.11")
     }

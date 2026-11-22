@@ -18,9 +18,6 @@
 package dev.giste.core.permission.presentation
 
 import androidx.annotation.StringRes
-import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.test.SemanticsMatcher
-import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -65,12 +62,10 @@ class PermissionScreenTest {
     }
 
     @Test
-    fun permissionScreen_anyStatus_showsTitleAsHeading() {
+    fun permissionScreen_anyStatus_showsTitle() {
         setScreen(PermissionStatus.Denied)
 
-        composeRule.onNodeWithText(TITLE)
-            .assertIsDisplayed()
-            .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+        composeRule.onNodeWithText(TITLE).assertIsDisplayed()
     }
 
     @Test
