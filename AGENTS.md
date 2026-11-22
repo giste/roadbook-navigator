@@ -81,7 +81,7 @@ Use only libraries that are already in the version catalog, unless the developer
 | `:roadbook` | Reusable. Imports `.rn2`, builds and draws waypoints and moderators, emits roadbook events, auto-advances from a partial-distance flow | `:core`, `:geo` |
 | `:map` | Reusable. Map centered on current location with custom zoom and tilt, map management | `:core`, `:geo` |
 | `:settings` | Settings UI and persistence for all modules. Provides each module's settings flow | `:core`, `:geo` + feature modules |
-| `:app` | Composition root: `Application`, `MainActivity`, navigation host, cross-module wiring and cross-module rules. No domain logic (see [§4.3](#43-cross-module-rules-in-app)) | all modules |
+| `:app` | Composition root: `Application`, `MainActivity`, navigation host, cross-module wiring, cross-module rules and application rules. No logic that belongs to one module's concept (see [§4.3](#43-cross-module-and-application-rules-in-app)) | all modules |
 
 Rules:
 
@@ -113,14 +113,15 @@ Each feature module **declares the inputs it needs as interfaces or flows in its
 
 When several modules need the **same primitive geographic or measurement concept**, put a minimal, framework-free value object in the **shared kernel**, `:geo`, for example `Distance`, `GeoPoint` or `Bearing`. Keep the shared kernel small. Feature-specific concepts stay in their feature.
 
-### 4.3 Cross-module rules in `:app`
+### 4.3 Cross-module and application rules in `:app`
 
-Some rules belong to no single feature, because they decide how features react to each other, and no feature may know about another. Resetting the odometer when a new roadbook is loaded is one example. These **cross-module rules** live in `:app`. **Domain logic** does not: anything about one concept (how distance is accumulated, when a waypoint is reached, how `.rn2` is parsed) belongs in the feature that owns that concept.
+Some rules belong to no single feature, because they decide how features react to each other, and no feature may know about another. Resetting the odometer when a new roadbook is loaded is one example. These **cross-module rules** live in `:app`. So do **application rules**: this app's own policies on top of the modules' concepts, such as offering to import a roadbook only while the vehicle is stopped. **Rules about one concept** do not: anything about one concept (how distance is accumulated, when a waypoint is reached, how `.rn2` is parsed, when a vehicle counts as stopped) belongs in the feature that owns that concept, so every app that reuses it gets it.
 
 - Implement each rule as a small **coordinator** class in `:app`'s `coordination` package, named after what it coordinates, e.g. `RoadbookOdometerCoordinator`. It collects one module's public outputs (events, flows) and calls another module's public API. It runs in the injected application `CoroutineScope` and starts from the `Application`.
 - Coordinators use only the modules' public APIs. They follow the same rules as any other code: KDoc, no exceptions escaping flows, injected dispatchers, and tests (see [§10.1](#101-test-types)).
 - If a rule only involves one module's concepts, move it into that module.
-- If a coordinator starts doing domain work, such as calculations, state machines or persistence, that logic belongs in a feature. Move it there, or ask the developer about a new module.
+- A rule with real logic (calculations, decisions over several inputs, state machines) is not written inside a coordinator or a ViewModel. It goes in `:app`'s `domain` package, as plain Kotlin with no Android dependencies, following [§5.2](#52-ddd-building-blocks) (e.g. one `VerbNounUseCase` per action, no pass-through use cases), with unit tests. Coordinators and ViewModels call it. A one-line policy, such as showing a button while stopped, may stay where it is used.
+- If an application rule needs persistence or grows into a concept of its own, ask the developer whether it belongs in a feature or in a new module.
 
 ### 4.4 Settings contract
 
@@ -152,7 +153,7 @@ dev/giste/roadbooknavigator/<module>/   (dev/giste/<module>/ for reusable module
 
 A module without UI (e.g. `:location`, `:odometer`) has no `presentation` package. Its app decides how to show its outputs.
 
-- **Root package = public API only** (see the [`:core` and `:geo` exceptions](#core-exception-one-sub-package-per-capability)). Root-package files contain only `public` top-level declarations. They may also have `private` helpers used only by a public declaration in the same file. Do not put `internal` types or shared helpers there, even if they are small. Move them into the layer they belong to.
+- **Root package = public API only** (see the [`:core`](#core-exception-one-sub-package-per-capability), [`:app`](#app-exception-composition-root) and [`:geo`](#geo-exception-value-objects-only) exceptions). Root-package files contain only `public` top-level declarations. They may also have `private` helpers used only by a public declaration in the same file. Do not put `internal` types or shared helpers there, even if they are small. Move them into the layer they belong to.
 - **Layer packages contain no `public` declarations.** Everything in them is `internal` or `private`. If a type in a layer needs to become public, move it, or a public interface it implements, to the root package.
 - Public types are imported from the module's root package, e.g. `dev.giste.odometer.OdometerController`.
 
@@ -195,6 +196,24 @@ core/
 - Capabilities depend on each other only through their public API (e.g. `permission` injects `logging.Logger`, never `logging.data.TimberLogger`). Kotlin's `internal` is module-wide, so the compiler does not enforce this. Reviews must.
 - Add a new capability sub-package instead of growing an existing one with unrelated code.
 - Geographic and measurement value objects do not go in `:core`. They go in `:geo`.
+
+#### `:app` exception: composition root
+
+`:app` has no public API (nothing depends on it), so its root package holds only the `Application` and `MainActivity`. Its packages are:
+
+```
+dev/giste/roadbooknavigator/
+├── RoadbookNavigatorApplication.kt, MainActivity.kt
+├── presentation/   One sub-package per screen (e.g. presentation/dashboard/): composables, ViewModel, UI state
+├── domain/         Application rules (see §4.3). Created with the first rule that needs it
+├── coordination/   Coordinators (see §4.3)
+├── adapter/        Adapters between modules' ports (see §4.2)
+├── permission/     The app's permission definitions for the :core permission gate
+├── settings/       Temporary settings sources, until :settings provides them
+└── di/             Hilt modules
+```
+
+The same visibility rules apply: everything is `internal` or `private`.
 
 #### `:geo` exception: value objects only
 
@@ -285,7 +304,7 @@ The test suite is exhaustive: **every functionality, branch, error path, sealed 
 
 | Type | Source set | What |
 |---|---|---|
-| Unit | `src/test` | Value objects and invariants, aggregates, use cases, mappers, parsers (valid, invalid and edge-case fixtures), domain algorithms, ViewModels (every state transition and action), repositories with fake data sources, `:app` coordinators with fakes of the modules' public APIs |
+| Unit | `src/test` | Value objects and invariants, aggregates, use cases, mappers, parsers (valid, invalid and edge-case fixtures), domain algorithms, ViewModels (every state transition and action), repositories with fake data sources, `:app` application rules, `:app` coordinators with fakes of the modules' public APIs |
 | Integration (JVM) | `src/test` | Repositories with real DataStore in a temporary folder, parsers plus repositories on real fixture files, flow pipelines across layers |
 | UI | `src/androidTest` (or `src/test` with Robolectric if configured) | Each stateless `XxxContent` in every UI state, user interactions and callbacks |
 | App integration | `:app` `src/androidTest` | Hilt-based tests of cross-module wiring and coordinators: roadbook load → odometer reset, odometer partial → roadbook auto-advance, settings changes propagating to features |
