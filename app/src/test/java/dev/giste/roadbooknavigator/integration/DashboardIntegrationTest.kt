@@ -17,14 +17,12 @@
 
 package dev.giste.roadbooknavigator.integration
 
-import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
@@ -35,6 +33,7 @@ import dev.giste.roadbook.RoadbookController
 import dev.giste.roadbooknavigator.MainActivity
 import dev.giste.roadbooknavigator.coordination.RoadbookOdometerCoordinator
 import dev.giste.roadbooknavigator.ui.dashboard.DashboardTestTags
+import dev.giste.roadbooknavigator.ui.dashboard.pressNumpadKeys
 import javax.inject.Inject
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
@@ -118,7 +117,7 @@ class DashboardIntegrationTest {
         composeRule.awaitPartial("0.00")
 
         composeRule.onNodeWithTag(DashboardTestTags.PARTIAL).performTouchInput { longClick() }
-        composeRule.onNode(hasSetTextAction()).performTextInput("12.35")
+        composeRule.pressNumpadKeys("12.35")
         composeRule.onNodeWithText("Set").performClick()
 
         composeRule.awaitPartial("12.35")

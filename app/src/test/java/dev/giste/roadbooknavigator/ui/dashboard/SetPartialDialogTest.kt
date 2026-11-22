@@ -17,23 +17,29 @@
 
 package dev.giste.roadbooknavigator.ui.dashboard
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.hapticfeedback.HapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performImeAction
-import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.height
+import androidx.compose.ui.unit.width
 import dev.giste.core.ui.theme.GisteTheme
 import dev.giste.geo.Distance
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -41,7 +47,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
-@Config(qualifiers = "en")
+@Config(qualifiers = "en-w800dp-h1280dp")
 class SetPartialDialogTest {
 
     @get:Rule
@@ -50,99 +56,106 @@ class SetPartialDialogTest {
     private val confirmed = mutableListOf<Distance>()
     private var dismissed = 0
 
+    /** The haptic feedback the dialog asked for, in order. */
+    private val haptics = mutableListOf<HapticFeedbackType>()
+
     /** Shows the dialog, starting with [initialText], keeping the typed text like its caller does. */
     private fun show(initialText: String = "") {
         composeRule.setContent {
             var text by remember { mutableStateOf(initialText) }
-            GisteTheme {
-                SetPartialDialog(
-                    text = text,
-                    onTextChange = { text = it },
-                    onConfirm = { confirmed += it },
-                    onDismiss = { dismissed++ },
-                )
+            val recordingHaptics = remember {
+                object : HapticFeedback {
+                    override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) {
+                        haptics += hapticFeedbackType
+                    }
+                }
+            }
+            CompositionLocalProvider(LocalHapticFeedback provides recordingHaptics) {
+                GisteTheme {
+                    SetPartialDialog(
+                        text = text,
+                        onTextChange = { text = it },
+                        onConfirm = { confirmed += it },
+                        onDismiss = { dismissed++ },
+                    )
+                }
             }
         }
     }
 
-    private fun field() = composeRule.onNode(hasSetTextAction())
-
     private fun setButton() = composeRule.onNodeWithText("Set")
 
     @Test
-    fun setPartialDialog_opened_showsTitleAndFocusesTheField() {
+    fun setPartialDialog_opened_showsTitleAndAllKeys() {
         show()
 
         composeRule.onNodeWithText("Set partial").assertIsDisplayed()
-        field().assertIsFocused()
+        "0123456789.".forEach { composeRule.onNode(numpadKey("$it")).assertIsDisplayed() }
+        composeRule.onNodeWithTag(SetPartialTestTags.DELETE).assertIsDisplayed()
     }
 
     @Test
-    fun setPartialDialog_empty_disablesSetWithoutError() {
+    fun setPartialDialog_empty_showsMutedZeroAndDisablesSet() {
         show()
 
+        composeRule.onNode(shownInPartialDisplay("0 km")).assertIsDisplayed()
         setButton().assertIsNotEnabled()
-        composeRule.onNodeWithText("Enter a distance", substring = true).assertDoesNotExist()
     }
 
     @Test
-    fun setPartialDialog_validPartialTyped_enablesSet() {
+    fun setPartialDialog_keysPressed_showsTheTypedPartial() {
         show()
 
-        field().performTextInput("12.35")
+        composeRule.pressNumpadKeys("12.35")
 
+        composeRule.onNode(shownInPartialDisplay("12.35 km")).assertIsDisplayed()
         setButton().assertIsEnabled()
     }
 
     @Test
-    fun setPartialDialog_setClicked_confirmsTheTypedPartial() {
+    fun setPartialDialog_deletePressed_removesTheLastCharacter() {
         show("12.35")
+
+        composeRule.pressNumpadKeys("<")
+
+        composeRule.onNode(shownInPartialDisplay("12.3 km")).assertIsDisplayed()
+    }
+
+    @Test
+    fun setPartialDialog_keyBeyondTheLargestPartial_isIgnored() {
+        show("12.35")
+
+        composeRule.pressNumpadKeys("9")
+
+        composeRule.onNode(shownInPartialDisplay("12.35 km")).assertIsDisplayed()
+    }
+
+    @Test
+    fun setPartialDialog_keyChangesThePartial_ticks() {
+        show()
+
+        composeRule.pressNumpadKeys("1")
+
+        assertEquals(listOf(HapticFeedbackType.VirtualKey), haptics)
+    }
+
+    @Test
+    fun setPartialDialog_keyIsIgnored_rejects() {
+        show("12.35")
+
+        composeRule.pressNumpadKeys("9")
+
+        assertEquals(listOf(HapticFeedbackType.Reject), haptics)
+    }
+
+    @Test
+    fun setPartialDialog_setClicked_confirmsTheTypedPartial() {
+        show()
+        composeRule.pressNumpadKeys("12.35")
 
         setButton().performClick()
 
         assertEquals(listOf(Distance.meters(12_350.0)), confirmed)
-    }
-
-    @Test
-    fun setPartialDialog_doneKeyWithValidPartial_confirmsIt() {
-        show("1,5")
-
-        field().performImeAction()
-
-        assertEquals(listOf(Distance.meters(1_500.0)), confirmed)
-    }
-
-    @Test
-    fun setPartialDialog_doneKeyWithInvalidPartial_doesNothing() {
-        show("abc")
-
-        field().performImeAction()
-
-        assertEquals(emptyList<Distance>(), confirmed)
-    }
-
-    @Test
-    fun setPartialDialog_notANumber_showsErrorAndDisablesSet() {
-        show("12..3")
-
-        composeRule.onNodeWithText("Enter a distance in kilometers, such as 12.35").assertIsDisplayed()
-        setButton().assertIsNotEnabled()
-    }
-
-    @Test
-    fun setPartialDialog_tooLarge_showsTheLargestPartial() {
-        show("1234")
-
-        composeRule.onNodeWithText("The partial can be at most 999.99 km").assertIsDisplayed()
-        setButton().assertIsNotEnabled()
-    }
-
-    @Test
-    fun setPartialDialog_tooManyDecimals_showsHowManyAreAllowed() {
-        show("1.234")
-
-        composeRule.onNodeWithText("Use at most 2 decimals").assertIsDisplayed()
-        setButton().assertIsNotEnabled()
     }
 
     @Test
@@ -156,11 +169,45 @@ class SetPartialDialogTest {
     }
 
     @Test
-    @Config(qualifiers = "es")
-    fun setPartialDialog_spanish_usesSpanishTextsAndDecimalComma() {
-        show("1234")
+    fun setPartialDialog_portrait_showsTheNumpadBelowThePartial() {
+        show()
+
+        val display = composeRule.onNodeWithTag(SetPartialTestTags.DISPLAY).getUnclippedBoundsInRoot()
+        val firstKey = composeRule.onNode(numpadKey("1")).getUnclippedBoundsInRoot()
+
+        assertTrue(firstKey.top >= display.bottom)
+    }
+
+    @Test
+    @Config(qualifiers = "en-w1280dp-h800dp")
+    fun setPartialDialog_landscape_showsTheNumpadRightOfThePartial() {
+        show()
+
+        val display = composeRule.onNodeWithTag(SetPartialTestTags.DISPLAY).getUnclippedBoundsInRoot()
+        val firstKey = composeRule.onNode(numpadKey("1")).getUnclippedBoundsInRoot()
+
+        assertTrue(firstKey.left >= display.right)
+    }
+
+    @Test
+    @Config(qualifiers = "en-w891dp-h411dp")
+    fun setPartialDialog_phoneLandscape_keysAreAtLeastTheMinimumTouchTarget() {
+        show()
+
+        val key = composeRule.onNode(numpadKey("5")).getUnclippedBoundsInRoot()
+
+        assertTrue("Key height was ${key.height}", key.height >= 56.dp)
+        assertTrue("Key width was ${key.width}", key.width >= 56.dp)
+    }
+
+    @Test
+    @Config(qualifiers = "es-w800dp-h1280dp")
+    fun setPartialDialog_spanish_usesTheDecimalComma() {
+        show()
+
+        composeRule.pressNumpadKeys("12,5", separator = ',')
 
         composeRule.onNodeWithText("Fijar parcial").assertIsDisplayed()
-        composeRule.onNodeWithText("El parcial puede ser como máximo 999,99 km").assertIsDisplayed()
+        composeRule.onNode(shownInPartialDisplay("12,5 km")).assertIsDisplayed()
     }
 }

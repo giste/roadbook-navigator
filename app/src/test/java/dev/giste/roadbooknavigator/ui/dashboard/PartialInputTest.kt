@@ -19,6 +19,7 @@ package dev.giste.roadbooknavigator.ui.dashboard
 
 import dev.giste.geo.Distance
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class PartialInputTest {
@@ -131,5 +132,79 @@ class PartialInputTest {
     @Test
     fun parsePartialInput_tooLargeAndTooManyDecimals_isTooLarge() {
         assertEquals(invalid(PartialInputError.TOO_LARGE), parsePartialInput("1000.123"))
+    }
+
+    private fun press(text: String, key: NumpadKey): String = pressNumpadKey(text, key)
+
+    private fun digit(value: Int): NumpadKey = NumpadKey.Digit(value)
+
+    @Test
+    fun pressNumpadKey_digitOnEmpty_appendsIt() {
+        assertEquals("7", press("", digit(7)))
+    }
+
+    @Test
+    fun pressNumpadKey_digitAfterDigits_appendsIt() {
+        assertEquals("12", press("1", digit(2)))
+    }
+
+    @Test
+    fun pressNumpadKey_digitAfterLoneZero_replacesIt() {
+        assertEquals("5", press("0", digit(5)))
+    }
+
+    @Test
+    fun pressNumpadKey_digitAfterZeroAndSeparator_appendsIt() {
+        assertEquals("0.5", press("0.", digit(5)))
+    }
+
+    @Test
+    fun pressNumpadKey_digitBeyondWholeDigits_isIgnored() {
+        assertEquals("999", press("999", digit(1)))
+    }
+
+    @Test
+    fun pressNumpadKey_digitBeyondDecimals_isIgnored() {
+        assertEquals("12.35", press("12.35", digit(1)))
+    }
+
+    @Test
+    fun pressNumpadKey_separatorOnEmpty_startsWithZero() {
+        assertEquals("0.", press("", NumpadKey.Separator))
+    }
+
+    @Test
+    fun pressNumpadKey_separatorAfterDigits_appendsIt() {
+        assertEquals("12.", press("12", NumpadKey.Separator))
+    }
+
+    @Test
+    fun pressNumpadKey_secondSeparator_isIgnored() {
+        assertEquals("1.2", press("1.2", NumpadKey.Separator))
+    }
+
+    @Test
+    fun pressNumpadKey_delete_removesTheLastCharacter() {
+        assertEquals("12.", press("12.3", NumpadKey.Delete))
+    }
+
+    @Test
+    fun pressNumpadKey_deleteOnEmpty_staysEmpty() {
+        assertEquals("", press("", NumpadKey.Delete))
+    }
+
+    @Test
+    fun pressNumpadKey_largestPartialTyped_isValid() {
+        val text = listOf(9, 9, 9).fold("") { typed, value -> press(typed, digit(value)) }
+            .let { press(it, NumpadKey.Separator) }
+            .let { press(it, digit(9)) }
+            .let { press(it, digit(9)) }
+
+        assertEquals(PartialInput.Valid(Distance.meters(999_990.0)), parsePartialInput(text))
+    }
+
+    @Test
+    fun numpadDigit_outOfRange_throws() {
+        assertThrows(IllegalArgumentException::class.java) { NumpadKey.Digit(10) }
     }
 }

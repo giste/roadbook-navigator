@@ -60,14 +60,14 @@ internal enum class PartialInputError {
 /**
  * Reads [text] as a partial in kilometers.
  *
- * Both `.` and `,` are accepted as the decimal separator, whatever the locale, because decimal
- * keyboards do not always offer the locale's one. Thousands separators are not accepted: a partial
+ * Both `.` and `,` are accepted as the decimal separator, whatever the locale; the numpad always
+ * builds text with [PARTIAL_SEPARATOR]. Thousands separators are not accepted: a partial
  * has at most [PARTIAL_INTEGER_DIGITS] whole digits, so `1.234` could only be a mistake. Leading
  * and trailing spaces are ignored. Only values the dashboard can show exactly are valid, so the
  * partial the rider sets is the partial they see: at most [PARTIAL_INTEGER_DIGITS] whole digits
  * (leading zeros do not count) and at most [PARTIAL_DECIMALS] decimals.
  *
- * @param text what the rider typed.
+ * @param text what the rider typed, e.g. with [pressNumpadKey].
  * @return [PartialInput.Empty] for blank text, otherwise the parsed partial or why it is rejected.
  */
 internal fun parsePartialInput(text: String): PartialInput {
@@ -90,4 +90,57 @@ internal fun parsePartialInput(text: String): PartialInput {
             PartialInput.Valid(Distance.meters(kilometers.movePointRight(3).toDouble()))
         }
     }
+}
+
+/** The decimal separator of the text the numpad builds, whatever the locale shows. */
+internal const val PARTIAL_SEPARATOR: Char = '.'
+
+/** A key of the set-partial numpad. */
+internal sealed interface NumpadKey {
+
+    /**
+     * A digit key.
+     *
+     * @property digit the digit, from 0 to 9.
+     */
+    data class Digit(val digit: Int) : NumpadKey {
+        init {
+            require(digit in 0..9) { "A numpad digit must be from 0 to 9, but was $digit" }
+        }
+    }
+
+    /** The decimal separator key. */
+    data object Separator : NumpadKey
+
+    /** The key that deletes the last character. */
+    data object Delete : NumpadKey
+}
+
+/**
+ * The text after pressing [key] on the numpad, with [PARTIAL_SEPARATOR] as the separator.
+ *
+ * The numpad never builds text that [parsePartialInput] rejects, so it needs no error messages: a
+ * key that would make the partial invalid is ignored, and the text is returned unchanged.
+ *
+ * - A digit is appended, unless the partial would get more whole digits or decimals than the
+ *   dashboard shows. A lone `0` is replaced, so the text never starts with a useless zero.
+ * - The separator is appended once. On empty text it gives `0.`, so the text always starts with a
+ *   digit.
+ * - Delete removes the last character, if any.
+ *
+ * @param text the text so far, built by this function (empty at first).
+ * @param key the pressed key.
+ * @return the new text, or [text] itself when the key is ignored.
+ */
+internal fun pressNumpadKey(text: String, key: NumpadKey): String = when (key) {
+    is NumpadKey.Digit -> {
+        val candidate = if (text == "0") "${key.digit}" else "$text${key.digit}"
+        if (parsePartialInput(candidate) is PartialInput.Valid) candidate else text
+    }
+    NumpadKey.Separator -> when {
+        PARTIAL_SEPARATOR in text -> text
+        text.isEmpty() -> "0$PARTIAL_SEPARATOR"
+        else -> "$text$PARTIAL_SEPARATOR"
+    }
+    NumpadKey.Delete -> text.dropLast(1)
 }
