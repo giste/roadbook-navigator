@@ -209,7 +209,6 @@ dev/giste/roadbooknavigator/
 ├── coordination/   Coordinators (see §4.3)
 ├── adapter/        Adapters between modules' ports (see §4.2)
 ├── permission/     The app's permission definitions for the :core permission gate
-├── settings/       Temporary settings sources, until :settings provides them
 └── di/             Hilt modules
 ```
 

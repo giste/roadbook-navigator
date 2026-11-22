@@ -49,6 +49,8 @@ dependencies {
     implementation(project(":location"))
     implementation(project(":odometer"))
     implementation(project(":roadbook"))
+    // Stores and provides the settings of every module (AGENTS.md §4.4).
+    implementation(project(":settings"))
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)

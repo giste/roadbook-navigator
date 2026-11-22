@@ -10,7 +10,7 @@ Measures the **trip** and **total** distance travelled from location fixes, and 
 - Let the app reset, set, increase or decrease the trip distance, and reset both distances.
 - Persist the distances so they survive process death and restarts (AGENTS.md §7).
 
-It has **no UI**. It exposes the distances as a flow, and each app decides how to show them (numbers, a progress bar, …). It does **not** read the location itself: the app forwards the `LocationFix`es of its location provider (in Roadbook Navigator, `:location`) through `OdometerLocationSource` (AGENTS.md §4.2). The fix type comes from `:geo`, so no mapping is needed, and the port stays so the odometer is not tied to one provider: an app can feed it any source, including a recorded track. It does **not** store its settings either: the app provides them through `OdometerSettingsSource` (AGENTS.md §4.4; in Roadbook Navigator, `:settings` will).
+It has **no UI**. It exposes the distances as a flow, and each app decides how to show them (numbers, a progress bar, …). It does **not** read the location itself: the app forwards the `LocationFix`es of its location provider (in Roadbook Navigator, `:location`) through `OdometerLocationSource` (AGENTS.md §4.2). The fix type comes from `:geo`, so no mapping is needed, and the port stays so the odometer is not tied to one provider: an app can feed it any source, including a recorded track. It does **not** store its settings either: the app provides them through `OdometerSettingsSource` (AGENTS.md §4.4; in Roadbook Navigator, `:settings` does).
 
 ## Terminology
 
@@ -66,7 +66,7 @@ Package `dev.giste.odometer`:
 | `useAltitude` | `Boolean` | `false` | Whether the altitude change is added to the distance. Turn it on only for altitude sources better than GPS, e.g. a barometer. |
 | `maxVerticalAccuracy` | `Distance` | 3 m | With `useAltitude` on, the altitude change is only counted when both fixes have this vertical accuracy or better. No effect when `useAltitude` is off. |
 
-`:odometer` imposes no ranges: `Speed` and `Distance` already reject negative and non-finite values, and every other value works. Which values the user may choose (e.g. the range of a slider) is up to each app, so Roadbook Navigator's `:settings` will define its own. Every new value applies to the next fix. The odometer does not measure until the settings source has emitted once. If the settings flow throws, `:odometer` logs it and uses the defaults.
+`:odometer` imposes no ranges: `Speed` and `Distance` already reject negative and non-finite values, and every other value works. Which values the user may choose (e.g. the range of a slider) is up to each app, so Roadbook Navigator's `:settings` defines its own. Every new value applies to the next fix. The odometer does not measure until the settings source has emitted once. If the settings flow throws, `:odometer` logs it and uses the defaults.
 
 ## Persisted state
 
