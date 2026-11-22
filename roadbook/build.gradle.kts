@@ -11,7 +11,9 @@ android {
     // :roadbook is a reusable module, so its namespace is dev.giste.<module> (AGENTS.md §4.1).
     namespace = "dev.giste.roadbook"
     compileSdk {
-        version = release(37)
+        version = release(37) {
+            minorApiLevel = 2
+        }
     }
 
     defaultConfig {
