@@ -19,10 +19,13 @@ package dev.giste.location.domain
 
 import app.cash.turbine.test
 import dev.giste.geo.Distance
+import dev.giste.geo.Speed
 import dev.giste.location.FakeLocationSettingsSource
 import dev.giste.location.FakeLogger
 import dev.giste.location.LocationEvent
 import dev.giste.location.LocationSettings
+import dev.giste.location.MotionState
+import dev.giste.location.fixAt
 import dev.giste.location.testLocationFix
 import java.io.IOException
 import kotlin.time.Duration.Companion.seconds
@@ -232,6 +235,123 @@ class DefaultLocationSourceTest {
 
             expectNoEvents()
             assertEquals(2, repository.requests.size)
+        }
+    }
+
+    @Test
+    fun events_onlyMotionSpeedsChange_doesNotRestart() = runTest {
+        settings.emit(LocationSettings())
+        val source = createSource()
+
+        source.events.test {
+            runCurrent()
+            settings.emit(LocationSettings(stoppedSpeed = Speed.kilometersPerHour(1.0)))
+            runCurrent()
+
+            assertEquals(1, repository.requests.size)
+        }
+    }
+
+    @Test
+    fun motion_beforeAnyEvent_isStopped() = runTest {
+        settings.emit(LocationSettings())
+        val source = createSource()
+
+        source.motion.test {
+            assertEquals(MotionState.STOPPED, awaitItem())
+        }
+    }
+
+    @Test
+    fun motion_collected_requestsUpdates() = runTest {
+        settings.emit(LocationSettings())
+        val source = createSource()
+
+        source.motion.test {
+            runCurrent()
+
+            assertEquals(1, repository.activeRequests)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun motion_events_emitsOnlyChanges() = runTest {
+        settings.emit(LocationSettings())
+        val source = createSource()
+
+        source.motion.test {
+            skipItems(1)
+            runCurrent()
+            repository.emit(fixAt(0.0)) // still stopped
+            repository.emit(fixAt(20.0)) // moving
+            repository.emit(fixAt(7.0)) // still moving: between the speeds
+            repository.emit(fixAt(3.0)) // stopped
+
+            assertEquals(MotionState.MOVING, awaitItem())
+            assertEquals(MotionState.STOPPED, awaitItem())
+            expectNoEvents()
+        }
+    }
+
+    @Test
+    fun motion_speedsChange_judgesTheLatestEventAgain() = runTest {
+        settings.emit(LocationSettings())
+        val source = createSource()
+
+        source.motion.test {
+            skipItems(1)
+            runCurrent()
+            repository.emit(fixAt(7.0)) // between the default speeds: still stopped
+            runCurrent()
+
+            settings.emit(LocationSettings(movingSpeed = Speed.kilometersPerHour(6.0)))
+
+            assertEquals(MotionState.MOVING, awaitItem())
+        }
+    }
+
+    @Test
+    fun motion_settingsSourceFails_usesDefaultSpeeds() = runTest {
+        val source = createSource(settingsFlow = flow { throw IOException("Settings unreadable") })
+
+        source.motion.test {
+            skipItems(1)
+            runCurrent()
+            repository.emit(fixAt(10.1))
+
+            assertEquals(MotionState.MOVING, awaitItem())
+        }
+    }
+
+    @Test
+    fun motion_lateCollector_receivesTheCurrentState() = runTest {
+        settings.emit(LocationSettings())
+        val source = createSource()
+        val first = backgroundScope.launch { source.motion.collect {} }
+        runCurrent()
+        repository.emit(fixAt(20.0))
+        runCurrent()
+
+        source.motion.test {
+            assertEquals(MotionState.MOVING, awaitItem())
+        }
+        first.cancel()
+    }
+
+    @Test
+    fun motion_collectedAgainAfterStop_startsStopped() = runTest {
+        settings.emit(LocationSettings())
+        val source = createSource()
+        source.motion.test {
+            runCurrent()
+            repository.emit(fixAt(20.0))
+            cancelAndIgnoreRemainingEvents()
+        }
+        advanceTimeBy(5_001)
+
+        source.motion.test {
+            assertEquals(MotionState.STOPPED, awaitItem())
         }
     }
 }

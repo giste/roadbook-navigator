@@ -19,6 +19,7 @@ package dev.giste.location
 
 import dev.giste.geo.GeoPoint
 import dev.giste.geo.LocationFix
+import dev.giste.geo.Speed
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
@@ -33,3 +34,9 @@ internal fun testLocationFix(latitude: Double = 40.4168): LocationFix = Location
     time = Instant.fromEpochMilliseconds(1_000),
     elapsedRealtime = 1.seconds,
 )
+
+/** A [LocationEvent.LocationUpdated] with a fix at [kilometersPerHour], or without a speed. */
+internal fun fixAt(kilometersPerHour: Double?): LocationEvent.LocationUpdated =
+    LocationEvent.LocationUpdated(
+        testLocationFix().copy(speed = kilometersPerHour?.let(Speed::kilometersPerHour)),
+    )

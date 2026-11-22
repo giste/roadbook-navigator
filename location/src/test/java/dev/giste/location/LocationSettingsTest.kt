@@ -18,6 +18,7 @@
 package dev.giste.location
 
 import dev.giste.geo.Distance
+import dev.giste.geo.Speed
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -61,6 +62,34 @@ class LocationSettingsTest {
     fun constructor_infiniteInterval_throws() {
         assertThrows(IllegalArgumentException::class.java) {
             LocationSettings(updateInterval = Duration.INFINITE)
+        }
+    }
+
+    @Test
+    fun constructor_noArguments_usesMotorVehicleMotionSpeeds() {
+        val settings = LocationSettings()
+
+        assertEquals(Speed.kilometersPerHour(10.0), settings.movingSpeed)
+        assertEquals(Speed.kilometersPerHour(5.0), settings.stoppedSpeed)
+    }
+
+    @Test
+    fun constructor_equalMotionSpeeds_isAllowed() {
+        val speed = Speed.kilometersPerHour(3.0)
+
+        val settings = LocationSettings(movingSpeed = speed, stoppedSpeed = speed)
+
+        assertEquals(speed, settings.movingSpeed)
+        assertEquals(speed, settings.stoppedSpeed)
+    }
+
+    @Test
+    fun constructor_movingSpeedBelowStoppedSpeed_throws() {
+        assertThrows(IllegalArgumentException::class.java) {
+            LocationSettings(
+                movingSpeed = Speed.kilometersPerHour(4.0),
+                stoppedSpeed = Speed.kilometersPerHour(5.0),
+            )
         }
     }
 }
