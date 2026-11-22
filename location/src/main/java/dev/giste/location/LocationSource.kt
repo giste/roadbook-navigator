@@ -43,4 +43,26 @@ public interface LocationSource {
      * [LocationEvent.Error] with [LocationError.PERMISSION_DENIED].
      */
     public val events: Flow<LocationEvent>
+
+    /**
+     * Whether the device is moving, from the speed of the fixes in [events].
+     *
+     * Two speeds from [LocationSettings] decide it, with a gap between them (hysteresis) so GPS
+     * jitter around a single speed does not flip the state:
+     *
+     * - A fix faster than [LocationSettings.movingSpeed] means [MotionState.MOVING], and one slower
+     *   than [LocationSettings.stoppedSpeed] means [MotionState.STOPPED]. In between, both limits
+     *   included, the state does not change.
+     * - Without a known speed it counts as stopped, so an app never locks the user out of a
+     *   stopped-only action because of a missing value: a fix without a speed, a disabled provider
+     *   and a location error mean [MotionState.STOPPED]. [LocationEvent.ProviderEnabled] brings no
+     *   speed, so it changes nothing.
+     *
+     * It is a hot flow shared by every collector, which collects [events] (so it starts and stops
+     * location updates the same way). It starts as [MotionState.STOPPED], emits only changes, and
+     * gives a new collector the current state while it runs. New speeds from
+     * [LocationSettingsSource.settings] apply from the next event. It never throws and never
+     * completes.
+     */
+    public val motion: Flow<MotionState>
 }

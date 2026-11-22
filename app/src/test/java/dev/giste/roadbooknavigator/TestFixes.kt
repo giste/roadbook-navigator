@@ -26,8 +26,8 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 /**
- * A fix at a fixed place and time with [speed]. Only the speed matters to the code under test:
- * the odometer adapter forwards fixes unchanged, and the dashboard only reads the speed.
+ * A fix at a fixed place and time with [speed]. Its values do not matter to the code under test:
+ * the odometer adapter forwards fixes unchanged.
  */
 internal fun testFix(speed: Speed? = Speed.ZERO): LocationFix = LocationFix(
     position = GeoPoint(latitude = 40.0, longitude = -3.0),

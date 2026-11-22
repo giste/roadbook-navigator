@@ -22,6 +22,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.giste.geo.Distance
 import dev.giste.location.LocationSource
+import dev.giste.location.MotionState
 import dev.giste.odometer.OdometerController
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
@@ -40,12 +41,12 @@ private const val STOP_TIMEOUT_MILLIS: Long = 5_000
  * odometer commands the rider gives from it.
  *
  * Collecting [uiState] collects [OdometerController.state], which is what makes the odometer
- * measure, and [LocationSource.events]. The dashboard is only shown behind the permission gate,
+ * measure, and [LocationSource.motion]. The dashboard is only shown behind the permission gate,
  * so both run only once the location permission is granted, and only while the dashboard is
  * visible (plus [STOP_TIMEOUT_MILLIS]).
  *
  * @param odometer the distances, and the commands to change them.
- * @param locationSource the speed, to know whether the vehicle is stopped.
+ * @param locationSource whether the vehicle is stopped.
  */
 @HiltViewModel
 internal class DashboardViewModel @Inject constructor(
@@ -58,9 +59,10 @@ internal class DashboardViewModel @Inject constructor(
         odometer.state
             .map<_, OdometerUiState> { OdometerUiState.Available(partial = it.trip, total = it.total) }
             .onStart { emit(OdometerUiState.Loading) },
-        locationSource.events.stoppedStates(),
-    ) { odometerState, stopped ->
-        DashboardUiState(odometer = odometerState, showImportButton = stopped)
+        locationSource.motion,
+    ) { odometerState, motion ->
+        // Importing is only offered while stopped, so the rider is not tempted to do it riding.
+        DashboardUiState(odometer = odometerState, showImportButton = motion == MotionState.STOPPED)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),

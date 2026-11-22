@@ -19,17 +19,22 @@ package dev.giste.roadbooknavigator
 
 import dev.giste.location.LocationEvent
 import dev.giste.location.LocationSource
+import dev.giste.location.MotionState
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
- * [LocationSource] whose events the test emits with [emit]. Like the real one, it is hot, never
- * completes, and gives a new collector the latest event.
+ * [LocationSource] whose events and motion states the test emits with [emit]. Like the real one,
+ * both flows are hot, never complete, and give a new collector the latest value. Motion starts as
+ * [MotionState.STOPPED]; it is not derived from the events, so tests set each one directly.
  */
 internal class FakeLocationSource : LocationSource {
 
     private val mutableEvents = MutableSharedFlow<LocationEvent>(replay = 1)
 
     override val events: MutableSharedFlow<LocationEvent> = mutableEvents
+
+    override val motion: MutableStateFlow<MotionState> = MutableStateFlow(MotionState.STOPPED)
 
     /** Sends [event] to the current collectors, and keeps it for the next ones. */
     suspend fun emit(event: LocationEvent) {

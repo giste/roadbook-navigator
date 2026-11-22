@@ -19,11 +19,11 @@ package dev.giste.roadbooknavigator.dashboard
 
 import app.cash.turbine.test
 import dev.giste.geo.Distance
+import dev.giste.location.MotionState
 import dev.giste.odometer.OdometerState
 import dev.giste.roadbooknavigator.FakeLocationSource
 import dev.giste.roadbooknavigator.FakeOdometerController
 import dev.giste.roadbooknavigator.MainDispatcherRule
-import dev.giste.roadbooknavigator.fixAt
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -69,7 +69,7 @@ class DashboardViewModelTest {
         viewModel.uiState.test {
             skipItems(1)
 
-            locationSource.emit(fixAt(30.0))
+            locationSource.motion.value = MotionState.MOVING
 
             assertEquals(DashboardUiState(OdometerUiState.Loading, showImportButton = false), awaitItem())
         }
@@ -79,10 +79,10 @@ class DashboardViewModelTest {
     fun uiState_stoppedAfterMoving_showsImportAgain() = runTest {
         viewModel.uiState.test {
             skipItems(1)
-            locationSource.emit(fixAt(30.0))
+            locationSource.motion.value = MotionState.MOVING
             skipItems(1)
 
-            locationSource.emit(fixAt(2.0))
+            locationSource.motion.value = MotionState.STOPPED
 
             assertEquals(true, awaitItem().showImportButton)
         }
