@@ -136,7 +136,7 @@ Some rules belong to no single feature, because they decide how features react t
 
 ## 5. Architecture: Clean Architecture + DDD
 
-Every feature module is internally layered. Dependencies point **inwards**: `presentation → domain ← data`. The domain layer has **no Android or framework dependencies**, except `kotlinx.coroutines` `Flow`.
+Every feature module is internally layered. Dependencies point **inwards**: `ui → domain ← data`. The domain layer has **no Android or framework dependencies**, except `kotlinx.coroutines` `Flow`.
 
 ### 5.1 Package layout per module
 
@@ -147,11 +147,11 @@ dev/giste/roadbooknavigator/<module>/   (dev/giste/<module>/ for reusable module
 ├── *.kt            Public API only: facade interfaces, public models, settings contract, events, entry-point composables / nav routes
 ├── domain/         Entities, value objects, aggregates, domain events, repository interfaces, use cases
 ├── data/           Repository implementations, data sources (DataStore, file system, Android services), mappers
-├── presentation/   ViewModels, UI state, internal composables
+├── ui/             ViewModels, UI state, internal composables
 └── di/             Hilt modules
 ```
 
-A module without UI (e.g. `:location`, `:odometer`) has no `presentation` package. Its app decides how to show its outputs.
+A module without UI (e.g. `:location`, `:odometer`) has no `ui` package. Its app decides how to show its outputs.
 
 - **Root package = public API only** (see the [`:core`](#core-exception-one-sub-package-per-capability), [`:app`](#app-exception-composition-root) and [`:geo`](#geo-exception-value-objects-only) exceptions). Root-package files contain only `public` top-level declarations. They may also have `private` helpers used only by a public declaration in the same file. Do not put `internal` types or shared helpers there, even if they are small. Move them into the layer they belong to.
 - **Layer packages contain no `public` declarations.** Everything in them is `internal` or `private`. If a type in a layer needs to become public, move it, or a public interface it implements, to the root package.
@@ -187,7 +187,7 @@ core/
 ├── coroutines/     Dispatcher qualifiers, ApplicationScope
 │   └── di/
 ├── permission/     PermissionGate.kt, AppPermission.kt
-│   ├── domain/  data/  presentation/  di/
+│   ├── domain/  data/  ui/  di/
 └── ui/
     ├── theme/      GisteTheme, colors, typography, dimensions
     └── component/  Common composables
@@ -204,7 +204,7 @@ core/
 ```
 dev/giste/roadbooknavigator/
 ├── RoadbookNavigatorApplication.kt, MainActivity.kt
-├── presentation/   One sub-package per screen (e.g. presentation/dashboard/): composables, ViewModel, UI state
+├── ui/             One sub-package per screen (e.g. ui/dashboard/): composables, ViewModel, UI state
 ├── domain/         Application rules (see §4.3). Created with the first rule that needs it
 ├── coordination/   Coordinators (see §4.3)
 ├── adapter/        Adapters between modules' ports (see §4.2)
@@ -228,7 +228,7 @@ The same visibility rules apply: everything is `internal` or `private`.
 - **Use cases:** one action per class, named `VerbNounUseCase`, with a single `operator fun invoke`. Add a use case only when it holds real logic or combines repositories. Do not add pass-through use cases.
 - **Ubiquitous language:** use rally and roadbook terms consistently: *roadbook, waypoint, moderator, partial, total, odometer, auto-advance, tulip, CAP/heading*. Do not invent synonyms. Reusable modules whose domain is not rally use neutral terms instead (e.g. `:odometer`'s *trip* distance), and `:app` maps them to rally terms (trip → partial). `:roadbook`, whose domain is the roadbook, uses rally terms.
 
-### 5.3 Presentation (Compose + UDF)
+### 5.3 UI layer (Compose + UDF)
 
 - Unidirectional data flow: the ViewModel exposes a single `StateFlow<XxxUiState>`. The UI sends user actions to the ViewModel through methods (or a sealed `XxxUiAction`).
 - UI state is a sealed interface or an immutable data class. Model `Loading`, `Success`/content and `Error` explicitly.
@@ -442,7 +442,7 @@ The test suite is exhaustive: **every functionality, branch, error path, sealed 
    - [ ] All new user-facing strings exist in `values` and `values-es`.
    - [ ] Public API has full KDoc. Internal and private code is documented.
    - [ ] Unit and integration tests cover every branch and error path. UI tests cover every screen state.
-   - [ ] UI follows the rider-ergonomics rules in [§5.3](#53-presentation-compose--udf), with no screen-reader semantics.
+   - [ ] UI follows the rider-ergonomics rules in [§5.3](#53-ui-layer-compose--udf), with no screen-reader semantics.
    - [ ] The module `README.md` is updated if the public API, settings, persisted state or design decisions changed.
    - [ ] `libs.versions.toml` is untouched, or contains only the changes the developer approved.
    - [ ] Changes are on a task branch, not on `main`, and are committed only after the developer approved each commit (see [§12](#12-git-workflow)).

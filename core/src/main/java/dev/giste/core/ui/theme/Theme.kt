@@ -23,8 +23,8 @@ import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
-import dev.giste.core.ui.theme.presentation.LocalDimensions
-import dev.giste.core.ui.theme.presentation.beerColorScheme
+import dev.giste.core.ui.theme.ui.LocalDimensions
+import dev.giste.core.ui.theme.ui.beerColorScheme
 
 /**
  * The shared Material 3 theme of every app that uses `:core`, with a palette based on beer colors.

@@ -26,8 +26,8 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import dev.giste.core.permission.data.ActivityPermissionChecker
 import dev.giste.core.permission.data.openAppSettings
-import dev.giste.core.permission.presentation.PermissionGateContent
-import dev.giste.core.permission.presentation.rememberPermissionGateState
+import dev.giste.core.permission.ui.PermissionGateContent
+import dev.giste.core.permission.ui.rememberPermissionGateState
 
 /**
  * Shows [content] only while every permission in [permissions] is granted.
