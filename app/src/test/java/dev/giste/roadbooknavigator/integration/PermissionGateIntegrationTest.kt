@@ -24,7 +24,7 @@ import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import dagger.hilt.android.testing.HiltTestApplication
 import dev.giste.roadbooknavigator.MainActivity
-import dev.giste.roadbooknavigator.dashboard.DashboardTestTags
+import dev.giste.roadbooknavigator.ui.dashboard.DashboardTestTags
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith

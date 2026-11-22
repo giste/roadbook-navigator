@@ -34,7 +34,7 @@ import dev.giste.odometer.OdometerController
 import dev.giste.roadbook.RoadbookController
 import dev.giste.roadbooknavigator.MainActivity
 import dev.giste.roadbooknavigator.coordination.RoadbookOdometerCoordinator
-import dev.giste.roadbooknavigator.dashboard.DashboardTestTags
+import dev.giste.roadbooknavigator.ui.dashboard.DashboardTestTags
 import javax.inject.Inject
 import kotlinx.coroutines.runBlocking
 import org.junit.Before

@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.giste.roadbooknavigator.dashboard
+package dev.giste.roadbooknavigator.ui.dashboard
 
 import app.cash.turbine.test
 import dev.giste.geo.Distance
