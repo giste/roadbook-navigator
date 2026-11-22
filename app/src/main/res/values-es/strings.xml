@@ -13,17 +13,8 @@
     <string name="app_odometer_value_loading">–</string>
     <!-- Odometer controls: the dialogs opened by long-pressing a distance -->
     <string name="app_odometer_set_partial_title">Fijar parcial</string>
-    <string name="app_odometer_set_partial_field_label">Nuevo parcial</string>
-    <!-- Unit after the typed partial -->
-    <string name="app_odometer_unit_km">km</string>
-    <string name="app_odometer_set_partial_error_not_a_number">Introduce una distancia en kilómetros, como 12,35</string>
-    <!-- %1$s is the largest partial, e.g. 999,99 -->
-    <string name="app_odometer_set_partial_error_too_large">El parcial puede ser como máximo %1$s km</string>
-    <plurals name="app_odometer_set_partial_error_too_many_decimals">
-        <item quantity="one">Usa como máximo %1$d decimal</item>
-        <item quantity="many">Usa como máximo %1$d decimales</item>
-        <item quantity="other">Usa como máximo %1$d decimales</item>
-    </plurals>
+    <!-- A distance in kilometers, e.g. the typed partial: %1$s is the number -->
+    <string name="app_odometer_kilometers">%1$s km</string>
     <string name="app_odometer_reset_all_title">¿Poner las distancias a cero?</string>
     <string name="app_odometer_reset_all_message">El parcial y el total se pondrán a cero.</string>
     <string name="app_odometer_reset_all_confirm">Poner a cero</string>

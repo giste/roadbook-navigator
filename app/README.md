@@ -19,7 +19,7 @@ dev/giste/roadbooknavigator/
 ├── ui/
 │   └── dashboard/  Dashboard + DashboardContent + DashboardTestTags, DashboardViewModel,
 │                   DashboardUiState + OdometerUiState, SetPartialDialog, ResetAllDialog,
-│                   PartialInput, DistanceFormat
+│                   PartialInput (parser and numpad keys), DistanceFormat
 ├── coordination/   RoadbookOdometerCoordinator
 ├── adapter/        LocationOdometerLocationSource
 ├── permission/     PreciseLocationPermission
@@ -62,7 +62,7 @@ The three settings sources and their modules are **temporary**: each emits its m
 - **Dashboard** (`ui/dashboard/`): the total, the partial, the map (a placeholder until `:map` exists) and `:roadbook`'s `RoadbookViewer`.
   - The layout follows the aspect ratio of the space it gets (`BoxWithConstraints`), not a window size class: landscape puts the distances and the map in a side column; portrait stacks distances, map and roadbook. The shares are the `LANDSCAPE_*` and `PORTRAIT_*` constants.
   - The distances have no visible label and fill their boxes with `:core`'s `AutoSizeText`, sized for their largest value: 999.99 km for the partial and 9,999.9 km for the total. Larger values are shown capped; the odometer keeps the real value.
-  - Long-pressing the partial opens `SetPartialDialog`, which only accepts values the dashboard can show exactly (`PartialInput`). Long-pressing the total opens `ResetAllDialog`, which asks before resetting both distances. A tap does nothing.
+  - Long-pressing the partial opens `SetPartialDialog`: almost full screen, with a big-key numpad for gloves (digits, the locale's decimal separator and delete) and big cancel and set buttons. Its keys follow `pressNumpadKey`, which ignores any key that would make the partial something the dashboard cannot show exactly, so the dialog needs no error messages. Every key vibrates: a tick when it changes the partial, a rejection when it is ignored. Tapping outside the dialog does nothing, so a bump does not lose the typed partial. Long-pressing the total opens `ResetAllDialog`, which asks before resetting both distances. A tap does nothing.
   - Collecting `DashboardViewModel.uiState` collects `OdometerController.state`, which makes the odometer measure, and `LocationSource.motion`. Both only run while the dashboard is shown, behind the permission gate.
 
 ## Settings
@@ -82,6 +82,6 @@ None. Each module persists its own state (AGENTS.md §7). The open dashboard dia
 ## Testing notes
 
 - **Unit tests** (`src/test`): `DashboardViewModelTest`, `PartialInputTest`, `DistanceFormatTest`, `RoadbookOdometerCoordinatorTest`, `LocationOdometerLocationSourceTest`, `PreciseLocationPermissionTest` and the `Default*SettingsSourceTest`s, with `FakeOdometerController`, `FakeLocationSource` and `FakeRoadbookController`. `MainDispatcherRule` replaces Main; create ViewModels inside each test, after the rule has run, because `viewModelScope` takes Main's dispatcher when the ViewModel is created.
-- **UI tests** run on Robolectric in `src/test`: `DashboardContentTest` (layouts, readings, long presses, dialogs, state restoration), `SetPartialDialogTest` and `ResetAllDialogTest`. They find readings by `DashboardTestTags` and everything else by visible text.
+- **UI tests** run on Robolectric in `src/test`: `DashboardContentTest` (layouts, readings, long presses, dialogs, state restoration), `SetPartialDialogTest` (keys, haptics, layouts, key sizes, Spanish separator) and `ResetAllDialogTest`. They find readings by `DashboardTestTags`, the typed partial and the delete key by `SetPartialTestTags`, the numpad keys by their label plus a click action (`NumpadTestSupport`), and everything else by visible text.
 - **App integration tests** (`src/test/.../integration`) run the real Hilt graph on Robolectric with location granted: the permission gate, roadbook import resetting the odometer, a waypoint long press setting the partial, the set-partial and reset-all dialogs, and the import button hidden while moving. Only the GPS (Robolectric's location manager) and the file picker are replaced. `HiltTestApplication` replaces the app's `Application`, so the tests start the coordinator themselves.
 - `:app` has no instrumented tests (`src/androidTest`).

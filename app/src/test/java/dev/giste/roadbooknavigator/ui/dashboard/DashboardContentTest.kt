@@ -32,7 +32,6 @@ import androidx.compose.ui.test.assertLeftPositionInRootIsEqualTo
 import androidx.compose.ui.test.assertTopPositionInRootIsEqualTo
 import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.hasAnyAncestor
-import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
@@ -43,7 +42,6 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -104,8 +102,6 @@ class DashboardContentTest {
     private fun SemanticsNodeInteraction.longPress() {
         performTouchInput { longClick() }
     }
-
-    private fun field(): SemanticsNodeInteraction = composeRule.onNode(hasSetTextAction())
 
     /** Matches the text [value] inside the reading tagged [tag]. */
     private fun shownIn(tag: String, value: String): SemanticsMatcher =
@@ -258,7 +254,7 @@ class DashboardContentTest {
     fun dashboardContent_partialSet_setsItAndClosesTheDialog() {
         show(moving)
         partial().longPress()
-        field().performTextInput("3.5")
+        composeRule.pressNumpadKeys("3.5")
 
         composeRule.onNodeWithText("Set").performClick()
 
@@ -270,7 +266,7 @@ class DashboardContentTest {
     fun dashboardContent_setPartialCancelled_closesWithoutSetting() {
         show(moving)
         partial().longPress()
-        field().performTextInput("3.5")
+        composeRule.pressNumpadKeys("3.5")
 
         composeRule.onNodeWithText("Cancel").performClick()
 
@@ -282,12 +278,12 @@ class DashboardContentTest {
     fun dashboardContent_setPartialReopened_startsEmpty() {
         show(moving)
         partial().longPress()
-        field().performTextInput("3.5")
+        composeRule.pressNumpadKeys("3.5")
         composeRule.onNodeWithText("Cancel").performClick()
 
         partial().longPress()
 
-        composeRule.onNodeWithText("3.5").assertDoesNotExist()
+        composeRule.onNode(shownInPartialDisplay("0 km")).assertIsDisplayed()
     }
 
     @Test
@@ -335,12 +331,12 @@ class DashboardContentTest {
         val restoration = StateRestorationTester(composeRule)
         restoration.setContent { TestDashboard(moving) }
         partial().longPress()
-        field().performTextInput("3.5")
+        composeRule.pressNumpadKeys("3.5")
 
         restoration.emulateSavedInstanceStateRestore()
 
         composeRule.onNodeWithText("Set partial").assertIsDisplayed()
-        composeRule.onNodeWithText("3.5").assertIsDisplayed()
+        composeRule.onNode(shownInPartialDisplay("3.5 km")).assertIsDisplayed()
     }
 
     private companion object {
