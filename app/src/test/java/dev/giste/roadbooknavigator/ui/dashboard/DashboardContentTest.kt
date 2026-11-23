@@ -197,10 +197,11 @@ class DashboardContentTest {
         val side = 1_000.dp * LANDSCAPE_SIDE_COLUMN_WEIGHT
         val totalHeight = 500.dp * LANDSCAPE_TOTAL_WEIGHT
         val partialHeight = 500.dp * LANDSCAPE_PARTIAL_WEIGHT
+        // The settings slot, on the total's left, is as wide as the total is tall.
         total().assertBounds(
-            left = SETTINGS_SLOT_WIDTH,
+            left = totalHeight,
             top = 0.dp,
-            width = side - SETTINGS_SLOT_WIDTH,
+            width = side - totalHeight,
             height = totalHeight,
         )
         partial().assertBounds(left = 0.dp, top = totalHeight, width = side, height = partialHeight)
@@ -221,10 +222,11 @@ class DashboardContentTest {
         val distancesHeight = 1_000.dp * PORTRAIT_DISTANCES_WEIGHT
         val mapHeight = 1_000.dp * PORTRAIT_MAP_WEIGHT
         val totalWidth = 500.dp * PORTRAIT_TOTAL_WEIGHT
+        // The settings slot, on the total's left, is as wide as the total is tall.
         total().assertBounds(
-            left = SETTINGS_SLOT_WIDTH,
+            left = distancesHeight,
             top = 0.dp,
-            width = totalWidth - SETTINGS_SLOT_WIDTH,
+            width = totalWidth - distancesHeight,
             height = distancesHeight,
         )
         partial().assertBounds(
@@ -397,6 +399,19 @@ class DashboardContentTest {
     }
 
     @Test
+    fun dashboardContent_totalShorterThanATouchTarget_settingsButtonKeepsTheTouchTargetWidth() {
+        // Landscape, with the total 400 × 0.12 = 48 dp tall: less than the 56 dp target.
+        show(DashboardUiState.INITIAL, width = 1_000.dp, height = 400.dp)
+
+        val total = total().getUnclippedBoundsInRoot()
+        val button = composeRule.onNodeWithTag(DashboardTestTags.SETTINGS).getUnclippedBoundsInRoot()
+
+        assertEquals(MIN_TOUCH_TARGET, button.right - button.left)
+        assertEquals(total.bottom - total.top, button.bottom - button.top)
+        assertEquals(MIN_TOUCH_TARGET, total.left)
+    }
+
+    @Test
     fun dashboardContent_moving_keepsTheTotalWhereItIsWhenStopped() {
         var state by mutableStateOf(DashboardUiState.INITIAL)
         composeRule.setContent { TestDashboard(state) }
@@ -407,15 +422,16 @@ class DashboardContentTest {
         assertEquals(stopped, total().getUnclippedBoundsInRoot())
     }
 
-    /** Asserts the settings button is a full touch target, centered in its slot left of the total. */
+    /** Asserts the settings button is a square as tall as the total, right before it. */
     private fun assertSettingsButtonOnTheStartSideOfTheTotal() {
         val total = total().getUnclippedBoundsInRoot()
         val button = composeRule.onNodeWithTag(DashboardTestTags.SETTINGS).getUnclippedBoundsInRoot()
+        val height = total.bottom - total.top
 
-        assertEquals(total.left - SETTINGS_SLOT_WIDTH + 8.dp, button.left)
-        assertEquals((total.top + total.bottom) / 2, (button.top + button.bottom) / 2)
-        assertEquals(56.dp, button.right - button.left)
-        assertEquals(56.dp, button.bottom - button.top)
+        assertEquals(total.left - height, button.left)
+        assertEquals(total.left, button.right)
+        assertEquals(total.top, button.top)
+        assertEquals(total.bottom, button.bottom)
     }
 
     @Test
@@ -448,7 +464,7 @@ class DashboardContentTest {
         const val ROADBOOK_TAG = "roadbook"
         const val MAP_TAG = "map"
 
-        /** The settings slot: the 56 dp touch target plus 8 dp on each side (default theme). */
-        val SETTINGS_SLOT_WIDTH = 72.dp
+        /** The default theme's minimum touch target. */
+        val MIN_TOUCH_TARGET = 56.dp
     }
 }
