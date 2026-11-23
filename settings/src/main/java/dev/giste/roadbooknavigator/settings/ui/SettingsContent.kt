@@ -563,12 +563,12 @@ private const val APP_FONT_SCALE = 1.25f
 /** A typical phone in portrait. */
 private const val PHONE_PORTRAIT = "spec:width=411dp,height=891dp,dpi=420"
 
-/** Preview sample: the defaults. */
+/** Preview sample: the defaults, with Terra Pirata (an action with two keys). */
 private val DEFAULTS = SettingsUiState.Loaded(
     themeMode = ThemeMode.SYSTEM,
     orientation = ScreenOrientation.FOLLOW_SYSTEM,
-    remoteModel = RemoteModel.DND2,
-    remoteKeys = RemoteKeys.DND2,
+    remoteModel = RemoteModel.TERRA_PIRATA,
+    remoteKeys = RemoteKeys.TERRA_PIRATA,
     roadbookStyle = RoadbookStyle.APP_THEME,
     shortDistanceThreshold = ShortDistanceThreshold.DEFAULT,
     canDecreaseThreshold = true,
@@ -576,15 +576,12 @@ private val DEFAULTS = SettingsUiState.Loaded(
     saveFailed = false,
 )
 
-/**
- * Preview sample: dark theme, horizontal, Terra Pirata (an action with two keys), FIA colors and
- * the shortest threshold.
- */
+/** Preview sample: dark theme, horizontal, DND2, FIA colors and the shortest threshold. */
 private val CHANGED = SettingsUiState.Loaded(
     themeMode = ThemeMode.DARK,
     orientation = ScreenOrientation.HORIZONTAL,
-    remoteModel = RemoteModel.TERRA_PIRATA,
-    remoteKeys = RemoteKeys.TERRA_PIRATA,
+    remoteModel = RemoteModel.DND2,
+    remoteKeys = RemoteKeys.DND2,
     roadbookStyle = RoadbookStyle.FIA,
     shortDistanceThreshold = ShortDistanceThreshold.of(Distance.meters(50.0)),
     canDecreaseThreshold = false,

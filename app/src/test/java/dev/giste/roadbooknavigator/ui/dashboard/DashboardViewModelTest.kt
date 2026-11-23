@@ -53,7 +53,10 @@ class DashboardViewModelTest {
     private val odometer = FakeOdometerController()
     private val roadbook = FakeRoadbookController()
     private val locationSource = FakeLocationSource()
-    private val remoteSettings = FakeRemoteSettingsSource()
+    // DND2's keys, which most tests press; the default is Terra Pirata.
+    private val remoteSettings = FakeRemoteSettingsSource().apply {
+        settings.value = RemoteSettings(model = RemoteModel.DND2)
+    }
     // Created in each test, after the rule has replaced Main: viewModelScope takes Main's
     // immediate dispatcher when the ViewModel is created.
     private val viewModel by lazy { DashboardViewModel(odometer, roadbook, locationSource, remoteSettings) }

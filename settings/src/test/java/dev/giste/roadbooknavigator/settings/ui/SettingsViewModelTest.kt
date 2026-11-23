@@ -55,8 +55,8 @@ class SettingsViewModelTest {
     private val defaults = SettingsUiState.Loaded(
         themeMode = ThemeMode.SYSTEM,
         orientation = ScreenOrientation.FOLLOW_SYSTEM,
-        remoteModel = RemoteModel.DND2,
-        remoteKeys = RemoteKeys.DND2,
+        remoteModel = RemoteModel.TERRA_PIRATA,
+        remoteKeys = RemoteKeys.TERRA_PIRATA,
         roadbookStyle = RoadbookStyle.APP_THEME,
         shortDistanceThreshold = ShortDistanceThreshold.DEFAULT,
         canDecreaseThreshold = true,
@@ -132,16 +132,16 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun uiState_terraPirata_showsItsKeys() = runTest {
-        remote.settings.value = RemoteSettings(model = RemoteModel.TERRA_PIRATA)
+    fun uiState_dnd2_showsItsKeys() = runTest {
+        remote.settings.value = RemoteSettings(model = RemoteModel.DND2)
 
         viewModel.uiState.test {
             skipItems(1)
 
             assertEquals(
                 defaults.copy(
-                    remoteModel = RemoteModel.TERRA_PIRATA,
-                    remoteKeys = RemoteKeys.TERRA_PIRATA,
+                    remoteModel = RemoteModel.DND2,
+                    remoteKeys = RemoteKeys.DND2,
                 ),
                 awaitItem(),
             )
@@ -249,9 +249,9 @@ class SettingsViewModelTest {
     }
 
     private val f7 = RemoteKey(KeyEvent.KEYCODE_F7)
-    private val dpadUp = RemoteKey(KeyEvent.KEYCODE_DPAD_UP)
+    private val nextTrack = RemoteKey(KeyEvent.KEYCODE_MEDIA_NEXT)
 
-    /** Selects the custom remote, with DND2's keys, as it starts. */
+    /** Selects the custom remote, with Terra Pirata's keys, as it starts. */
     private fun useCustomRemote() {
         remote.settings.value = RemoteSettings(model = RemoteModel.CUSTOM)
     }
@@ -286,13 +286,13 @@ class SettingsViewModelTest {
         viewModel.uiState.test {
             skipItems(2)
 
-            viewModel.assignCustomKey(RemoteAction.RESET_PARTIAL, dpadUp)
+            viewModel.assignCustomKey(RemoteAction.RESET_PARTIAL, nextTrack)
 
             advanceUntilIdle()
             val state = expectMostRecentItem() as SettingsUiState.Loaded
-            assertEquals(KeyMove(dpadUp, RemoteAction.NEXT_WAYPOINT, RemoteAction.RESET_PARTIAL), state.keyMoved)
+            assertEquals(KeyMove(nextTrack, RemoteAction.NEXT_WAYPOINT, RemoteAction.RESET_PARTIAL), state.keyMoved)
             assertEquals(emptySet<RemoteKey>(), state.remoteKeys.keysFor(RemoteAction.NEXT_WAYPOINT))
-            assertEquals(setOf(dpadUp), state.remoteKeys.keysFor(RemoteAction.RESET_PARTIAL))
+            assertEquals(setOf(nextTrack), state.remoteKeys.keysFor(RemoteAction.RESET_PARTIAL))
         }
     }
 
@@ -300,14 +300,14 @@ class SettingsViewModelTest {
     fun assignCustomKey_itsOwnKey_showsNoMove() = runTest {
         useCustomRemote()
 
-        viewModel.assignCustomKey(RemoteAction.NEXT_WAYPOINT, dpadUp)
+        viewModel.assignCustomKey(RemoteAction.NEXT_WAYPOINT, nextTrack)
         advanceUntilIdle()
 
         viewModel.uiState.test {
             skipItems(1)
             assertEquals(null, (awaitItem() as SettingsUiState.Loaded).keyMoved)
         }
-        assertEquals(RemoteKeys.DND2, remote.settings.value.customKeys)
+        assertEquals(RemoteKeys.TERRA_PIRATA, remote.settings.value.customKeys)
     }
 
     @Test
@@ -316,7 +316,7 @@ class SettingsViewModelTest {
 
         viewModel.uiState.test {
             skipItems(2)
-            viewModel.assignCustomKey(RemoteAction.RESET_PARTIAL, dpadUp)
+            viewModel.assignCustomKey(RemoteAction.RESET_PARTIAL, nextTrack)
             advanceUntilIdle()
             expectMostRecentItem()
 
@@ -328,7 +328,7 @@ class SettingsViewModelTest {
 
     @Test
     fun assignCustomKey_presetInUse_changesNothing() = runTest {
-        viewModel.assignCustomKey(RemoteAction.RESET_PARTIAL, dpadUp)
+        viewModel.assignCustomKey(RemoteAction.RESET_PARTIAL, nextTrack)
         advanceUntilIdle()
 
         assertEquals(RemoteSettings(), remote.settings.value)
@@ -342,12 +342,12 @@ class SettingsViewModelTest {
         viewModel.uiState.test {
             skipItems(2)
 
-            viewModel.assignCustomKey(RemoteAction.RESET_PARTIAL, dpadUp)
+            viewModel.assignCustomKey(RemoteAction.RESET_PARTIAL, nextTrack)
 
             val state = awaitItem() as SettingsUiState.Loaded
             assertEquals(true, state.saveFailed)
             assertEquals(null, state.keyMoved)
         }
-        assertEquals(RemoteKeys.DND2, remote.settings.value.customKeys)
+        assertEquals(RemoteKeys.TERRA_PIRATA, remote.settings.value.customKeys)
     }
 }

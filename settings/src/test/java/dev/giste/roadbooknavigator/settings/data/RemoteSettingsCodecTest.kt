@@ -109,7 +109,7 @@ class RemoteSettingsCodecTest {
     fun read_unknownModel_usesTheDefaultAndWarns() {
         val settings = RemoteSettingsCodec.read(preferencesOf(MODEL_KEY to "WIIMOTE"), logger)
 
-        assertEquals(RemoteModel.DND2, settings.model)
+        assertEquals(RemoteSettings.DEFAULT_MODEL, settings.model)
         assertEquals(1, logger.warnings.size)
     }
 
@@ -124,7 +124,7 @@ class RemoteSettingsCodecTest {
         )
 
         assertEquals(
-            RemoteKeys.DND2.keysFor(RemoteAction.RESET_PARTIAL),
+            RemoteSettings.DEFAULT_CUSTOM_KEYS.keysFor(RemoteAction.RESET_PARTIAL),
             settings.customKeys.keysFor(RemoteAction.RESET_PARTIAL),
         )
         assertEquals(
@@ -147,11 +147,11 @@ class RemoteSettingsCodecTest {
 
     @Test
     fun read_keyBoundTwice_usesEveryDefaultAndWarns() {
-        // F6 also stays on reset partial, its default.
+        // Play/pause also stays on reset partial, its default.
         val settings = RemoteSettingsCodec.read(
             preferencesOf(
                 MODEL_KEY to "CUSTOM",
-                customKey(RemoteAction.NEXT_WAYPOINT) to "${KeyEvent.KEYCODE_F6}",
+                customKey(RemoteAction.NEXT_WAYPOINT) to "${KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE}",
                 customKey(RemoteAction.DECREASE_PARTIAL) to "${KeyEvent.KEYCODE_ENTER}",
             ),
             logger,

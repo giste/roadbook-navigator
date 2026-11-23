@@ -43,10 +43,13 @@ public data class RemoteSettings(
     /** Default values of [RemoteSettings]. */
     public companion object {
 
-        /** Default [model]: the DND2 remote. */
-        public val DEFAULT_MODEL: RemoteModel = RemoteModel.DND2
+        /** Default [model]: the Terra Pirata remote. */
+        public val DEFAULT_MODEL: RemoteModel = RemoteModel.TERRA_PIRATA
 
-        /** Default [customKeys]: the DND2 keys, a starting point the rider changes. */
-        public val DEFAULT_CUSTOM_KEYS: RemoteKeys = RemoteKeys.DND2
+        /**
+         * Default [customKeys]: the keys of the default remote, Terra Pirata, a starting point the
+         * rider changes.
+         */
+        public val DEFAULT_CUSTOM_KEYS: RemoteKeys = RemoteKeys.TERRA_PIRATA
     }
 }
