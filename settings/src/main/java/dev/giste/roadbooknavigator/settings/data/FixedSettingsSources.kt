@@ -19,6 +19,8 @@ package dev.giste.roadbooknavigator.settings.data
 
 import dev.giste.location.LocationSettings
 import dev.giste.location.LocationSettingsSource
+import dev.giste.map.MapSettings
+import dev.giste.map.MapSettingsSource
 import dev.giste.odometer.OdometerSettings
 import dev.giste.odometer.OdometerSettingsSource
 import javax.inject.Inject
@@ -28,9 +30,9 @@ import kotlinx.coroutines.flow.asStateFlow
 
 /*
  * The app does not let the rider change the :location and :odometer settings: their defaults are
- * meant for motor vehicles, which is what the app is for. So nothing is stored, and these sources
- * always give the defaults. If the settings screen ever offers them, they become stored settings,
- * like the others.
+ * meant for motor vehicles, which is what the app is for. The :map settings (zoom level and tilt)
+ * are not offered yet either. So nothing is stored, and these sources always give the defaults. If
+ * the settings screen ever offers them, they become stored settings, like the others.
  */
 
 /** The `:location` settings: always the module's defaults, suited to motor vehicles. */
@@ -53,4 +55,14 @@ internal class FixedOdometerSettingsSource @Inject constructor() : OdometerSetti
      */
     override val settings: StateFlow<OdometerSettings> =
         MutableStateFlow(OdometerSettings()).asStateFlow()
+}
+
+/** The `:map` settings: always the module's defaults (zoom level 18, tilt 60°), until offered. */
+internal class FixedMapSettingsSource @Inject constructor() : MapSettingsSource {
+
+    /**
+     * [MapSettings]' defaults, emitted at once and never changed. Like any settings source, it
+     * never completes and never throws.
+     */
+    override val settings: StateFlow<MapSettings> = MutableStateFlow(MapSettings()).asStateFlow()
 }

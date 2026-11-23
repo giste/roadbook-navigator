@@ -49,6 +49,7 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":geo"))
     implementation(project(":location"))
+    implementation(project(":map"))
     implementation(project(":odometer"))
     implementation(project(":roadbook"))
 

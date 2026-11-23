@@ -79,6 +79,13 @@ class DashboardIntegrationTest {
     }
 
     @Test
+    fun dashboard_noMapsInstalled_showsTheMapViewerMessage() {
+        // The map viewer is wired in: its real repository finds the empty map folder. Drawing a
+        // map needs OpenGL, which Robolectric does not have, so that is checked on a device.
+        composeRule.awaitText("No maps installed")
+    }
+
+    @Test
     fun importRoadbook_partialWasSet_resetsTheOdometer() {
         runBlocking { odometer.setTrip(Distance.meters(500.0)) }
         composeRule.awaitPartial("0.50")

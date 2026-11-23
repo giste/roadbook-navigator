@@ -7,7 +7,7 @@ Stores the settings of every feature module and of the app, provides them to eac
 ## Responsibility
 
 - Persist the settings of `:roadbook`, in its own DataStore file (AGENTS.md §7).
-- Implement `LocationSettingsSource`, `OdometerSettingsSource` and `RoadbookSettingsSource`, and bind them with Hilt, so each module gets its settings as a flow and reacts to every change. The `:location` and `:odometer` settings are fixed to their defaults (see Design decisions).
+- Implement `LocationSettingsSource`, `MapSettingsSource`, `OdometerSettingsSource` and `RoadbookSettingsSource`, and bind them with Hilt, so each module gets its settings as a flow and reacts to every change. The `:location`, `:map` and `:odometer` settings are fixed to their defaults (see Design decisions).
 - Store the app's own settings (`AppSettings`: the theme mode and the screen orientation) and provide them as `AppSettingsSource`.
 - Store the remote control settings (`RemoteSettings`: the remote model and the custom keys) and provide them as `RemoteSettingsSource`. `:app` acts on the keys while the dashboard is shown.
 - Show the settings screen (`SettingsScreen`), where the rider changes the theme, the screen orientation, the remote control and the roadbook settings.
@@ -28,7 +28,8 @@ dev/giste/roadbooknavigator/settings/
 │                   DataStoreAppSettingsRepository + AppSettingsCodec,
 │                   DataStoreRemoteSettingsRepository + RemoteSettingsCodec,
 │                   DataStoreRoadbookSettingsRepository + RoadbookSettingsCodec,
-│                   FixedLocationSettingsSource, FixedOdometerSettingsSource,
+│                   FixedLocationSettingsSource, FixedMapSettingsSource,
+│                   FixedOdometerSettingsSource,
 │                   SettingsQualifiers
 ├── ui/             SettingsViewModel, SettingsUiState (+ KeyMove), SettingsContent,
 │                   KeyCaptureDialog (+ isCapturableKey), each with its previews
@@ -57,12 +58,12 @@ Hilt makes every binding available as soon as `:app` depends on `:settings`.
 
 ## Inputs and outputs
 
-- **Inputs:** the feature modules' settings models (`LocationSettings`, `OdometerSettings`, `RoadbookSettings`) and their defaults.
-- **Outputs:** Hilt bindings in `SingletonComponent` of `LocationSettingsSource`, `OdometerSettingsSource`, `RoadbookSettingsSource`, `AppSettingsSource` and `RemoteSettingsSource`, and the `SettingsScreen`. `:app` depends on `:settings` and must not bind those sources itself, or Hilt reports duplicate bindings.
+- **Inputs:** the feature modules' settings models (`LocationSettings`, `MapSettings`, `OdometerSettings`, `RoadbookSettings`) and their defaults.
+- **Outputs:** Hilt bindings in `SingletonComponent` of `LocationSettingsSource`, `MapSettingsSource`, `OdometerSettingsSource`, `RoadbookSettingsSource`, `AppSettingsSource` and `RemoteSettingsSource`, and the `SettingsScreen`. `:app` depends on `:settings` and must not bind those sources itself, or Hilt reports duplicate bindings.
 
 ## Settings
 
-It stores every value of the `:roadbook` settings, the `AppSettings` and the `RemoteSettings`. The `:location` and `:odometer` settings are always their modules' defaults, and are not stored. Their meaning, defaults and validation are documented in each module's README.
+It stores every value of the `:roadbook` settings, the `AppSettings` and the `RemoteSettings`. The `:location`, `:map` and `:odometer` settings are always their modules' defaults, and are not stored. Their meaning, defaults and validation are documented in each module's README.
 
 The screen shows every stored setting:
 
@@ -100,6 +101,7 @@ A key is stored only while its value differs from the default.
 - **Segmented buttons without a check mark.** The selected button's color already marks it, so the label gets the whole button and long names ("Terra Pirata", "Personalizado") fit on a phone with the larger text.
 - **Steppers and segmented buttons, not sliders.** Every control is at least `minTouchTarget` high, and none needs a precise drag, so the screen works with gloves (AGENTS.md §5.3). A slider would be hard to set to an exact value on a moving bike.
 - **The `:location` and `:odometer` settings are fixed.** The app is for motor vehicles, and those modules' defaults are meant for them, so the rider never changes these settings and nothing is stored: `FixedLocationSettingsSource` and `FixedOdometerSettingsSource` always give the defaults, as a `StateFlow` that never completes. Their thresholds would mean little to a rider, and a wrong value would quietly spoil the odometer. If they are ever offered, they become stored settings like the others. Files left by earlier builds (`settings_location`, `settings_odometer`) are ignored.
+- **The `:map` settings are fixed for now.** `FixedMapSettingsSource` gives `MapSettings`' defaults (zoom level 18, tilt 60°), the values the previous app used. Offering them on the settings screen is planned for later; they will then be stored like the others.
 - **The screen does not navigate.** It takes an `onBack` callback; `:app` owns the routes and the back stack.
 - **The remote keys are their own settings group.** They are not part of `AppSettings`: only the dashboard needs them, and only `MainActivity` needs the theme and orientation, so each reads only what it uses, and each file falls back to its defaults on its own. One file per settings model, as for the modules.
 - **Fixed remotes store only their name.** The keys of DND2 and Terra Pirata live in code (`RemoteKeys.DND2`, `RemoteKeys.TERRA_PIRATA`), so stored data can never disagree with them. Only the custom keys are stored, and they stay while another remote is selected, so they come back with Custom. Terra Pirata is the default remote, and the custom keys start as its keys.

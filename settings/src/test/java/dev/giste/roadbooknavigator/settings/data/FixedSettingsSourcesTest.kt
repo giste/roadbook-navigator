@@ -19,6 +19,7 @@ package dev.giste.roadbooknavigator.settings.data
 
 import app.cash.turbine.test
 import dev.giste.location.LocationSettings
+import dev.giste.map.MapSettings
 import dev.giste.odometer.OdometerSettings
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -38,6 +39,14 @@ class FixedSettingsSourcesTest {
     fun fixedOdometerSettingsSource_emitsTheDefaultsAndNeverCompletes() = runTest {
         FixedOdometerSettingsSource().settings.test {
             assertEquals(OdometerSettings(), awaitItem())
+            expectNoEvents()
+        }
+    }
+
+    @Test
+    fun fixedMapSettingsSource_emitsTheDefaultsAndNeverCompletes() = runTest {
+        FixedMapSettingsSource().settings.test {
+            assertEquals(MapSettings(), awaitItem())
             expectNoEvents()
         }
     }
