@@ -271,11 +271,20 @@ class SettingsContentTest {
     }
 
     @Test
-    fun settingsContent_preset_keysCannotBeChanged() {
+    fun settingsContent_preset_keyButtonsAreDisabled() {
         show(defaults)
 
-        RemoteAction.entries.forEach { keyButton(it).assertDoesNotExist() }
+        RemoteAction.entries.forEach { keyButton(it).performScrollTo().assertIsNotEnabled() }
         composeRule.onNodeWithText("Tap an action's key to change it.").assertDoesNotExist()
+    }
+
+    @Test
+    fun settingsContent_presetKeyButtonPressed_opensNothing() {
+        show(defaults)
+
+        keyButton(RemoteAction.NEXT_WAYPOINT).performScrollTo().performClick()
+
+        composeRule.onNodeWithText("Press the key on your remote for this action.").assertDoesNotExist()
     }
 
     @Test

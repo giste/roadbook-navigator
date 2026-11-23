@@ -93,10 +93,10 @@ internal object SettingsTestTags {
  *
  * - **Theme:** system, light or dark.
  * - **Screen orientation:** system, vertical or horizontal.
- * - **Remote:** DND2, Terra Pirata or custom, and the keys of each action. The keys of DND2 and
- *   Terra Pirata are only shown. With custom, each action's keys are a button that opens
- *   [KeyCaptureDialog], which assigns the key the rider presses; which action's dialog is open
- *   survives configuration changes.
+ * - **Remote:** DND2, Terra Pirata or custom, and the keys of each action, on a button. For DND2
+ *   and Terra Pirata the buttons are disabled (grayed), since their keys cannot change. With
+ *   custom, each button opens [KeyCaptureDialog], which assigns the key the rider presses; which
+ *   action's dialog is open survives configuration changes.
  * - **Roadbook colors:** the app theme or the FIA palette.
  * - **Highlight close waypoints:** the short-distance threshold, changed in steps with − and +.
  *
@@ -264,7 +264,8 @@ private fun SettingsSections(
             KeyBinding(
                 action = action,
                 keys = state.remoteKeys.keysFor(action),
-                onClick = if (editable) ({ capturing = action }) else null,
+                editable = editable,
+                onClick = { capturing = action },
             )
         }
 
@@ -358,18 +359,23 @@ private fun <T> Choices(
 }
 
 /**
- * One action and the keys that trigger it, on one row: the action on the start side, and its keys
- * one below the other on the end side, or a note that it has none.
- *
- * With [onClick], the keys are a button, at least the minimum touch target in size, that changes
- * them; without it, they are only text.
+ * One action and the keys that trigger it, on one row: the action on the start side, and a button
+ * on the end side with its keys one below the other, or a note that it has none. The button is at
+ * least the minimum touch target in size.
  *
  * @param action the action.
  * @param keys its keys.
- * @param onClick called when the keys' button is pressed, or `null` if they cannot change.
+ * @param editable whether the keys can change. If not, the button is disabled, so it looks grayed
+ * and says that they cannot change now, while the layout stays the same for every remote.
+ * @param onClick called when the button is pressed, only while [editable].
  */
 @Composable
-private fun KeyBinding(action: RemoteAction, keys: Set<RemoteKey>, onClick: (() -> Unit)?) {
+private fun KeyBinding(
+    action: RemoteAction,
+    keys: Set<RemoteKey>,
+    editable: Boolean,
+    onClick: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -378,24 +384,21 @@ private fun KeyBinding(action: RemoteAction, keys: Set<RemoteKey>, onClick: (() 
     ) {
         Text(text = action.label(), style = MaterialTheme.typography.bodyLarge)
         Spacer(modifier = Modifier.weight(1f))
-        if (onClick == null) {
+        FilledTonalButton(
+            onClick = onClick,
+            enabled = editable,
+            modifier = Modifier
+                .heightIn(min = GisteTheme.dimensions.minTouchTarget)
+                .widthIn(min = GisteTheme.dimensions.minTouchTarget * 2),
+        ) {
             KeyNames(keys)
-        } else {
-            FilledTonalButton(
-                onClick = onClick,
-                modifier = Modifier
-                    .heightIn(min = GisteTheme.dimensions.minTouchTarget)
-                    .widthIn(min = GisteTheme.dimensions.minTouchTarget * 2),
-            ) {
-                KeyNames(keys)
-            }
         }
     }
 }
 
 /**
  * The names of [keys], one below the other and aligned to the end, or a note that there are none.
- * Their color is the content color, so they also read on a button.
+ * Their color is the button's content color, enabled or disabled.
  */
 @Composable
 private fun KeyNames(keys: Set<RemoteKey>) {

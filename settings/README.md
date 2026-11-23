@@ -72,7 +72,7 @@ The screen shows the settings the rider is expected to change; the others keep t
 | Appearance › Theme | `AppSettings.themeMode` | System / Light / Dark |
 | Appearance › Screen orientation | `AppSettings.orientation` | System / Vertical / Horizontal |
 | Remote control › Remote | `RemoteSettings.model` | DND2 / Terra Pirata / Custom |
-| Remote control › Keys | `RemoteSettings.keys` | Each action with its keys: read-only for DND2 and Terra Pirata; for Custom, a button per action that opens `KeyCaptureDialog` |
+| Remote control › Keys | `RemoteSettings.keys` | Each action with its keys on a button: disabled (grayed) for DND2 and Terra Pirata; for Custom, it opens `KeyCaptureDialog` |
 | Roadbook › Roadbook colors | `RoadbookSettings.style` | App theme / FIA |
 | Roadbook › Highlight close waypoints | `RoadbookSettings.shortDistanceThreshold` | − and + in steps of 50 m, within 50 m – 1 km |
 
