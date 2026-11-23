@@ -17,11 +17,16 @@
 
 package dev.giste.roadbooknavigator.ui.dashboard
 
+import android.view.View
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
@@ -49,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import dev.giste.core.ui.theme.GisteTheme
 import dev.giste.geo.Distance
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -376,6 +382,32 @@ class DashboardContentTest {
         assertTrue(button.top >= map.top && button.right <= map.right)
         assertTrue(button.left > map.left + (map.right - map.left) / 2)
         assertTrue(button.bottom - button.top >= 56.dp)
+    }
+
+    @Test
+    fun dashboardContent_shown_keepsTheScreenOn() {
+        lateinit var view: View
+        composeRule.setContent {
+            view = LocalView.current
+            TestDashboard(moving)
+        }
+
+        composeRule.runOnIdle { assertTrue(view.keepScreenOn) }
+    }
+
+    @Test
+    fun dashboardContent_leavesTheComposition_letsTheScreenGoOff() {
+        lateinit var view: View
+        var shown by mutableStateOf(true)
+        composeRule.setContent {
+            view = LocalView.current
+            if (shown) TestDashboard(moving)
+        }
+        composeRule.runOnIdle { assertTrue(view.keepScreenOn) }
+
+        shown = false
+
+        composeRule.runOnIdle { assertFalse(view.keepScreenOn) }
     }
 
     private companion object {
