@@ -14,6 +14,39 @@
     <string name="settings_orientation_vertical">Vertical</string>
     <string name="settings_orientation_horizontal">Horizontal</string>
 
+    <!-- Remote control -->
+    <string name="settings_section_remote">Mando</string>
+    <string name="settings_remote_model_title">Modelo de mando</string>
+    <string name="settings_remote_model_dnd2">DND2</string>
+    <string name="settings_remote_model_terra_pirata">Terra Pirata</string>
+    <string name="settings_remote_model_custom">Personalizado</string>
+    <string name="settings_remote_keys_title">Teclas</string>
+    <string name="settings_remote_action_next_waypoint">Viñeta siguiente</string>
+    <string name="settings_remote_action_previous_waypoint">Viñeta anterior</string>
+    <string name="settings_remote_action_increase_partial">Aumentar el parcial</string>
+    <string name="settings_remote_action_decrease_partial">Reducir el parcial</string>
+    <string name="settings_remote_action_reset_partial">Poner el parcial a cero</string>
+    <!-- Shown instead of the keys of an action that has none -->
+    <string name="settings_remote_no_key">Sin tecla</string>
+    <!-- Names of remote control keys -->
+    <string name="settings_key_dpad_up">Cruceta arriba</string>
+    <string name="settings_key_dpad_down">Cruceta abajo</string>
+    <string name="settings_key_dpad_left">Cruceta izquierda</string>
+    <string name="settings_key_dpad_right">Cruceta derecha</string>
+    <string name="settings_key_dpad_center">Cruceta centro</string>
+    <string name="settings_key_enter">Intro</string>
+    <string name="settings_key_volume_up">Subir volumen</string>
+    <string name="settings_key_volume_down">Bajar volumen</string>
+    <string name="settings_key_media_next">Pista siguiente</string>
+    <string name="settings_key_media_previous">Pista anterior</string>
+    <string name="settings_key_media_play_pause">Reproducir/pausa</string>
+    <string name="settings_key_media_play">Reproducir</string>
+    <string name="settings_key_media_pause">Pausa</string>
+    <!-- A function key: %1$d is its number, e.g. F6 -->
+    <string name="settings_key_function">F%1$d</string>
+    <!-- Any other key: %1$s is Android's name for it, e.g. BUTTON_A -->
+    <string name="settings_key_other">Tecla %1$s</string>
+
     <!-- Roadbook -->
     <string name="settings_section_roadbook">Roadbook</string>
     <string name="settings_roadbook_style_title">Colores del roadbook</string>

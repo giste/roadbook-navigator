@@ -24,6 +24,8 @@ import dev.giste.roadbook.RoadbookSettings
 import dev.giste.roadbook.RoadbookStyle
 import dev.giste.roadbook.ShortDistanceThreshold
 import dev.giste.roadbooknavigator.settings.AppSettings
+import dev.giste.roadbooknavigator.settings.RemoteModel
+import dev.giste.roadbooknavigator.settings.RemoteSettings
 import dev.giste.roadbooknavigator.settings.ScreenOrientation
 import dev.giste.roadbooknavigator.settings.ThemeMode
 import dev.giste.roadbooknavigator.settings.domain.SettingsRepository
@@ -48,11 +50,13 @@ private const val STOP_TIMEOUT_MILLIS: Long = 5_000
  * [SettingsUiState.Loaded.saveFailed] until [dismissSaveError].
  *
  * @param appSettings the app's own settings.
+ * @param remoteSettings the remote control settings.
  * @param roadbookSettings the `:roadbook` settings.
  */
 @HiltViewModel
 internal class SettingsViewModel @Inject constructor(
     private val appSettings: SettingsRepository<AppSettings>,
+    private val remoteSettings: SettingsRepository<RemoteSettings>,
     private val roadbookSettings: SettingsRepository<RoadbookSettings>,
 ) : ViewModel() {
 
@@ -62,12 +66,15 @@ internal class SettingsViewModel @Inject constructor(
     /** The screen state. Starts at [SettingsUiState.Loading] and never fails. */
     val uiState: StateFlow<SettingsUiState> = combine(
         appSettings.settings,
+        remoteSettings.settings,
         roadbookSettings.settings,
         saveFailed,
-    ) { app, roadbook, failed ->
+    ) { app, remote, roadbook, failed ->
         SettingsUiState.Loaded(
             themeMode = app.themeMode,
             orientation = app.orientation,
+            remoteModel = remote.model,
+            remoteKeys = remote.keys,
             roadbookStyle = roadbook.style,
             shortDistanceThreshold = roadbook.shortDistanceThreshold,
             canDecreaseThreshold = roadbook.shortDistanceThreshold > ShortDistanceThreshold.MIN,
@@ -96,6 +103,16 @@ internal class SettingsViewModel @Inject constructor(
      */
     fun setOrientation(orientation: ScreenOrientation) {
         save { appSettings.update { it.copy(orientation = orientation) } }
+    }
+
+    /**
+     * Stores the remote control [model] in use. The custom keys are kept, so they come back when
+     * the rider selects [RemoteModel.CUSTOM] again.
+     *
+     * @param model the new remote model.
+     */
+    fun setRemoteModel(model: RemoteModel) {
+        save { remoteSettings.update { it.copy(model = model) } }
     }
 
     /**

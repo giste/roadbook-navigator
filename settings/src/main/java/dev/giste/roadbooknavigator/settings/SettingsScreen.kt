@@ -26,8 +26,8 @@ import dev.giste.roadbooknavigator.settings.ui.SettingsContent
 import dev.giste.roadbooknavigator.settings.ui.SettingsViewModel
 
 /**
- * The settings screen, with its state from Hilt: the app theme, the screen orientation and the
- * roadbook settings.
+ * The settings screen, with its state from Hilt: the app theme, the screen orientation, the
+ * remote control and the roadbook settings.
  *
  * Every change is stored at once and reaches the modules through their settings sources, so the
  * app reacts while the screen is still open. The screen tells the user if a change could not be
@@ -46,6 +46,7 @@ public fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
         onBack = onBack,
         onThemeModeChange = viewModel::setThemeMode,
         onOrientationChange = viewModel::setOrientation,
+        onRemoteModelChange = viewModel::setRemoteModel,
         onRoadbookStyleChange = viewModel::setRoadbookStyle,
         onDecreaseThreshold = viewModel::decreaseShortDistanceThreshold,
         onIncreaseThreshold = viewModel::increaseShortDistanceThreshold,

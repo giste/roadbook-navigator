@@ -25,6 +25,9 @@ import dev.giste.roadbook.ShortDistanceThreshold
 import dev.giste.roadbooknavigator.settings.AppSettings
 import dev.giste.roadbooknavigator.settings.FakeSettingsRepository
 import dev.giste.roadbooknavigator.settings.MainDispatcherRule
+import dev.giste.roadbooknavigator.settings.RemoteKeys
+import dev.giste.roadbooknavigator.settings.RemoteModel
+import dev.giste.roadbooknavigator.settings.RemoteSettings
 import dev.giste.roadbooknavigator.settings.ScreenOrientation
 import dev.giste.roadbooknavigator.settings.ThemeMode
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -39,15 +42,18 @@ class SettingsViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val app = FakeSettingsRepository(AppSettings())
+    private val remote = FakeSettingsRepository(RemoteSettings())
     private val roadbook = FakeSettingsRepository(RoadbookSettings())
 
     // Created in each test, after the rule has replaced Main: viewModelScope takes Main's
     // immediate dispatcher when the ViewModel is created.
-    private val viewModel by lazy { SettingsViewModel(app, roadbook) }
+    private val viewModel by lazy { SettingsViewModel(app, remote, roadbook) }
 
     private val defaults = SettingsUiState.Loaded(
         themeMode = ThemeMode.SYSTEM,
         orientation = ScreenOrientation.FOLLOW_SYSTEM,
+        remoteModel = RemoteModel.DND2,
+        remoteKeys = RemoteKeys.DND2,
         roadbookStyle = RoadbookStyle.APP_THEME,
         shortDistanceThreshold = ShortDistanceThreshold.DEFAULT,
         canDecreaseThreshold = true,
@@ -120,6 +126,62 @@ class SettingsViewModelTest {
         advanceUntilIdle()
 
         assertEquals(ScreenOrientation.HORIZONTAL, app.settings.value.orientation)
+    }
+
+    @Test
+    fun uiState_terraPirata_showsItsKeys() = runTest {
+        remote.settings.value = RemoteSettings(model = RemoteModel.TERRA_PIRATA)
+
+        viewModel.uiState.test {
+            skipItems(1)
+
+            assertEquals(
+                defaults.copy(
+                    remoteModel = RemoteModel.TERRA_PIRATA,
+                    remoteKeys = RemoteKeys.TERRA_PIRATA,
+                ),
+                awaitItem(),
+            )
+        }
+    }
+
+    @Test
+    fun uiState_custom_showsTheCustomKeys() = runTest {
+        val custom = RemoteKeys(emptyMap())
+        remote.settings.value = RemoteSettings(model = RemoteModel.CUSTOM, customKeys = custom)
+
+        viewModel.uiState.test {
+            skipItems(1)
+
+            assertEquals(
+                defaults.copy(remoteModel = RemoteModel.CUSTOM, remoteKeys = custom),
+                awaitItem(),
+            )
+        }
+    }
+
+    @Test
+    fun setRemoteModel_storesItAndKeepsTheCustomKeys() = runTest {
+        val custom = RemoteKeys(emptyMap())
+        remote.settings.value = RemoteSettings(model = RemoteModel.CUSTOM, customKeys = custom)
+
+        viewModel.setRemoteModel(RemoteModel.TERRA_PIRATA)
+        advanceUntilIdle()
+
+        assertEquals(RemoteSettings(RemoteModel.TERRA_PIRATA, custom), remote.settings.value)
+    }
+
+    @Test
+    fun setRemoteModel_notSaved_showsTheSaveError() = runTest {
+        remote.failUpdates = true
+
+        viewModel.uiState.test {
+            skipItems(2)
+
+            viewModel.setRemoteModel(RemoteModel.CUSTOM)
+
+            assertEquals(defaults.copy(saveFailed = true), awaitItem())
+        }
     }
 
     @Test

@@ -37,13 +37,17 @@ import dev.giste.roadbook.RoadbookSettings
 import dev.giste.roadbook.RoadbookSettingsSource
 import dev.giste.roadbooknavigator.settings.AppSettings
 import dev.giste.roadbooknavigator.settings.AppSettingsSource
+import dev.giste.roadbooknavigator.settings.RemoteSettings
+import dev.giste.roadbooknavigator.settings.RemoteSettingsSource
 import dev.giste.roadbooknavigator.settings.data.AppSettingsDataStore
 import dev.giste.roadbooknavigator.settings.data.DataStoreAppSettingsRepository
 import dev.giste.roadbooknavigator.settings.data.DataStoreLocationSettingsRepository
 import dev.giste.roadbooknavigator.settings.data.DataStoreOdometerSettingsRepository
+import dev.giste.roadbooknavigator.settings.data.DataStoreRemoteSettingsRepository
 import dev.giste.roadbooknavigator.settings.data.DataStoreRoadbookSettingsRepository
 import dev.giste.roadbooknavigator.settings.data.LocationSettingsDataStore
 import dev.giste.roadbooknavigator.settings.data.OdometerSettingsDataStore
+import dev.giste.roadbooknavigator.settings.data.RemoteSettingsDataStore
 import dev.giste.roadbooknavigator.settings.data.RoadbookSettingsDataStore
 import dev.giste.roadbooknavigator.settings.domain.SettingsRepository
 import javax.inject.Singleton
@@ -68,6 +72,18 @@ internal interface SettingsModule {
     fun bindAppSettingsRepository(
         repository: DataStoreAppSettingsRepository,
     ): SettingsRepository<AppSettings>
+
+    /** Provides the stored remote settings wherever a [RemoteSettingsSource] is injected. */
+    @Binds
+    fun bindRemoteSettingsSource(
+        repository: DataStoreRemoteSettingsRepository,
+    ): RemoteSettingsSource
+
+    /** Provides the remote settings repository to the settings screen, which changes them. */
+    @Binds
+    fun bindRemoteSettingsRepository(
+        repository: DataStoreRemoteSettingsRepository,
+    ): SettingsRepository<RemoteSettings>
 
     /** Provides the `:roadbook` settings repository to the settings screen, which changes them. */
     @Binds
@@ -116,6 +132,22 @@ internal interface SettingsModule {
             @IoDispatcher ioDispatcher: CoroutineDispatcher,
         ): DataStore<Preferences> =
             settingsDataStore(context, ioDispatcher, DataStoreAppSettingsRepository.FILE_NAME)
+
+        /**
+         * Provides the DataStore of the remote control settings.
+         *
+         * @param context the application context, to locate the file.
+         * @param ioDispatcher the dispatcher DataStore reads and writes the file on.
+         * @return the DataStore stored in the `settings_remote` file.
+         */
+        @Provides
+        @Singleton
+        @RemoteSettingsDataStore
+        fun provideRemoteSettingsDataStore(
+            @ApplicationContext context: Context,
+            @IoDispatcher ioDispatcher: CoroutineDispatcher,
+        ): DataStore<Preferences> =
+            settingsDataStore(context, ioDispatcher, DataStoreRemoteSettingsRepository.FILE_NAME)
 
         /**
          * Provides the DataStore of the `:location` settings.

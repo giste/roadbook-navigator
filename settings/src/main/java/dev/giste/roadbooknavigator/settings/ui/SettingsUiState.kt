@@ -19,6 +19,8 @@ package dev.giste.roadbooknavigator.settings.ui
 
 import dev.giste.roadbook.RoadbookStyle
 import dev.giste.roadbook.ShortDistanceThreshold
+import dev.giste.roadbooknavigator.settings.RemoteKeys
+import dev.giste.roadbooknavigator.settings.RemoteModel
 import dev.giste.roadbooknavigator.settings.ScreenOrientation
 import dev.giste.roadbooknavigator.settings.ThemeMode
 
@@ -33,6 +35,8 @@ internal sealed interface SettingsUiState {
      *
      * @property themeMode the app's light or dark colors.
      * @property orientation which way the app is shown on the screen.
+     * @property remoteModel the remote control in use.
+     * @property remoteKeys the keys in use, those of [remoteModel].
      * @property roadbookStyle the colors the roadbook is drawn with.
      * @property shortDistanceThreshold below which distance a waypoint is highlighted.
      * @property canDecreaseThreshold whether the threshold can get shorter.
@@ -43,6 +47,8 @@ internal sealed interface SettingsUiState {
     data class Loaded(
         val themeMode: ThemeMode,
         val orientation: ScreenOrientation,
+        val remoteModel: RemoteModel,
+        val remoteKeys: RemoteKeys,
         val roadbookStyle: RoadbookStyle,
         val shortDistanceThreshold: ShortDistanceThreshold,
         val canDecreaseThreshold: Boolean,

@@ -27,6 +27,8 @@ import dev.giste.roadbook.RoadbookSettings
 import dev.giste.roadbook.RoadbookStyle
 import dev.giste.roadbooknavigator.settings.AppSettings
 import dev.giste.roadbooknavigator.settings.FakeLogger
+import dev.giste.roadbooknavigator.settings.RemoteModel
+import dev.giste.roadbooknavigator.settings.RemoteSettings
 import dev.giste.roadbooknavigator.settings.ThemeMode
 import dev.giste.roadbooknavigator.settings.domain.SettingsUpdateResult
 import kotlinx.coroutines.flow.first
@@ -137,5 +139,16 @@ class DataStoreSettingsRepositoryTest {
         val settings = DataStoreAppSettingsRepository(store, logger).settings.first()
 
         assertEquals(AppSettings(themeMode = ThemeMode.DARK), settings)
+    }
+
+    @Test
+    fun remoteRepository_storedValues_emitsThem() = runTest {
+        val store = FakePreferencesDataStore(
+            preferencesOf(RemoteSettingsCodec.MODEL_KEY to "TERRA_PIRATA"),
+        )
+
+        val settings = DataStoreRemoteSettingsRepository(store, logger).settings.first()
+
+        assertEquals(RemoteSettings(model = RemoteModel.TERRA_PIRATA), settings)
     }
 }
