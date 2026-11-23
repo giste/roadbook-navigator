@@ -24,6 +24,7 @@ import dev.giste.roadbook.RoadbookSettings
 import dev.giste.roadbook.RoadbookStyle
 import dev.giste.roadbook.ShortDistanceThreshold
 import dev.giste.roadbooknavigator.settings.AppSettings
+import dev.giste.roadbooknavigator.settings.ScreenOrientation
 import dev.giste.roadbooknavigator.settings.ThemeMode
 import dev.giste.roadbooknavigator.settings.domain.SettingsRepository
 import dev.giste.roadbooknavigator.settings.domain.SettingsUpdateResult
@@ -66,6 +67,7 @@ internal class SettingsViewModel @Inject constructor(
     ) { app, roadbook, failed ->
         SettingsUiState.Loaded(
             themeMode = app.themeMode,
+            orientation = app.orientation,
             roadbookStyle = roadbook.style,
             shortDistanceThreshold = roadbook.shortDistanceThreshold,
             canDecreaseThreshold = roadbook.shortDistanceThreshold > ShortDistanceThreshold.MIN,
@@ -85,6 +87,15 @@ internal class SettingsViewModel @Inject constructor(
      */
     fun setThemeMode(themeMode: ThemeMode) {
         save { appSettings.update { it.copy(themeMode = themeMode) } }
+    }
+
+    /**
+     * Stores the app's screen [orientation].
+     *
+     * @param orientation the new screen orientation.
+     */
+    fun setOrientation(orientation: ScreenOrientation) {
+        save { appSettings.update { it.copy(orientation = orientation) } }
     }
 
     /**

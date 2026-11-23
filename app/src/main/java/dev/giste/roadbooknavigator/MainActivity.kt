@@ -22,6 +22,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -34,18 +35,20 @@ import dev.giste.roadbooknavigator.settings.AppSettingsSource
 import dev.giste.roadbooknavigator.ui.AppNavHost
 import dev.giste.roadbooknavigator.ui.RiderTypography
 import dev.giste.roadbooknavigator.ui.isDarkTheme
+import dev.giste.roadbooknavigator.ui.toActivityOrientation
 import javax.inject.Inject
 
 /**
  * The only activity. A Hilt entry point, so the composables it hosts can get Hilt view models.
  *
- * It shows the app in the theme mode of the [AppSettings], following every change, with the
- * larger [RiderTypography], and every screen behind the location permission gate.
+ * It shows the app in the theme mode and the screen orientation of the [AppSettings], following
+ * every change, with the larger [RiderTypography], and every screen behind the location
+ * permission gate.
  */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    /** The app settings, for the theme mode. Injected by Hilt in [onCreate]. */
+    /** The app settings, for the theme mode and the orientation. Injected by Hilt in [onCreate]. */
     @Inject
     internal lateinit var appSettingsSource: AppSettingsSource
 
@@ -53,9 +56,15 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            // Until the stored settings are read, the defaults apply (the system's theme).
+            // Until the stored settings are read, the defaults apply (the system's theme and
+            // rotation).
             val appSettings by appSettingsSource.settings
                 .collectAsStateWithLifecycle(initialValue = AppSettings())
+            // A new orientation recreates the activity; the screens keep their state, as on any
+            // rotation.
+            LaunchedEffect(appSettings.orientation) {
+                requestedOrientation = appSettings.orientation.toActivityOrientation()
+            }
             GisteTheme(
                 darkTheme = appSettings.themeMode.isDarkTheme(),
                 typography = RiderTypography,

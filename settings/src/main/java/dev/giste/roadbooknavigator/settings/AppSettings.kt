@@ -22,9 +22,12 @@ package dev.giste.roadbooknavigator.settings
  *
  * @property themeMode whether the app uses its light or dark colors. Defaults to
  * [DEFAULT_THEME_MODE].
+ * @property orientation which way the app is shown on the screen. Defaults to
+ * [DEFAULT_ORIENTATION].
  */
 public data class AppSettings(
     public val themeMode: ThemeMode = DEFAULT_THEME_MODE,
+    public val orientation: ScreenOrientation = DEFAULT_ORIENTATION,
 ) {
 
     /** Default values of [AppSettings]. */
@@ -32,5 +35,8 @@ public data class AppSettings(
 
         /** Default [themeMode]: follow the system. */
         public val DEFAULT_THEME_MODE: ThemeMode = ThemeMode.SYSTEM
+
+        /** Default [orientation]: follow the device's rotation. */
+        public val DEFAULT_ORIENTATION: ScreenOrientation = ScreenOrientation.FOLLOW_SYSTEM
     }
 }
