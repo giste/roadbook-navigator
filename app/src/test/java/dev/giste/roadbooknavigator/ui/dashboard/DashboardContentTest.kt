@@ -197,7 +197,12 @@ class DashboardContentTest {
         val side = 1_000.dp * LANDSCAPE_SIDE_COLUMN_WEIGHT
         val totalHeight = 500.dp * LANDSCAPE_TOTAL_WEIGHT
         val partialHeight = 500.dp * LANDSCAPE_PARTIAL_WEIGHT
-        total().assertBounds(left = 0.dp, top = 0.dp, width = side, height = totalHeight)
+        total().assertBounds(
+            left = SETTINGS_SLOT_WIDTH,
+            top = 0.dp,
+            width = side - SETTINGS_SLOT_WIDTH,
+            height = totalHeight,
+        )
         partial().assertBounds(left = 0.dp, top = totalHeight, width = side, height = partialHeight)
         composeRule.onNodeWithTag(MAP_TAG).assertBounds(
             left = 0.dp,
@@ -216,7 +221,12 @@ class DashboardContentTest {
         val distancesHeight = 1_000.dp * PORTRAIT_DISTANCES_WEIGHT
         val mapHeight = 1_000.dp * PORTRAIT_MAP_WEIGHT
         val totalWidth = 500.dp * PORTRAIT_TOTAL_WEIGHT
-        total().assertBounds(left = 0.dp, top = 0.dp, width = totalWidth, height = distancesHeight)
+        total().assertBounds(
+            left = SETTINGS_SLOT_WIDTH,
+            top = 0.dp,
+            width = totalWidth - SETTINGS_SLOT_WIDTH,
+            height = distancesHeight,
+        )
         partial().assertBounds(
             left = totalWidth,
             top = 0.dp,
@@ -373,15 +383,39 @@ class DashboardContentTest {
     }
 
     @Test
-    fun dashboardContent_settingsButton_sitsInTheMapsTopEndCorner() {
+    fun dashboardContent_portrait_settingsButtonSitsOnTheStartSideOfTheTotal() {
         show(DashboardUiState.INITIAL, width = 500.dp, height = 1_000.dp)
 
-        val map = composeRule.onNodeWithTag(MAP_TAG).getUnclippedBoundsInRoot()
+        assertSettingsButtonOnTheStartSideOfTheTotal()
+    }
+
+    @Test
+    fun dashboardContent_landscape_settingsButtonSitsOnTheStartSideOfTheTotal() {
+        show(DashboardUiState.INITIAL, width = 1_000.dp, height = 500.dp)
+
+        assertSettingsButtonOnTheStartSideOfTheTotal()
+    }
+
+    @Test
+    fun dashboardContent_moving_keepsTheTotalWhereItIsWhenStopped() {
+        var state by mutableStateOf(DashboardUiState.INITIAL)
+        composeRule.setContent { TestDashboard(state) }
+        val stopped = total().getUnclippedBoundsInRoot()
+
+        state = moving
+
+        assertEquals(stopped, total().getUnclippedBoundsInRoot())
+    }
+
+    /** Asserts the settings button is a full touch target, centered in its slot left of the total. */
+    private fun assertSettingsButtonOnTheStartSideOfTheTotal() {
+        val total = total().getUnclippedBoundsInRoot()
         val button = composeRule.onNodeWithTag(DashboardTestTags.SETTINGS).getUnclippedBoundsInRoot()
 
-        assertTrue(button.top >= map.top && button.right <= map.right)
-        assertTrue(button.left > map.left + (map.right - map.left) / 2)
-        assertTrue(button.bottom - button.top >= 56.dp)
+        assertEquals(total.left - SETTINGS_SLOT_WIDTH + 8.dp, button.left)
+        assertEquals((total.top + total.bottom) / 2, (button.top + button.bottom) / 2)
+        assertEquals(56.dp, button.right - button.left)
+        assertEquals(56.dp, button.bottom - button.top)
     }
 
     @Test
@@ -413,5 +447,8 @@ class DashboardContentTest {
     private companion object {
         const val ROADBOOK_TAG = "roadbook"
         const val MAP_TAG = "map"
+
+        /** The settings slot: the 56 dp touch target plus 8 dp on each side (default theme). */
+        val SETTINGS_SLOT_WIDTH = 72.dp
     }
 }

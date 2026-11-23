@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -168,8 +169,11 @@ internal fun Dashboard(onOpenSettings: () -> Unit, modifier: Modifier = Modifier
  * are still loading, because the odometer applies commands in order. Which dialog is open, and the
  * text typed in it, survive configuration changes.
  *
- * While [DashboardUiState.showStoppedActions] is set, a settings button floats in the top corner of
- * the map, and the roadbook offers its import button.
+ * The settings button sits on the start side of the total, in a slot of its own that the total's
+ * background covers. It is shown only while [DashboardUiState.showStoppedActions] is set, so a touch
+ * while riding cannot leave the dashboard (which would stop the odometer). While moving, the slot
+ * stays empty instead of going away, so the total keeps its size and place. The roadbook offers its
+ * import button under the same condition.
  *
  * The screen stays on while the dashboard is in the composition, and may go off again once it
  * leaves it.
@@ -208,18 +212,28 @@ internal fun DashboardContent(
     var openDialog by rememberSaveable { mutableStateOf<OdometerDialog?>(null) }
     var partialText by rememberSaveable { mutableStateOf("") }
 
-    // The total is plain; the partial, which the rider looks at most, is highlighted.
+    // The total is plain; the partial, which the rider looks at most, is highlighted. The settings
+    // button has a fixed place on the total's start side, in a slot kept empty while moving, so the
+    // total never changes size when the button comes and goes.
     val totalReading: @Composable (Modifier) -> Unit = { readingModifier ->
-        DistanceReading(
-            value = total,
-            widestValue = widestTotal,
-            color = MaterialTheme.colorScheme.onSurface,
-            highlighted = false,
-            onLongPress = { openDialog = OdometerDialog.RESET_ALL },
-            modifier = readingModifier
-                .background(MaterialTheme.colorScheme.surface)
-                .testTag(DashboardTestTags.TOTAL),
-        )
+        Row(modifier = readingModifier.background(MaterialTheme.colorScheme.surface)) {
+            SettingsSlot(
+                showButton = state.showStoppedActions,
+                onOpenSettings = onOpenSettings,
+                modifier = Modifier.fillMaxHeight(),
+            )
+            DistanceReading(
+                value = total,
+                widestValue = widestTotal,
+                color = MaterialTheme.colorScheme.onSurface,
+                highlighted = false,
+                onLongPress = { openDialog = OdometerDialog.RESET_ALL },
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .testTag(DashboardTestTags.TOTAL),
+            )
+        }
     }
     val partialReading: @Composable (Modifier) -> Unit = { readingModifier ->
         DistanceReading(
@@ -240,20 +254,6 @@ internal fun DashboardContent(
     val roadbookSlot: @Composable (Modifier) -> Unit = { roadbookModifier ->
         roadbook(state.showStoppedActions, roadbookModifier)
     }
-    // The settings button floats over the map's corner, only while stopped.
-    val mapSlot: @Composable (Modifier) -> Unit = { mapModifier ->
-        Box(modifier = mapModifier) {
-            map(Modifier.fillMaxSize())
-            if (state.showStoppedActions) {
-                SettingsButton(
-                    onClick = onOpenSettings,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(GisteTheme.dimensions.spacingSmall),
-                )
-            }
-        }
-    }
 
     // The rider reads the dashboard in glances, without touching it, so the screen must not go off
     // while it is shown. Elsewhere (the settings, a coffee stop) the screen may sleep as usual.
@@ -267,14 +267,14 @@ internal fun DashboardContent(
             LandscapeLayout(
                 total = totalReading,
                 partial = partialReading,
-                map = mapSlot,
+                map = map,
                 roadbook = roadbookSlot,
             )
         } else {
             PortraitLayout(
                 total = totalReading,
                 partial = partialReading,
-                map = mapSlot,
+                map = map,
                 roadbook = roadbookSlot,
             )
         }
@@ -358,6 +358,29 @@ private fun PortraitLayout(
         }
         map(Modifier.weight(PORTRAIT_MAP_WEIGHT).fillMaxWidth())
         roadbook(Modifier.weight(PORTRAIT_ROADBOOK_WEIGHT).fillMaxWidth())
+    }
+}
+
+/**
+ * The settings button's place, on the start side of the total: as wide as the button plus small
+ * spacing on each side, whether the button is shown or not.
+ *
+ * @param showButton whether to show the button; otherwise the slot stays empty.
+ * @param onOpenSettings called when the button is pressed.
+ * @param modifier applied to the root layout.
+ */
+@Composable
+private fun SettingsSlot(
+    showButton: Boolean,
+    onOpenSettings: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .width(GisteTheme.dimensions.minTouchTarget + GisteTheme.dimensions.spacingSmall * 2),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (showButton) SettingsButton(onClick = onOpenSettings)
     }
 }
 
