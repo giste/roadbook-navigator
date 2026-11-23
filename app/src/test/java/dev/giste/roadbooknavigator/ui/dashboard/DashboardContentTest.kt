@@ -197,7 +197,13 @@ class DashboardContentTest {
         val side = 1_000.dp * LANDSCAPE_SIDE_COLUMN_WEIGHT
         val totalHeight = 500.dp * LANDSCAPE_TOTAL_WEIGHT
         val partialHeight = 500.dp * LANDSCAPE_PARTIAL_WEIGHT
-        total().assertBounds(left = 0.dp, top = 0.dp, width = side, height = totalHeight)
+        // The settings slot, on the total's left, is as wide as the total is tall.
+        total().assertBounds(
+            left = totalHeight,
+            top = 0.dp,
+            width = side - totalHeight,
+            height = totalHeight,
+        )
         partial().assertBounds(left = 0.dp, top = totalHeight, width = side, height = partialHeight)
         composeRule.onNodeWithTag(MAP_TAG).assertBounds(
             left = 0.dp,
@@ -216,7 +222,13 @@ class DashboardContentTest {
         val distancesHeight = 1_000.dp * PORTRAIT_DISTANCES_WEIGHT
         val mapHeight = 1_000.dp * PORTRAIT_MAP_WEIGHT
         val totalWidth = 500.dp * PORTRAIT_TOTAL_WEIGHT
-        total().assertBounds(left = 0.dp, top = 0.dp, width = totalWidth, height = distancesHeight)
+        // The settings slot, on the total's left, is as wide as the total is tall.
+        total().assertBounds(
+            left = distancesHeight,
+            top = 0.dp,
+            width = totalWidth - distancesHeight,
+            height = distancesHeight,
+        )
         partial().assertBounds(
             left = totalWidth,
             top = 0.dp,
@@ -373,15 +385,53 @@ class DashboardContentTest {
     }
 
     @Test
-    fun dashboardContent_settingsButton_sitsInTheMapsTopEndCorner() {
+    fun dashboardContent_portrait_settingsButtonSitsOnTheStartSideOfTheTotal() {
         show(DashboardUiState.INITIAL, width = 500.dp, height = 1_000.dp)
 
-        val map = composeRule.onNodeWithTag(MAP_TAG).getUnclippedBoundsInRoot()
+        assertSettingsButtonOnTheStartSideOfTheTotal()
+    }
+
+    @Test
+    fun dashboardContent_landscape_settingsButtonSitsOnTheStartSideOfTheTotal() {
+        show(DashboardUiState.INITIAL, width = 1_000.dp, height = 500.dp)
+
+        assertSettingsButtonOnTheStartSideOfTheTotal()
+    }
+
+    @Test
+    fun dashboardContent_totalShorterThanATouchTarget_settingsButtonKeepsTheTouchTargetWidth() {
+        // Landscape, with the total 400 × 0.12 = 48 dp tall: less than the 56 dp target.
+        show(DashboardUiState.INITIAL, width = 1_000.dp, height = 400.dp)
+
+        val total = total().getUnclippedBoundsInRoot()
         val button = composeRule.onNodeWithTag(DashboardTestTags.SETTINGS).getUnclippedBoundsInRoot()
 
-        assertTrue(button.top >= map.top && button.right <= map.right)
-        assertTrue(button.left > map.left + (map.right - map.left) / 2)
-        assertTrue(button.bottom - button.top >= 56.dp)
+        assertEquals(MIN_TOUCH_TARGET, button.right - button.left)
+        assertEquals(total.bottom - total.top, button.bottom - button.top)
+        assertEquals(MIN_TOUCH_TARGET, total.left)
+    }
+
+    @Test
+    fun dashboardContent_moving_keepsTheTotalWhereItIsWhenStopped() {
+        var state by mutableStateOf(DashboardUiState.INITIAL)
+        composeRule.setContent { TestDashboard(state) }
+        val stopped = total().getUnclippedBoundsInRoot()
+
+        state = moving
+
+        assertEquals(stopped, total().getUnclippedBoundsInRoot())
+    }
+
+    /** Asserts the settings button is a square as tall as the total, right before it. */
+    private fun assertSettingsButtonOnTheStartSideOfTheTotal() {
+        val total = total().getUnclippedBoundsInRoot()
+        val button = composeRule.onNodeWithTag(DashboardTestTags.SETTINGS).getUnclippedBoundsInRoot()
+        val height = total.bottom - total.top
+
+        assertEquals(total.left - height, button.left)
+        assertEquals(total.left, button.right)
+        assertEquals(total.top, button.top)
+        assertEquals(total.bottom, button.bottom)
     }
 
     @Test
@@ -413,5 +463,8 @@ class DashboardContentTest {
     private companion object {
         const val ROADBOOK_TAG = "roadbook"
         const val MAP_TAG = "map"
+
+        /** The default theme's minimum touch target. */
+        val MIN_TOUCH_TARGET = 56.dp
     }
 }

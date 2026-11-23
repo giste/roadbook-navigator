@@ -29,9 +29,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.keepScreenOn
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
@@ -57,6 +58,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -95,6 +97,9 @@ internal const val PORTRAIT_TOTAL_WEIGHT: Float = 0.45f
 
 /** Portrait: share of the distances row's width taken by the partial, on the right. */
 internal const val PORTRAIT_PARTIAL_WEIGHT: Float = 0.55f
+
+/** Share of the settings button taken by the gear, which leaves a margin around it. */
+internal const val SETTINGS_ICON_FRACTION: Float = 0.7f
 
 /** Test tags of the dashboard parts that show no text of their own to find them by. */
 internal object DashboardTestTags {
@@ -168,8 +173,11 @@ internal fun Dashboard(onOpenSettings: () -> Unit, modifier: Modifier = Modifier
  * are still loading, because the odometer applies commands in order. Which dialog is open, and the
  * text typed in it, survive configuration changes.
  *
- * While [DashboardUiState.showStoppedActions] is set, a settings button floats in the top corner of
- * the map, and the roadbook offers its import button.
+ * The settings button sits on the start side of the total, in a square slot of its own that the
+ * total's background covers, and its gear grows with the slot. It is shown only while [DashboardUiState.showStoppedActions] is set, so a touch
+ * while riding cannot leave the dashboard (which would stop the odometer). While moving, the slot
+ * stays empty instead of going away, so the total keeps its size and place. The roadbook offers its
+ * import button under the same condition.
  *
  * The screen stays on while the dashboard is in the composition, and may go off again once it
  * leaves it.
@@ -208,18 +216,28 @@ internal fun DashboardContent(
     var openDialog by rememberSaveable { mutableStateOf<OdometerDialog?>(null) }
     var partialText by rememberSaveable { mutableStateOf("") }
 
-    // The total is plain; the partial, which the rider looks at most, is highlighted.
+    // The total is plain; the partial, which the rider looks at most, is highlighted. The settings
+    // button has a fixed place on the total's start side, in a slot kept empty while moving, so the
+    // total never changes size when the button comes and goes.
     val totalReading: @Composable (Modifier) -> Unit = { readingModifier ->
-        DistanceReading(
-            value = total,
-            widestValue = widestTotal,
-            color = MaterialTheme.colorScheme.onSurface,
-            highlighted = false,
-            onLongPress = { openDialog = OdometerDialog.RESET_ALL },
-            modifier = readingModifier
-                .background(MaterialTheme.colorScheme.surface)
-                .testTag(DashboardTestTags.TOTAL),
-        )
+        Row(modifier = readingModifier.background(MaterialTheme.colorScheme.surface)) {
+            SettingsSlot(
+                showButton = state.showStoppedActions,
+                onOpenSettings = onOpenSettings,
+                modifier = Modifier.fillMaxHeight(),
+            )
+            DistanceReading(
+                value = total,
+                widestValue = widestTotal,
+                color = MaterialTheme.colorScheme.onSurface,
+                highlighted = false,
+                onLongPress = { openDialog = OdometerDialog.RESET_ALL },
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .testTag(DashboardTestTags.TOTAL),
+            )
+        }
     }
     val partialReading: @Composable (Modifier) -> Unit = { readingModifier ->
         DistanceReading(
@@ -240,20 +258,6 @@ internal fun DashboardContent(
     val roadbookSlot: @Composable (Modifier) -> Unit = { roadbookModifier ->
         roadbook(state.showStoppedActions, roadbookModifier)
     }
-    // The settings button floats over the map's corner, only while stopped.
-    val mapSlot: @Composable (Modifier) -> Unit = { mapModifier ->
-        Box(modifier = mapModifier) {
-            map(Modifier.fillMaxSize())
-            if (state.showStoppedActions) {
-                SettingsButton(
-                    onClick = onOpenSettings,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(GisteTheme.dimensions.spacingSmall),
-                )
-            }
-        }
-    }
 
     // The rider reads the dashboard in glances, without touching it, so the screen must not go off
     // while it is shown. Elsewhere (the settings, a coffee stop) the screen may sleep as usual.
@@ -267,14 +271,14 @@ internal fun DashboardContent(
             LandscapeLayout(
                 total = totalReading,
                 partial = partialReading,
-                map = mapSlot,
+                map = map,
                 roadbook = roadbookSlot,
             )
         } else {
             PortraitLayout(
                 total = totalReading,
                 partial = partialReading,
-                map = mapSlot,
+                map = map,
                 roadbook = roadbookSlot,
             )
         }
@@ -362,20 +366,58 @@ private fun PortraitLayout(
 }
 
 /**
- * The button that opens the settings: a gear, at least the minimum touch target in size.
+ * The settings button's place, on the start side of the total: a square as tall as the total's
+ * box, so the gear grows with the space, but never narrower than the minimum touch target. It
+ * keeps its size whether the button is shown or not.
+ *
+ * @param showButton whether to show the button; otherwise the slot stays empty.
+ * @param onOpenSettings called when the button is pressed.
+ * @param modifier applied to the root layout. It must give the slot a bounded height.
+ */
+@Composable
+private fun SettingsSlot(
+    showButton: Boolean,
+    onOpenSettings: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val minWidth = GisteTheme.dimensions.minTouchTarget
+    Box(
+        modifier = modifier.layout { measurable, constraints ->
+            // As wide as tall, or the minimum touch target on boxes shorter than that.
+            val height = constraints.maxHeight
+            val width = maxOf(height, minWidth.roundToPx())
+            val placeable = measurable.measure(Constraints.fixed(width, height))
+            layout(width, height) { placeable.place(0, 0) }
+        },
+        contentAlignment = Alignment.Center,
+    ) {
+        if (showButton) SettingsButton(onClick = onOpenSettings, modifier = Modifier.fillMaxSize())
+    }
+}
+
+/**
+ * The button that opens the settings: a gear in the primary color, with no container. It takes the
+ * size [modifier] gives it, and the gear fills [SETTINGS_ICON_FRACTION] of it, so a larger box
+ * shows a larger gear. Without a container it reads as part of the total's box rather than as a
+ * separate control, as in the previous app; the primary color keeps it easy to spot.
  *
  * @param onClick called when the button is pressed.
- * @param modifier applied to the button.
+ * @param modifier applied to the button. It sets the button's size.
  */
 @Composable
 private fun SettingsButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    FilledTonalIconButton(
+    IconButton(
         onClick = onClick,
-        modifier = modifier
-            .size(GisteTheme.dimensions.minTouchTarget)
-            .testTag(DashboardTestTags.SETTINGS),
+        modifier = modifier.testTag(DashboardTestTags.SETTINGS),
+        colors = IconButtonDefaults.iconButtonColors(
+            contentColor = MaterialTheme.colorScheme.primary,
+        ),
     ) {
-        Icon(painter = painterResource(R.drawable.app_ic_settings), contentDescription = null)
+        Icon(
+            painter = painterResource(R.drawable.app_ic_settings),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(SETTINGS_ICON_FRACTION),
+        )
     }
 }
 
