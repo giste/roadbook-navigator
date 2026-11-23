@@ -20,11 +20,12 @@ package dev.giste.roadbooknavigator.settings.data
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
-import dev.giste.geo.Speed
-import dev.giste.location.LocationSettings
+import dev.giste.geo.Distance
+import dev.giste.roadbook.RoadbookSettings
+import dev.giste.roadbook.RoadbookStyle
+import dev.giste.roadbook.ShortDistanceThreshold
 import dev.giste.roadbooknavigator.settings.FakeLogger
 import java.io.File
-import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
@@ -36,14 +37,14 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 
-/** [DataStoreLocationSettingsRepository] on a real DataStore file in a temporary folder. */
+/** [DataStoreRoadbookSettingsRepository] on a real DataStore file in a temporary folder. */
 class DataStoreSettingsRepositoryIntegrationTest {
 
     @get:Rule
     val folder = TemporaryFolder()
 
     private val file: File by lazy {
-        File(folder.root, "${DataStoreLocationSettingsRepository.FILE_NAME}.preferences_pb")
+        File(folder.root, "${DataStoreRoadbookSettingsRepository.FILE_NAME}.preferences_pb")
     }
 
     /**
@@ -57,22 +58,21 @@ class DataStoreSettingsRepositoryIntegrationTest {
         )
 
     private fun createRepository(dataStore: DataStore<Preferences>) =
-        DataStoreLocationSettingsRepository(dataStore, FakeLogger())
+        DataStoreRoadbookSettingsRepository(dataStore, FakeLogger())
 
     @Test
     fun settings_newFile_emitsTheDefaults() = runTest {
         val job = Job()
 
-        assertEquals(LocationSettings(), createRepository(openDataStore(job)).settings.first())
+        assertEquals(RoadbookSettings(), createRepository(openDataStore(job)).settings.first())
         job.cancelAndJoin()
     }
 
     @Test
     fun update_savedSettings_areReadAfterReopeningTheFile() = runTest {
-        val expected = LocationSettings(
-            updateInterval = 2.seconds,
-            movingSpeed = Speed.kilometersPerHour(4.0),
-            stoppedSpeed = Speed.kilometersPerHour(2.0),
+        val expected = RoadbookSettings(
+            style = RoadbookStyle.FIA,
+            shortDistanceThreshold = ShortDistanceThreshold.of(Distance.meters(100.0)),
         )
         val firstJob = Job()
         createRepository(openDataStore(firstJob)).update { expected }

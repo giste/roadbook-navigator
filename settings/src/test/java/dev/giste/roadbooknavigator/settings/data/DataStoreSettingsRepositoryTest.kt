@@ -19,10 +19,6 @@ package dev.giste.roadbooknavigator.settings.data
 
 import androidx.datastore.preferences.core.preferencesOf
 import app.cash.turbine.test
-import dev.giste.geo.Distance
-import dev.giste.geo.Speed
-import dev.giste.location.LocationSettings
-import dev.giste.odometer.OdometerSettings
 import dev.giste.roadbook.RoadbookSettings
 import dev.giste.roadbook.RoadbookStyle
 import dev.giste.roadbooknavigator.settings.AppSettings
@@ -110,26 +106,6 @@ class DataStoreSettingsRepositoryTest {
         repository.update { current -> current.also { received = it } }
 
         assertEquals(fia, received)
-    }
-
-    @Test
-    fun locationRepository_storedValues_emitsThem() = runTest {
-        val store = FakePreferencesDataStore(
-            preferencesOf(LocationSettingsCodec.MIN_UPDATE_DISTANCE_KEY to 10.0),
-        )
-
-        val settings = DataStoreLocationSettingsRepository(store, logger).settings.first()
-
-        assertEquals(LocationSettings(minUpdateDistance = Distance.meters(10.0)), settings)
-    }
-
-    @Test
-    fun odometerRepository_storedValues_emitsThem() = runTest {
-        val store = FakePreferencesDataStore(preferencesOf(OdometerSettingsCodec.MIN_SPEED_KEY to 1.0))
-
-        val settings = DataStoreOdometerSettingsRepository(store, logger).settings.first()
-
-        assertEquals(OdometerSettings(minSpeed = Speed.metersPerSecond(1.0)), settings)
     }
 
     @Test

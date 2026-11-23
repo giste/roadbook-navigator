@@ -20,7 +20,7 @@ package dev.giste.roadbooknavigator.settings.domain
 import kotlinx.coroutines.flow.Flow
 
 /**
- * The stored settings of one module, of type [T], e.g. `LocationSettings`.
+ * The stored settings of one module, of type [T], e.g. `RoadbookSettings`.
  *
  * @param T the module's settings model.
  */
