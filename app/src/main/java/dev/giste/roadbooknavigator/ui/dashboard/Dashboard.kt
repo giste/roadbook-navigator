@@ -44,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.keepScreenOn
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
@@ -153,6 +154,9 @@ internal fun Dashboard(onOpenSettings: () -> Unit, modifier: Modifier = Modifier
  * While [DashboardUiState.showStoppedActions] is set, a settings button floats in the top corner of
  * the map, and the roadbook offers its import button.
  *
+ * The screen stays on while the dashboard is in the composition, and may go off again once it
+ * leaves it.
+ *
  * @param state what to show.
  * @param onSetPartial called with the new partial when the rider sets it.
  * @param onResetAll called when the rider confirms resetting the partial and the total.
@@ -234,8 +238,11 @@ internal fun DashboardContent(
         }
     }
 
+    // The rider reads the dashboard in glances, without touching it, so the screen must not go off
+    // while it is shown. Elsewhere (the settings, a coffee stop) the screen may sleep as usual.
     BoxWithConstraints(
         modifier = modifier
+            .keepScreenOn()
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
     ) {
