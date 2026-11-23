@@ -9,7 +9,7 @@ Stores the settings of every feature module and of the app, provides them to eac
 - Persist the settings of `:location`, `:odometer` and `:roadbook`, one DataStore file per module (AGENTS.md §7).
 - Implement `LocationSettingsSource`, `OdometerSettingsSource` and `RoadbookSettingsSource`, and bind them with Hilt, so each module gets its stored settings as a flow and reacts to every change.
 - Store the app's own settings (`AppSettings`: the theme mode and the screen orientation) and provide them as `AppSettingsSource`.
-- Store the remote control settings (`RemoteSettings`: the remote model and the custom keys) and provide them as `RemoteSettingsSource`.
+- Store the remote control settings (`RemoteSettings`: the remote model and the custom keys) and provide them as `RemoteSettingsSource`. `:app` acts on the keys while the dashboard is shown.
 - Show the settings screen (`SettingsScreen`), where the rider changes the theme, the screen orientation, the remote control and the roadbook settings.
 - Never fail: a missing, invalid or unreadable value is the module's default.
 

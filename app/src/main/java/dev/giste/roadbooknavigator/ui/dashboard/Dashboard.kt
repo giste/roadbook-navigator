@@ -19,6 +19,7 @@ package dev.giste.roadbooknavigator.ui.dashboard
 
 import android.content.res.Configuration
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -34,13 +35,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -60,6 +65,7 @@ import dev.giste.core.ui.theme.GisteTheme
 import dev.giste.geo.Distance
 import dev.giste.roadbook.RoadbookViewer
 import dev.giste.roadbooknavigator.R
+import dev.giste.roadbooknavigator.ui.InterceptKeyEvents
 import dev.giste.roadbooknavigator.ui.RiderTypography
 
 /** Landscape: share of the width taken by the side column (total, partial and map). */
@@ -108,6 +114,12 @@ internal object DashboardTestTags {
  * Showing it makes the odometer measure (see [DashboardViewModel]), so it must only be shown once
  * the location permission is granted.
  *
+ * While it is shown, the keys of the remote control act on it (see [DashboardViewModel.onKeyPress]),
+ * before the system gets them. Elsewhere, and while one of its dialogs is open, they do nothing
+ * special. The dashboard takes the focus, so the window always has a focused view: otherwise,
+ * after any touch, Android spends the next D-pad key (the DND2 remote's keys) on leaving touch
+ * mode, before the activity sees it, and that press is lost.
+ *
  * @param onOpenSettings called when the rider opens the settings.
  * @param modifier applied to the root layout.
  */
@@ -115,12 +127,17 @@ internal object DashboardTestTags {
 internal fun Dashboard(onOpenSettings: () -> Unit, modifier: Modifier = Modifier) {
     val viewModel: DashboardViewModel = hiltViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    InterceptKeyEvents { event -> event.toKeyPress()?.let(viewModel::onKeyPress) ?: false }
+    val focusRequester = remember { FocusRequester() }
+    // Also when it comes back from the settings.
+    LaunchedEffect(focusRequester) { focusRequester.requestFocus() }
     DashboardContent(
         state = state,
         onSetPartial = viewModel::setPartial,
         onResetAll = viewModel::resetAll,
         onOpenSettings = onOpenSettings,
-        modifier = modifier,
+        // Keeps the window focused, so no D-pad key is spent leaving touch mode.
+        modifier = modifier.focusRequester(focusRequester).focusable(),
         roadbook = { showImportButton, roadbookModifier ->
             RoadbookViewer(showImportButton = showImportButton, modifier = roadbookModifier)
         },
