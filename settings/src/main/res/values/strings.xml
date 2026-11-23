@@ -47,6 +47,15 @@
     <!-- Any other key: %1$s is Android's name for it, e.g. BUTTON_A -->
     <string name="settings_key_other">Key %1$s</string>
 
+    <!-- Custom keys: the hint above the keys, and the dialog that captures one -->
+    <string name="settings_remote_keys_custom_hint">Tap an action\'s key to change it.</string>
+    <string name="settings_key_capture_message">Press the key on your remote for this action.</string>
+    <!-- %1$s is the key or keys the action has now, or "No key" -->
+    <string name="settings_key_capture_current">Now: %1$s</string>
+    <string name="settings_action_cancel">Cancel</string>
+    <!-- Shown when an assigned key is taken from another action: %1$s is the key, %2$s the action that had it, %3$s the action that has it now -->
+    <string name="settings_key_moved">%1$s moved from “%2$s” to “%3$s”.</string>
+
     <!-- Roadbook -->
     <string name="settings_section_roadbook">Roadbook</string>
     <string name="settings_roadbook_style_title">Roadbook colors</string>

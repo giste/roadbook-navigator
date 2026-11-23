@@ -22,7 +22,8 @@ dev/giste/roadbooknavigator/settings/
 ├── AppSettings, ThemeMode, ScreenOrientation, AppSettingsSource,
 │   RemoteSettings, RemoteModel, RemoteKeys, RemoteKey, RemoteAction,
 │   RemoteSettingsSource, SettingsScreen  ← public API
-├── domain/         SettingsRepository, SettingsUpdateResult, ShortDistanceStep
+├── domain/         SettingsRepository, SettingsUpdateResult, ShortDistanceStep,
+│                   CustomKeyAssignment (RemoteKeys.withOnlyKey)
 ├── data/           DataStoreSettingsRepository, SettingsCodec (+ reading helpers),
 │                   DataStoreAppSettingsRepository + AppSettingsCodec,
 │                   DataStoreRemoteSettingsRepository + RemoteSettingsCodec,
@@ -30,7 +31,8 @@ dev/giste/roadbooknavigator/settings/
 │                   DataStoreOdometerSettingsRepository + OdometerSettingsCodec,
 │                   DataStoreRoadbookSettingsRepository + RoadbookSettingsCodec,
 │                   SettingsQualifiers
-├── ui/             SettingsViewModel, SettingsUiState, SettingsContent (+ previews)
+├── ui/             SettingsViewModel, SettingsUiState (+ KeyMove), SettingsContent,
+│                   KeyCaptureDialog (+ isCapturableKey), each with its previews
 └── di/             SettingsModule
 ```
 
@@ -70,7 +72,7 @@ The screen shows the settings the rider is expected to change; the others keep t
 | Appearance › Theme | `AppSettings.themeMode` | System / Light / Dark |
 | Appearance › Screen orientation | `AppSettings.orientation` | System / Vertical / Horizontal |
 | Remote control › Remote | `RemoteSettings.model` | DND2 / Terra Pirata / Custom |
-| Remote control › Keys | `RemoteSettings.keys` | Each action with its keys, read-only (custom keys cannot be assigned yet) |
+| Remote control › Keys | `RemoteSettings.keys` | Each action with its keys: read-only for DND2 and Terra Pirata; for Custom, a button per action that opens `KeyCaptureDialog` |
 | Roadbook › Roadbook colors | `RoadbookSettings.style` | App theme / FIA |
 | Roadbook › Highlight close waypoints | `RoadbookSettings.shortDistanceThreshold` | − and + in steps of 50 m, within 50 m – 1 km |
 
@@ -111,12 +113,15 @@ A key is stored only while its value differs from the default.
 - **The remote keys are their own settings group.** They are not part of `AppSettings`: only the dashboard needs them, and only `MainActivity` needs the theme and orientation, so each reads only what it uses, and each file falls back to its defaults on its own. One file per settings model, as for the modules.
 - **Fixed remotes store only their name.** The keys of DND2 and Terra Pirata live in code (`RemoteKeys.DND2`, `RemoteKeys.TERRA_PIRATA`), so stored data can never disagree with them. Only the custom keys are stored, and they stay while another remote is selected, so they come back with Custom. They start as the DND2 keys.
 - **A key triggers one action.** `RemoteKeys` rejects a key bound twice. Stored custom keys that do so, which only a damaged file can produce, fall back to the defaults as a whole, because there is no telling which binding was meant; an unreadable action falls back alone.
+- **Custom keys are captured, not picked from a list.** Tapping an action's keys opens `KeyCaptureDialog`, and the first key the rider presses on the remote becomes that action's only key (`RemoteKeys.withOnlyKey`), so the rider never needs to know a key's name. Back and Escape cancel (so they cannot be assigned), as do the cancel button and a tap outside; modifier keys are ignored. The dialog consumes every other key, so a volume or media key changes nothing while it is captured.
+- **A pressed key that another action has moves.** A key triggers one action, so assigning it takes it from the action that had it, which is left with no key, and a snackbar says so (state `keyMoved`, cleared once shown). The rider can give that action another key. The move is decided on the stored keys, inside the update, so it is always right even with fast taps. Assigning does nothing unless Custom is selected.
+- **The capture dialog takes the focus itself.** It is opened with a tap, which leaves the app in touch mode, where a view that is not focusable in touch mode cannot take the focus, and without the focus the dialog gets no keys. So the dialog makes its window's view focusable in touch mode and requests the focus. Holding the focus also keeps Android from spending the first D-pad press on leaving touch mode.
 - **Cold flows.** The repositories read DataStore's own flow, which already shares one copy of each file in memory, emits the current value first and then every change. `distinctUntilChanged` drops writes that change nothing.
 
 ## Testing notes
 
 - The codecs are pure: `LocationSettingsCodecTest`, `OdometerSettingsCodecTest`, `RoadbookSettingsCodecTest`, `AppSettingsCodecTest` and `RemoteSettingsCodecTest` round-trip settings, check that defaults store nothing, and cover every invalid value.
-- `SettingsViewModelTest` uses `FakeSettingsRepository` (in memory, with failing updates on demand) and `MainDispatcherRule` for every state and action. `ShortDistanceStepTest` covers the steps and their limits. `RemoteKeysTest` and `RemoteSettingsTest` cover the fixed keys, the lookups, a key bound twice, equality, and the keys in use for each model. `SettingsContentTest` runs on Robolectric (SDK 35, set in `src/test/resources/robolectric.properties`): every setting, selected choices (the theme's and the orientation's "System" share their label, so they are told apart by their order), the stepper limits, back, the save error, control sizes and the Spanish texts. It finds controls by their text plus a click action (scrolling to them first, since the screen is longer than the test window), the icon-only back button by `SettingsTestTags.BACK`, and a key name inside its action's row (`SettingsTestTags.keyBinding`). Under Robolectric `KeyEvent.keyCodeToString` gives the bare number, so the fallback key name is compared with what it returns.
+- `SettingsViewModelTest` uses `FakeSettingsRepository` (in memory, with failing updates on demand) and `MainDispatcherRule` for every state and action. `ShortDistanceStepTest` covers the steps and their limits, and `CustomKeyAssignmentTest` the key assignment (new key, moved key, own key, several keys). `RemoteKeysTest` and `RemoteSettingsTest` cover the fixed keys, the lookups, a key bound twice, equality, and the keys in use for each model. `SettingsContentTest` runs on Robolectric (SDK 35, set in `src/test/resources/robolectric.properties`): every setting, selected choices (the theme's and the orientation's "System" share their label, so they are told apart by their order), the stepper limits, back, the save error, control sizes and the Spanish texts, plus the custom keys: buttons only for Custom, opening the dialog, a key pressed in it after the tap that opened it (the touch-mode case), cancel, the open dialog surviving recreation, and the moved-key snackbar. `KeyCaptureDialogTest` covers the dialog on its own (texts, D-pad, volume, modifier and back keys, cancel) and `isCapturableKey`. Keys are sent with `performKeyInput`. It finds controls by their text plus a click action (scrolling to them first, since the screen is longer than the test window), the icon-only back button by `SettingsTestTags.BACK`, and a key name inside its action's row (`SettingsTestTags.keyBinding`). Under Robolectric `KeyEvent.keyCodeToString` gives the bare number, so the fallback key name is compared with what it returns.
 - `DataStoreSettingsRepositoryTest` uses `FakePreferencesDataStore`, which can fail reads and writes on demand, for the shared behavior (through the roadbook repository) and checks that the location and odometer repositories read their own keys.
 - `DataStoreSettingsRepositoryIntegrationTest` uses a real DataStore file in a `TemporaryFolder`, and closes and reopens it to check that the settings survive. DataStore allows one open instance per file, so each instance runs in its own `Job`.
 - `:core` does not share its test doubles, so `FakeLogger` lives in this module's test source set.

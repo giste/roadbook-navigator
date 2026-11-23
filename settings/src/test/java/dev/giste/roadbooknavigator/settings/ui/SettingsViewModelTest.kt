@@ -17,6 +17,7 @@
 
 package dev.giste.roadbooknavigator.settings.ui
 
+import android.view.KeyEvent
 import app.cash.turbine.test
 import dev.giste.geo.Distance
 import dev.giste.roadbook.RoadbookSettings
@@ -25,6 +26,8 @@ import dev.giste.roadbook.ShortDistanceThreshold
 import dev.giste.roadbooknavigator.settings.AppSettings
 import dev.giste.roadbooknavigator.settings.FakeSettingsRepository
 import dev.giste.roadbooknavigator.settings.MainDispatcherRule
+import dev.giste.roadbooknavigator.settings.RemoteAction
+import dev.giste.roadbooknavigator.settings.RemoteKey
 import dev.giste.roadbooknavigator.settings.RemoteKeys
 import dev.giste.roadbooknavigator.settings.RemoteModel
 import dev.giste.roadbooknavigator.settings.RemoteSettings
@@ -243,5 +246,108 @@ class SettingsViewModelTest {
 
             assertEquals(defaults, awaitItem())
         }
+    }
+
+    private val f7 = RemoteKey(KeyEvent.KEYCODE_F7)
+    private val dpadUp = RemoteKey(KeyEvent.KEYCODE_DPAD_UP)
+
+    /** Selects the custom remote, with DND2's keys, as it starts. */
+    private fun useCustomRemote() {
+        remote.settings.value = RemoteSettings(model = RemoteModel.CUSTOM)
+    }
+
+    @Test
+    fun assignCustomKey_newKey_storesItAsTheActionsOnlyKey() = runTest {
+        useCustomRemote()
+
+        viewModel.assignCustomKey(RemoteAction.RESET_PARTIAL, f7)
+        advanceUntilIdle()
+
+        assertEquals(setOf(f7), remote.settings.value.customKeys.keysFor(RemoteAction.RESET_PARTIAL))
+    }
+
+    @Test
+    fun assignCustomKey_newKey_showsNoMove() = runTest {
+        useCustomRemote()
+
+        viewModel.uiState.test {
+            skipItems(2)
+
+            viewModel.assignCustomKey(RemoteAction.RESET_PARTIAL, f7)
+
+            assertEquals(null, (awaitItem() as SettingsUiState.Loaded).keyMoved)
+        }
+    }
+
+    @Test
+    fun assignCustomKey_keyOfAnotherAction_movesItAndTellsWhich() = runTest {
+        useCustomRemote()
+
+        viewModel.uiState.test {
+            skipItems(2)
+
+            viewModel.assignCustomKey(RemoteAction.RESET_PARTIAL, dpadUp)
+
+            advanceUntilIdle()
+            val state = expectMostRecentItem() as SettingsUiState.Loaded
+            assertEquals(KeyMove(dpadUp, RemoteAction.NEXT_WAYPOINT, RemoteAction.RESET_PARTIAL), state.keyMoved)
+            assertEquals(emptySet<RemoteKey>(), state.remoteKeys.keysFor(RemoteAction.NEXT_WAYPOINT))
+            assertEquals(setOf(dpadUp), state.remoteKeys.keysFor(RemoteAction.RESET_PARTIAL))
+        }
+    }
+
+    @Test
+    fun assignCustomKey_itsOwnKey_showsNoMove() = runTest {
+        useCustomRemote()
+
+        viewModel.assignCustomKey(RemoteAction.NEXT_WAYPOINT, dpadUp)
+        advanceUntilIdle()
+
+        viewModel.uiState.test {
+            skipItems(1)
+            assertEquals(null, (awaitItem() as SettingsUiState.Loaded).keyMoved)
+        }
+        assertEquals(RemoteKeys.DND2, remote.settings.value.customKeys)
+    }
+
+    @Test
+    fun dismissKeyMoved_hidesTheMove() = runTest {
+        useCustomRemote()
+
+        viewModel.uiState.test {
+            skipItems(2)
+            viewModel.assignCustomKey(RemoteAction.RESET_PARTIAL, dpadUp)
+            advanceUntilIdle()
+            expectMostRecentItem()
+
+            viewModel.dismissKeyMoved()
+
+            assertEquals(null, (awaitItem() as SettingsUiState.Loaded).keyMoved)
+        }
+    }
+
+    @Test
+    fun assignCustomKey_presetInUse_changesNothing() = runTest {
+        viewModel.assignCustomKey(RemoteAction.RESET_PARTIAL, dpadUp)
+        advanceUntilIdle()
+
+        assertEquals(RemoteSettings(), remote.settings.value)
+    }
+
+    @Test
+    fun assignCustomKey_notSaved_showsTheSaveErrorAndNoMove() = runTest {
+        useCustomRemote()
+        remote.failUpdates = true
+
+        viewModel.uiState.test {
+            skipItems(2)
+
+            viewModel.assignCustomKey(RemoteAction.RESET_PARTIAL, dpadUp)
+
+            val state = awaitItem() as SettingsUiState.Loaded
+            assertEquals(true, state.saveFailed)
+            assertEquals(null, state.keyMoved)
+        }
+        assertEquals(RemoteKeys.DND2, remote.settings.value.customKeys)
     }
 }

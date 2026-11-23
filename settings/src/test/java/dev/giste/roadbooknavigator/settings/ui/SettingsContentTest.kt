@@ -18,6 +18,7 @@
 package dev.giste.roadbooknavigator.settings.ui
 
 import android.view.KeyEvent
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
@@ -27,10 +28,13 @@ import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.height
@@ -83,10 +87,12 @@ class SettingsContentTest {
                     onThemeModeChange = { calls += "theme $it" },
                     onOrientationChange = { calls += "orientation $it" },
                     onRemoteModelChange = { calls += "remote $it" },
+                    onAssignCustomKey = { action, key -> calls += "assign $action ${key.code}" },
                     onRoadbookStyleChange = { calls += "style $it" },
                     onDecreaseThreshold = { calls += "decrease" },
                     onIncreaseThreshold = { calls += "increase" },
                     onSaveErrorShown = { calls += "errorShown" },
+                    onKeyMoveShown = { calls += "keyMoveShown" },
                 )
             }
         }
@@ -100,6 +106,14 @@ class SettingsContentTest {
     private fun inBinding(action: RemoteAction, text: String) = composeRule.onNode(
         hasText(text) and hasAnyAncestor(hasTestTag(SettingsTestTags.keyBinding(action))),
     )
+
+    /** The button with the keys of [action], which only custom keys have. */
+    private fun keyButton(action: RemoteAction) = composeRule.onNode(
+        hasClickAction() and hasAnyAncestor(hasTestTag(SettingsTestTags.keyBinding(action))),
+    )
+
+    /** The defaults with the custom remote selected, which starts with DND2's keys. */
+    private val custom = defaults.copy(remoteModel = RemoteModel.CUSTOM)
 
     /**
      * The "System" choice of the theme (index 0) or of the screen orientation (index 1), which
@@ -257,6 +271,93 @@ class SettingsContentTest {
     }
 
     @Test
+    fun settingsContent_preset_keysCannotBeChanged() {
+        show(defaults)
+
+        RemoteAction.entries.forEach { keyButton(it).assertDoesNotExist() }
+        composeRule.onNodeWithText("Tap an action's key to change it.").assertDoesNotExist()
+    }
+
+    @Test
+    fun settingsContent_custom_everyActionsKeysAreAButton() {
+        show(custom)
+
+        composeRule.onNodeWithText("Tap an action's key to change it.").assertExists()
+        RemoteAction.entries.forEach { keyButton(it).performScrollTo().assertIsEnabled() }
+    }
+
+    @Test
+    fun settingsContent_customKeyButton_opensTheCaptureDialog() {
+        show(custom)
+
+        keyButton(RemoteAction.NEXT_WAYPOINT).performScrollTo().performClick()
+
+        composeRule.onNodeWithText("Press the key on your remote for this action.").assertExists()
+        composeRule.onNodeWithText("Now: D-pad up").assertExists()
+    }
+
+    @Test
+    fun settingsContent_keyPressedInTheDialog_assignsItAndCloses() {
+        show(custom)
+        keyButton(RemoteAction.RESET_PARTIAL).performScrollTo().performClick()
+
+        composeRule.onNodeWithText("Now: F6").performKeyInput { pressKey(Key(KeyEvent.KEYCODE_F7)) }
+
+        assertEquals(listOf("assign RESET_PARTIAL ${KeyEvent.KEYCODE_F7}"), calls)
+        composeRule.onNodeWithText("Now: F6").assertDoesNotExist()
+    }
+
+    @Test
+    fun settingsContent_dialogCanceled_assignsNothing() {
+        show(custom)
+        keyButton(RemoteAction.RESET_PARTIAL).performScrollTo().performClick()
+
+        composeRule.onNodeWithText("Cancel").performClick()
+
+        assertEquals(emptyList<String>(), calls)
+        composeRule.onNodeWithText("Now: F6").assertDoesNotExist()
+    }
+
+    @Test
+    fun settingsContent_dialogOpen_survivesRecreation() {
+        val restoration = StateRestorationTester(composeRule)
+        restoration.setContent {
+            GisteTheme {
+                SettingsContent(
+                    state = custom,
+                    onBack = {},
+                    onThemeModeChange = {},
+                    onOrientationChange = {},
+                    onRemoteModelChange = {},
+                    onAssignCustomKey = { _, _ -> },
+                    onRoadbookStyleChange = {},
+                    onDecreaseThreshold = {},
+                    onIncreaseThreshold = {},
+                    onSaveErrorShown = {},
+                    onKeyMoveShown = {},
+                )
+            }
+        }
+        keyButton(RemoteAction.RESET_PARTIAL).performScrollTo().performClick()
+
+        restoration.emulateSavedInstanceStateRestore()
+
+        composeRule.onNodeWithText("Now: F6").assertExists()
+    }
+
+    @Test
+    fun settingsContent_keyMoved_showsTheMoveAndReportsItShown() {
+        val dpadUp = RemoteKey(KeyEvent.KEYCODE_DPAD_UP)
+        show(custom.copy(keyMoved = KeyMove(dpadUp, RemoteAction.NEXT_WAYPOINT, RemoteAction.RESET_PARTIAL)))
+
+        composeRule.onNodeWithText("D-pad up moved from “Next waypoint” to “Reset partial”.").assertExists()
+        composeRule.mainClock.advanceTimeBy(SNACKBAR_SHORT_MILLIS)
+        composeRule.waitForIdle()
+
+        assertEquals(listOf("keyMoveShown"), calls)
+    }
+
+    @Test
     fun settingsContent_roadbookStylePicked_reportsIt() {
         show(defaults)
 
@@ -327,6 +428,30 @@ class SettingsContentTest {
         }
         val back = composeRule.onNodeWithTag(SettingsTestTags.BACK).getUnclippedBoundsInRoot()
         assertTrue("Back is ${back.height} high", back.height >= 56.dp)
+    }
+
+    @Test
+    fun settingsContent_customKeyButtons_areAtLeastTheMinimumTouchTarget() {
+        show(custom)
+
+        RemoteAction.entries.forEach { action ->
+            val bounds = keyButton(action).performScrollTo().getUnclippedBoundsInRoot()
+            assertTrue("$action keys are ${bounds.height} high", bounds.height >= 56.dp)
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "es-w411dp-h891dp")
+    fun settingsContent_spanishCustomKeys_useSpanishTexts() {
+        val dpadUp = RemoteKey(KeyEvent.KEYCODE_DPAD_UP)
+        show(custom.copy(keyMoved = KeyMove(dpadUp, RemoteAction.NEXT_WAYPOINT, RemoteAction.RESET_PARTIAL)))
+
+        composeRule.onNodeWithText("Toca la tecla de una acción para cambiarla.").assertExists()
+        composeRule.onNodeWithText("Cruceta arriba pasa de «Viñeta siguiente» a «Poner el parcial a cero».").assertExists()
+        keyButton(RemoteAction.NEXT_WAYPOINT).performScrollTo().performClick()
+        composeRule.onNodeWithText("Pulsa en el mando la tecla para esta acción.").assertExists()
+        composeRule.onNodeWithText("Ahora: Cruceta arriba").assertExists()
+        composeRule.onNodeWithText("Cancelar").assertExists()
     }
 
     @Test

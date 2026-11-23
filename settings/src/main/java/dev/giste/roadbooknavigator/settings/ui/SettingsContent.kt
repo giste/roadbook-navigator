@@ -45,7 +45,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -89,23 +93,29 @@ internal object SettingsTestTags {
  *
  * - **Theme:** system, light or dark.
  * - **Screen orientation:** system, vertical or horizontal.
- * - **Remote:** DND2, Terra Pirata or custom, and the keys of each action. The keys are only
- *   shown: they cannot be changed yet.
+ * - **Remote:** DND2, Terra Pirata or custom, and the keys of each action. The keys of DND2 and
+ *   Terra Pirata are only shown. With custom, each action's keys are a button that opens
+ *   [KeyCaptureDialog], which assigns the key the rider presses; which action's dialog is open
+ *   survives configuration changes.
  * - **Roadbook colors:** the app theme or the FIA palette.
  * - **Highlight close waypoints:** the short-distance threshold, changed in steps with − and +.
  *
  * When [SettingsUiState.Loaded.saveFailed] is set, a snackbar says the change was not stored, and
- * [onSaveErrorShown] is called once it has been shown. While loading, only the top bar is shown.
+ * [onSaveErrorShown] is called once it has been shown. Likewise, when
+ * [SettingsUiState.Loaded.keyMoved] is set, a snackbar says which action lost its key, and
+ * [onKeyMoveShown] is called once it has been shown. While loading, only the top bar is shown.
  *
  * @param state what to show.
  * @param onBack called when the back button is pressed.
  * @param onThemeModeChange called with the theme mode the user picks.
  * @param onOrientationChange called with the screen orientation the user picks.
  * @param onRemoteModelChange called with the remote model the user picks.
+ * @param onAssignCustomKey called with a custom action and the key the user pressed for it.
  * @param onRoadbookStyleChange called with the roadbook style the user picks.
  * @param onDecreaseThreshold called when the threshold's − is pressed.
  * @param onIncreaseThreshold called when the threshold's + is pressed.
  * @param onSaveErrorShown called once the save error has been shown.
+ * @param onKeyMoveShown called once the notice of a moved key has been shown.
  * @param modifier applied to the root layout.
  */
 @Composable
@@ -115,10 +125,12 @@ internal fun SettingsContent(
     onThemeModeChange: (ThemeMode) -> Unit,
     onOrientationChange: (ScreenOrientation) -> Unit,
     onRemoteModelChange: (RemoteModel) -> Unit,
+    onAssignCustomKey: (RemoteAction, RemoteKey) -> Unit,
     onRoadbookStyleChange: (RoadbookStyle) -> Unit,
     onDecreaseThreshold: () -> Unit,
     onIncreaseThreshold: () -> Unit,
     onSaveErrorShown: () -> Unit,
+    onKeyMoveShown: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -128,6 +140,16 @@ internal fun SettingsContent(
         if (saveFailed) {
             snackbarHostState.showSnackbar(saveErrorMessage)
             onSaveErrorShown()
+        }
+    }
+    val keyMoved = (state as? SettingsUiState.Loaded)?.keyMoved
+    val keyMovedMessage = keyMoved?.let {
+        stringResource(R.string.settings_key_moved, it.key.label(), it.from.label(), it.to.label())
+    }
+    LaunchedEffect(keyMovedMessage) {
+        if (keyMovedMessage != null) {
+            snackbarHostState.showSnackbar(keyMovedMessage)
+            onKeyMoveShown()
         }
     }
 
@@ -159,6 +181,7 @@ internal fun SettingsContent(
                 onThemeModeChange = onThemeModeChange,
                 onOrientationChange = onOrientationChange,
                 onRemoteModelChange = onRemoteModelChange,
+                onAssignCustomKey = onAssignCustomKey,
                 onRoadbookStyleChange = onRoadbookStyleChange,
                 onDecreaseThreshold = onDecreaseThreshold,
                 onIncreaseThreshold = onIncreaseThreshold,
@@ -177,6 +200,7 @@ internal fun SettingsContent(
  * @param onThemeModeChange called with the theme mode the user picks.
  * @param onOrientationChange called with the screen orientation the user picks.
  * @param onRemoteModelChange called with the remote model the user picks.
+ * @param onAssignCustomKey called with a custom action and the key the user pressed for it.
  * @param onRoadbookStyleChange called with the roadbook style the user picks.
  * @param onDecreaseThreshold called when the threshold's − is pressed.
  * @param onIncreaseThreshold called when the threshold's + is pressed.
@@ -188,12 +212,16 @@ private fun SettingsSections(
     onThemeModeChange: (ThemeMode) -> Unit,
     onOrientationChange: (ScreenOrientation) -> Unit,
     onRemoteModelChange: (RemoteModel) -> Unit,
+    onAssignCustomKey: (RemoteAction, RemoteKey) -> Unit,
     onRoadbookStyleChange: (RoadbookStyle) -> Unit,
     onDecreaseThreshold: () -> Unit,
     onIncreaseThreshold: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val dimensions = GisteTheme.dimensions
+    // The action whose key is being captured, if any.
+    var capturing by rememberSaveable { mutableStateOf<RemoteAction?>(null) }
+    val editable = state.remoteModel == RemoteModel.CUSTOM
     Column(
         modifier = modifier
             .verticalScroll(rememberScrollState())
@@ -225,8 +253,19 @@ private fun SettingsSections(
             onSelect = onRemoteModelChange,
         )
         SettingTitle(stringResource(R.string.settings_remote_keys_title))
+        if (editable) {
+            Text(
+                text = stringResource(R.string.settings_remote_keys_custom_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         RemoteAction.entries.forEach { action ->
-            KeyBinding(action = action, keys = state.remoteKeys.keysFor(action))
+            KeyBinding(
+                action = action,
+                keys = state.remoteKeys.keysFor(action),
+                onClick = if (editable) ({ capturing = action }) else null,
+            )
         }
 
         SectionTitle(stringResource(R.string.settings_section_roadbook))
@@ -252,6 +291,18 @@ private fun SettingsSections(
             canIncrease = state.canIncreaseThreshold,
             onDecrease = onDecreaseThreshold,
             onIncrease = onIncreaseThreshold,
+        )
+    }
+
+    capturing?.let { action ->
+        KeyCaptureDialog(
+            action = action,
+            currentKeys = state.remoteKeys.keysFor(action),
+            onKeyCaptured = { key ->
+                capturing = null
+                onAssignCustomKey(action, key)
+            },
+            onDismiss = { capturing = null },
         )
     }
 }
@@ -310,11 +361,15 @@ private fun <T> Choices(
  * One action and the keys that trigger it, on one row: the action on the start side, and its keys
  * one below the other on the end side, or a note that it has none.
  *
+ * With [onClick], the keys are a button, at least the minimum touch target in size, that changes
+ * them; without it, they are only text.
+ *
  * @param action the action.
  * @param keys its keys.
+ * @param onClick called when the keys' button is pressed, or `null` if they cannot change.
  */
 @Composable
-private fun KeyBinding(action: RemoteAction, keys: Set<RemoteKey>) {
+private fun KeyBinding(action: RemoteAction, keys: Set<RemoteKey>, onClick: (() -> Unit)?) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -323,18 +378,37 @@ private fun KeyBinding(action: RemoteAction, keys: Set<RemoteKey>) {
     ) {
         Text(text = action.label(), style = MaterialTheme.typography.bodyLarge)
         Spacer(modifier = Modifier.weight(1f))
-        Column(horizontalAlignment = Alignment.End) {
-            if (keys.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.settings_remote_no_key),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+        if (onClick == null) {
+            KeyNames(keys)
+        } else {
+            FilledTonalButton(
+                onClick = onClick,
+                modifier = Modifier
+                    .heightIn(min = GisteTheme.dimensions.minTouchTarget)
+                    .widthIn(min = GisteTheme.dimensions.minTouchTarget * 2),
+            ) {
+                KeyNames(keys)
             }
-            // Sorted by code, so the order never changes between recompositions or runs.
-            keys.sortedBy { it.code }.forEach { key ->
-                Text(text = key.label(), style = MaterialTheme.typography.bodyLarge)
-            }
+        }
+    }
+}
+
+/**
+ * The names of [keys], one below the other and aligned to the end, or a note that there are none.
+ * Their color is the content color, so they also read on a button.
+ */
+@Composable
+private fun KeyNames(keys: Set<RemoteKey>) {
+    Column(horizontalAlignment = Alignment.End) {
+        if (keys.isEmpty()) {
+            Text(
+                text = stringResource(R.string.settings_remote_no_key),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+        }
+        // Sorted by code, so the order never changes between recompositions or runs.
+        keys.sortedBy { it.code }.forEach { key ->
+            Text(text = key.label(), style = MaterialTheme.typography.bodyLarge)
         }
     }
 }
@@ -417,7 +491,7 @@ private fun RemoteModel.label(): String = stringResource(
 
 /** The name of this remote action, as the user sees it. */
 @Composable
-private fun RemoteAction.label(): String = stringResource(
+internal fun RemoteAction.label(): String = stringResource(
     when (this) {
         RemoteAction.NEXT_WAYPOINT -> R.string.settings_remote_action_next_waypoint
         RemoteAction.PREVIOUS_WAYPOINT -> R.string.settings_remote_action_previous_waypoint
@@ -433,7 +507,7 @@ private fun RemoteAction.label(): String = stringResource(
  * still enough to tell keys apart.
  */
 @Composable
-private fun RemoteKey.label(): String {
+internal fun RemoteKey.label(): String {
     val named = KEY_NAMES[code]
     return when {
         named != null -> stringResource(named)
@@ -515,6 +589,18 @@ private val CHANGED = SettingsUiState.Loaded(
     saveFailed = false,
 )
 
+/**
+ * Preview sample: custom keys, editable, after D-pad up moved to reset the partial, so the next
+ * waypoint has no key.
+ */
+private val CUSTOM_KEYS = DEFAULTS.copy(
+    remoteModel = RemoteModel.CUSTOM,
+    remoteKeys = RemoteKeys(
+        RemoteKeys.DND2.bindings - RemoteAction.NEXT_WAYPOINT +
+            (RemoteAction.RESET_PARTIAL to setOf(RemoteKey(KeyEvent.KEYCODE_DPAD_UP))),
+    ),
+)
+
 /** The settings screen in [state]. */
 @Composable
 private fun SettingsPreview(state: SettingsUiState) {
@@ -525,10 +611,12 @@ private fun SettingsPreview(state: SettingsUiState) {
             onThemeModeChange = {},
             onOrientationChange = {},
             onRemoteModelChange = {},
+            onAssignCustomKey = { _, _ -> },
             onRoadbookStyleChange = {},
             onDecreaseThreshold = {},
             onIncreaseThreshold = {},
             onSaveErrorShown = {},
+            onKeyMoveShown = {},
         )
     }
 }
@@ -546,6 +634,13 @@ private fun SettingsDefaultsPreview() {
 @Composable
 private fun SettingsChangedPreview() {
     SettingsPreview(CHANGED)
+}
+
+@Preview(name = "Phone, custom keys, light", device = PHONE_PORTRAIT, uiMode = Configuration.UI_MODE_NIGHT_NO, fontScale = APP_FONT_SCALE)
+@Preview(name = "Phone, custom keys, dark", device = PHONE_PORTRAIT, uiMode = Configuration.UI_MODE_NIGHT_YES, fontScale = APP_FONT_SCALE)
+@Composable
+private fun SettingsCustomKeysPreview() {
+    SettingsPreview(CUSTOM_KEYS)
 }
 
 @Preview(name = "Phone, loading, light", device = PHONE_PORTRAIT, uiMode = Configuration.UI_MODE_NIGHT_NO, fontScale = APP_FONT_SCALE)

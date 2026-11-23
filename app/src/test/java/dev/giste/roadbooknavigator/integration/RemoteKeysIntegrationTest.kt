@@ -19,13 +19,17 @@ package dev.giste.roadbooknavigator.integration
 
 import android.os.SystemClock
 import android.view.KeyEvent
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.pressKey
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import dagger.hilt.android.testing.HiltTestApplication
@@ -167,6 +171,22 @@ class RemoteKeysIntegrationTest {
         awaitDashboard(KeyEvent.KEYCODE_VOLUME_UP)
 
         tap(KeyEvent.KEYCODE_VOLUME_UP)
+
+        composeRule.awaitPartial("0.01")
+    }
+
+    @Test
+    fun customKeyAssigned_controlsTheDashboard() {
+        awaitDashboard(KeyEvent.KEYCODE_DPAD_RIGHT)
+        composeRule.onNodeWithTag(DashboardTestTags.SETTINGS).performClick()
+        composeRule.onNode(hasText("Custom") and hasClickAction()).performScrollTo().performClick()
+        composeRule.onNode(hasText("D-pad right") and hasClickAction()).performScrollTo().performClick()
+        composeRule.onNodeWithText("Now: D-pad right").performKeyInput { pressKey(Key(KeyEvent.KEYCODE_F7)) }
+        composeRule.awaitText("Now: D-pad right", exists = false)
+        composeRule.runOnUiThread { composeRule.activity.onBackPressedDispatcher.onBackPressed() }
+        awaitDashboard(KeyEvent.KEYCODE_F7)
+
+        tap(KeyEvent.KEYCODE_F7)
 
         composeRule.awaitPartial("0.01")
     }
