@@ -17,6 +17,7 @@
 
 package dev.giste.roadbooknavigator.integration
 
+import android.content.pm.ActivityInfo
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -27,6 +28,7 @@ import dagger.hilt.android.testing.HiltAndroidTest
 import dagger.hilt.android.testing.HiltTestApplication
 import dev.giste.roadbooknavigator.MainActivity
 import dev.giste.roadbooknavigator.settings.AppSettingsSource
+import dev.giste.roadbooknavigator.settings.ScreenOrientation
 import dev.giste.roadbooknavigator.settings.ThemeMode
 import dev.giste.roadbooknavigator.ui.dashboard.DashboardTestTags
 import javax.inject.Inject
@@ -98,5 +100,20 @@ class NavigationIntegrationTest {
         composeRule.waitForIdle()
 
         assertEquals(ThemeMode.DARK, runBlocking { appSettings.settings.first() }.themeMode)
+    }
+
+    @Test
+    fun orientationPicked_isStoredAndApplied() {
+        openSettings()
+
+        composeRule.onNode(hasText("Horizontal") and hasClickAction()).performClick()
+        composeRule.waitForIdle()
+
+        val stored = runBlocking { appSettings.settings.first() }.orientation
+        assertEquals(ScreenOrientation.HORIZONTAL, stored)
+        assertEquals(
+            ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE,
+            composeRule.activity.requestedOrientation,
+        )
     }
 }

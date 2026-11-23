@@ -34,6 +34,7 @@ import dev.giste.core.ui.theme.GisteTheme
 import dev.giste.geo.Distance
 import dev.giste.roadbook.RoadbookStyle
 import dev.giste.roadbook.ShortDistanceThreshold
+import dev.giste.roadbooknavigator.settings.ScreenOrientation
 import dev.giste.roadbooknavigator.settings.ThemeMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -54,6 +55,7 @@ class SettingsContentTest {
 
     private val defaults = SettingsUiState.Loaded(
         themeMode = ThemeMode.SYSTEM,
+        orientation = ScreenOrientation.FOLLOW_SYSTEM,
         roadbookStyle = RoadbookStyle.APP_THEME,
         shortDistanceThreshold = ShortDistanceThreshold.DEFAULT,
         canDecreaseThreshold = true,
@@ -68,6 +70,7 @@ class SettingsContentTest {
                     state = state,
                     onBack = { calls += "back" },
                     onThemeModeChange = { calls += "theme $it" },
+                    onOrientationChange = { calls += "orientation $it" },
                     onRoadbookStyleChange = { calls += "style $it" },
                     onDecreaseThreshold = { calls += "decrease" },
                     onIncreaseThreshold = { calls += "increase" },
@@ -80,12 +83,20 @@ class SettingsContentTest {
     /** The clickable control labeled [text], e.g. a segmented button or a stepper button. */
     private fun control(text: String) = composeRule.onNode(hasText(text) and hasClickAction())
 
+    /**
+     * The "System" choice of the theme (index 0) or of the screen orientation (index 1), which
+     * share their label. They are found in the order the screen shows them.
+     */
+    private fun systemChoice(index: Int) =
+        composeRule.onAllNodes(hasText("System") and hasClickAction())[index]
+
     @Test
     fun settingsContent_loaded_showsEverySetting() {
         show(defaults)
 
         composeRule.onNodeWithText("Settings").assertExists()
         composeRule.onNodeWithText("Theme").assertExists()
+        composeRule.onNodeWithText("Screen orientation").assertExists()
         composeRule.onNodeWithText("Roadbook colors").assertExists()
         composeRule.onNodeWithText("Highlight close waypoints").assertExists()
         composeRule.onNodeWithText("250 m").assertExists()
@@ -93,10 +104,19 @@ class SettingsContentTest {
 
     @Test
     fun settingsContent_loaded_selectsTheCurrentChoices() {
-        show(defaults.copy(themeMode = ThemeMode.DARK, roadbookStyle = RoadbookStyle.FIA))
+        show(
+            defaults.copy(
+                themeMode = ThemeMode.DARK,
+                orientation = ScreenOrientation.HORIZONTAL,
+                roadbookStyle = RoadbookStyle.FIA,
+            ),
+        )
 
         control("Dark").assertIsSelected()
-        control("System").assertIsNotSelected()
+        systemChoice(0).assertIsNotSelected()
+        control("Horizontal").assertIsSelected()
+        control("Vertical").assertIsNotSelected()
+        systemChoice(1).assertIsNotSelected()
         control("FIA").assertIsSelected()
         control("App theme").assertIsNotSelected()
     }
@@ -116,6 +136,19 @@ class SettingsContentTest {
         control("Light").performClick()
 
         assertEquals(listOf("theme LIGHT"), calls)
+    }
+
+    @Test
+    fun settingsContent_orientationPicked_reportsIt() {
+        show(defaults.copy(orientation = ScreenOrientation.VERTICAL))
+
+        control("Horizontal").performClick()
+        systemChoice(1).performClick()
+
+        assertEquals(
+            listOf("orientation HORIZONTAL", "orientation FOLLOW_SYSTEM"),
+            calls,
+        )
     }
 
     @Test
@@ -183,7 +216,7 @@ class SettingsContentTest {
     fun settingsContent_controls_areAtLeastTheMinimumTouchTarget() {
         show(defaults)
 
-        listOf("System", "FIA", "−", "+").forEach { label ->
+        listOf("Dark", "Horizontal", "FIA", "−", "+").forEach { label ->
             val height = control(label).getUnclippedBoundsInRoot().height
             assertTrue("$label is $height high", height >= 56.dp)
         }
@@ -198,6 +231,7 @@ class SettingsContentTest {
 
         composeRule.onNodeWithText("Ajustes").assertExists()
         control("Oscuro").assertExists()
+        composeRule.onNodeWithText("Orientación de la pantalla").assertExists()
         composeRule.onNodeWithText("Resaltar viñetas cercanas").assertExists()
     }
 

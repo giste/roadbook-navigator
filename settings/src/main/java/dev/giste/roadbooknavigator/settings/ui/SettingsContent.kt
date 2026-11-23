@@ -57,6 +57,7 @@ import dev.giste.geo.Distance
 import dev.giste.roadbook.RoadbookStyle
 import dev.giste.roadbook.ShortDistanceThreshold
 import dev.giste.roadbooknavigator.settings.R
+import dev.giste.roadbooknavigator.settings.ScreenOrientation
 import dev.giste.roadbooknavigator.settings.ThemeMode
 import kotlin.math.roundToInt
 
@@ -72,6 +73,7 @@ internal object SettingsTestTags {
  * sections. Every control is at least the minimum touch target high, so it works with gloves.
  *
  * - **Theme:** system, light or dark.
+ * - **Screen orientation:** system, vertical or horizontal.
  * - **Roadbook colors:** the app theme or the FIA palette.
  * - **Highlight close waypoints:** the short-distance threshold, changed in steps with − and +.
  *
@@ -81,6 +83,7 @@ internal object SettingsTestTags {
  * @param state what to show.
  * @param onBack called when the back button is pressed.
  * @param onThemeModeChange called with the theme mode the user picks.
+ * @param onOrientationChange called with the screen orientation the user picks.
  * @param onRoadbookStyleChange called with the roadbook style the user picks.
  * @param onDecreaseThreshold called when the threshold's − is pressed.
  * @param onIncreaseThreshold called when the threshold's + is pressed.
@@ -93,6 +96,7 @@ internal fun SettingsContent(
     state: SettingsUiState,
     onBack: () -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
+    onOrientationChange: (ScreenOrientation) -> Unit,
     onRoadbookStyleChange: (RoadbookStyle) -> Unit,
     onDecreaseThreshold: () -> Unit,
     onIncreaseThreshold: () -> Unit,
@@ -135,6 +139,7 @@ internal fun SettingsContent(
             SettingsSections(
                 state = state,
                 onThemeModeChange = onThemeModeChange,
+                onOrientationChange = onOrientationChange,
                 onRoadbookStyleChange = onRoadbookStyleChange,
                 onDecreaseThreshold = onDecreaseThreshold,
                 onIncreaseThreshold = onIncreaseThreshold,
@@ -151,6 +156,7 @@ internal fun SettingsContent(
  *
  * @param state the loaded settings.
  * @param onThemeModeChange called with the theme mode the user picks.
+ * @param onOrientationChange called with the screen orientation the user picks.
  * @param onRoadbookStyleChange called with the roadbook style the user picks.
  * @param onDecreaseThreshold called when the threshold's − is pressed.
  * @param onIncreaseThreshold called when the threshold's + is pressed.
@@ -160,6 +166,7 @@ internal fun SettingsContent(
 private fun SettingsSections(
     state: SettingsUiState.Loaded,
     onThemeModeChange: (ThemeMode) -> Unit,
+    onOrientationChange: (ScreenOrientation) -> Unit,
     onRoadbookStyleChange: (RoadbookStyle) -> Unit,
     onDecreaseThreshold: () -> Unit,
     onIncreaseThreshold: () -> Unit,
@@ -179,6 +186,13 @@ private fun SettingsSections(
             selected = state.themeMode,
             label = { it.label() },
             onSelect = onThemeModeChange,
+        )
+        SettingTitle(stringResource(R.string.settings_orientation_title))
+        Choices(
+            options = ScreenOrientation.entries,
+            selected = state.orientation,
+            label = { it.label() },
+            onSelect = onOrientationChange,
         )
 
         SectionTitle(stringResource(R.string.settings_section_roadbook))
@@ -310,6 +324,16 @@ private fun ThemeMode.label(): String = stringResource(
     },
 )
 
+/** The name of this screen orientation, as the user sees it. */
+@Composable
+private fun ScreenOrientation.label(): String = stringResource(
+    when (this) {
+        ScreenOrientation.FOLLOW_SYSTEM -> R.string.settings_orientation_system
+        ScreenOrientation.VERTICAL -> R.string.settings_orientation_vertical
+        ScreenOrientation.HORIZONTAL -> R.string.settings_orientation_horizontal
+    },
+)
+
 /** The name of this roadbook style, as the user sees it. */
 @Composable
 private fun RoadbookStyle.label(): String = stringResource(
@@ -336,6 +360,7 @@ private const val PHONE_PORTRAIT = "spec:width=411dp,height=891dp,dpi=420"
 /** Preview sample: the defaults. */
 private val DEFAULTS = SettingsUiState.Loaded(
     themeMode = ThemeMode.SYSTEM,
+    orientation = ScreenOrientation.FOLLOW_SYSTEM,
     roadbookStyle = RoadbookStyle.APP_THEME,
     shortDistanceThreshold = ShortDistanceThreshold.DEFAULT,
     canDecreaseThreshold = true,
@@ -343,9 +368,10 @@ private val DEFAULTS = SettingsUiState.Loaded(
     saveFailed = false,
 )
 
-/** Preview sample: dark theme, FIA colors and the shortest threshold. */
+/** Preview sample: dark theme, horizontal, FIA colors and the shortest threshold. */
 private val CHANGED = SettingsUiState.Loaded(
     themeMode = ThemeMode.DARK,
+    orientation = ScreenOrientation.HORIZONTAL,
     roadbookStyle = RoadbookStyle.FIA,
     shortDistanceThreshold = ShortDistanceThreshold.of(Distance.meters(50.0)),
     canDecreaseThreshold = false,
@@ -361,6 +387,7 @@ private fun SettingsPreview(state: SettingsUiState) {
             state = state,
             onBack = {},
             onThemeModeChange = {},
+            onOrientationChange = {},
             onRoadbookStyleChange = {},
             onDecreaseThreshold = {},
             onIncreaseThreshold = {},

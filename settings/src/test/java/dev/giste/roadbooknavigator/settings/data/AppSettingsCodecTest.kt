@@ -21,7 +21,9 @@ import androidx.datastore.preferences.core.mutablePreferencesOf
 import androidx.datastore.preferences.core.preferencesOf
 import dev.giste.roadbooknavigator.settings.AppSettings
 import dev.giste.roadbooknavigator.settings.FakeLogger
+import dev.giste.roadbooknavigator.settings.ScreenOrientation
 import dev.giste.roadbooknavigator.settings.ThemeMode
+import dev.giste.roadbooknavigator.settings.data.AppSettingsCodec.ORIENTATION_KEY
 import dev.giste.roadbooknavigator.settings.data.AppSettingsCodec.THEME_MODE_KEY
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -38,10 +40,14 @@ class AppSettingsCodecTest {
 
     @Test
     fun read_writtenSettings_isTheSameSettings() {
+        val settings = AppSettings(
+            themeMode = ThemeMode.DARK,
+            orientation = ScreenOrientation.HORIZONTAL,
+        )
         val preferences = mutablePreferencesOf()
-        AppSettingsCodec.write(preferences, AppSettings(themeMode = ThemeMode.DARK))
+        AppSettingsCodec.write(preferences, settings)
 
-        assertEquals(AppSettings(themeMode = ThemeMode.DARK), AppSettingsCodec.read(preferences, logger))
+        assertEquals(settings, AppSettingsCodec.read(preferences, logger))
     }
 
     @Test
@@ -59,5 +65,26 @@ class AppSettingsCodecTest {
 
         assertEquals(ThemeMode.SYSTEM, settings.themeMode)
         assertEquals(1, logger.warnings.size)
+    }
+
+    @Test
+    fun read_unknownOrientation_usesTheDefaultAndKeepsTheThemeMode() {
+        val settings = AppSettingsCodec.read(
+            preferencesOf(ORIENTATION_KEY to "DIAGONAL", THEME_MODE_KEY to ThemeMode.DARK.name),
+            logger,
+        )
+
+        assertEquals(AppSettings(themeMode = ThemeMode.DARK), settings)
+        assertEquals(1, logger.warnings.size)
+    }
+
+    @Test
+    fun write_orientationBackToTheDefault_removesItsKey() {
+        val preferences = mutablePreferencesOf()
+        AppSettingsCodec.write(preferences, AppSettings(orientation = ScreenOrientation.VERTICAL))
+
+        AppSettingsCodec.write(preferences, AppSettings())
+
+        assertTrue(preferences.asMap().isEmpty())
     }
 }

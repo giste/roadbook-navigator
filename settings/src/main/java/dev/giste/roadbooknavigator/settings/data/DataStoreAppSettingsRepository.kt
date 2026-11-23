@@ -24,6 +24,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import dev.giste.core.logging.Logger
 import dev.giste.roadbooknavigator.settings.AppSettings
 import dev.giste.roadbooknavigator.settings.AppSettingsSource
+import dev.giste.roadbooknavigator.settings.ScreenOrientation
 import dev.giste.roadbooknavigator.settings.ThemeMode
 import javax.inject.Inject
 
@@ -52,16 +53,27 @@ internal object AppSettingsCodec : SettingsCodec<AppSettings> {
     /** Name of the [ThemeMode]. */
     val THEME_MODE_KEY: Preferences.Key<String> = stringPreferencesKey("theme_mode")
 
+    /** Name of the [ScreenOrientation]. */
+    val ORIENTATION_KEY: Preferences.Key<String> = stringPreferencesKey("orientation")
+
     override val default: AppSettings = AppSettings()
 
     override fun read(preferences: Preferences, logger: Logger): AppSettings =
-        AppSettings(themeMode = preferences.readEnum(THEME_MODE_KEY, default.themeMode, logger))
+        AppSettings(
+            themeMode = preferences.readEnum(THEME_MODE_KEY, default.themeMode, logger),
+            orientation = preferences.readEnum(ORIENTATION_KEY, default.orientation, logger),
+        )
 
     override fun write(preferences: MutablePreferences, settings: AppSettings) {
         preferences.storeUnlessDefault(
             THEME_MODE_KEY,
             settings.themeMode.name,
             default.themeMode.name,
+        )
+        preferences.storeUnlessDefault(
+            ORIENTATION_KEY,
+            settings.orientation.name,
+            default.orientation.name,
         )
     }
 }

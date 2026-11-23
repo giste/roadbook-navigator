@@ -8,8 +8,8 @@ Stores the settings of every feature module and of the app, provides them to eac
 
 - Persist the settings of `:location`, `:odometer` and `:roadbook`, one DataStore file per module (AGENTS.md §7).
 - Implement `LocationSettingsSource`, `OdometerSettingsSource` and `RoadbookSettingsSource`, and bind them with Hilt, so each module gets its stored settings as a flow and reacts to every change.
-- Store the app's own settings (`AppSettings`: the theme mode) and provide them as `AppSettingsSource`.
-- Show the settings screen (`SettingsScreen`), where the rider changes the theme and the roadbook settings.
+- Store the app's own settings (`AppSettings`: the theme mode and the screen orientation) and provide them as `AppSettingsSource`.
+- Show the settings screen (`SettingsScreen`), where the rider changes the theme, the screen orientation and the roadbook settings.
 - Never fail: a missing, invalid or unreadable value is the module's default.
 
 It does **not** store runtime state, such as the odometer distances or the loaded roadbook: each module persists its own (AGENTS.md §7). It does **not** navigate: the app decides how the screen is reached and left.
@@ -18,7 +18,8 @@ It does **not** store runtime state, such as the odometer distances or the loade
 
 ```
 dev/giste/roadbooknavigator/settings/
-├── AppSettings, ThemeMode, AppSettingsSource, SettingsScreen    ← public API
+├── AppSettings, ThemeMode, ScreenOrientation, AppSettingsSource,
+│   SettingsScreen  ← public API
 ├── domain/         SettingsRepository, SettingsUpdateResult, ShortDistanceStep
 ├── data/           DataStoreSettingsRepository, SettingsCodec (+ reading helpers),
 │                   DataStoreAppSettingsRepository + AppSettingsCodec,
@@ -37,8 +38,9 @@ Package `dev.giste.roadbooknavigator.settings`:
 | Type | Purpose |
 |---|---|
 | `SettingsScreen(onBack, modifier)` | The settings screen, with its ViewModel from Hilt. Every change is stored at once, so the app reacts while the screen is open. `onBack` is called by its back button; the system back gesture belongs to the caller's navigation. |
-| `AppSettings` | The app's own settings: `themeMode`, default `ThemeMode.SYSTEM`. |
+| `AppSettings` | The app's own settings: `themeMode`, default `ThemeMode.SYSTEM`, and `orientation`, default `ScreenOrientation.FOLLOW_SYSTEM`. |
 | `ThemeMode` | `SYSTEM`, `LIGHT` or `DARK`. |
+| `ScreenOrientation` | `FOLLOW_SYSTEM`, `VERTICAL` or `HORIZONTAL`. The app decides how to apply it. |
 | `AppSettingsSource` | Inject it to read the `AppSettings`: a cold flow of the stored settings, then every change, without repeats. It never throws. |
 
 Hilt makes every binding available as soon as `:app` depends on `:settings`.
@@ -57,6 +59,7 @@ The screen shows the settings the rider is expected to change; the others keep t
 | On screen | Setting | Control |
 |---|---|---|
 | Appearance › Theme | `AppSettings.themeMode` | System / Light / Dark |
+| Appearance › Screen orientation | `AppSettings.orientation` | System / Vertical / Horizontal |
 | Roadbook › Roadbook colors | `RoadbookSettings.style` | App theme / FIA |
 | Roadbook › Highlight close waypoints | `RoadbookSettings.shortDistanceThreshold` | − and + in steps of 50 m, within 50 m – 1 km |
 
@@ -67,6 +70,7 @@ Four Preferences DataStore files, each owned by its repository:
 | File | Key | Type | Value |
 |---|---|---|---|
 | `settings_app` | `theme_mode` | `String` | `AppSettings.themeMode`, by enum name |
+| | `orientation` | `String` | `AppSettings.orientation`, by enum name |
 | `settings_location` | `update_interval_millis` | `Long` | `LocationSettings.updateInterval` in milliseconds |
 | | `min_update_distance_meters` | `Double` | `LocationSettings.minUpdateDistance` |
 | | `moving_speed_mps` | `Double` | `LocationSettings.movingSpeed` in m/s |
@@ -95,7 +99,7 @@ A key is stored only while its value differs from the default.
 ## Testing notes
 
 - The codecs are pure: `LocationSettingsCodecTest`, `OdometerSettingsCodecTest` and `RoadbookSettingsCodecTest` round-trip settings, check that defaults store nothing, and cover every invalid value.
-- `SettingsViewModelTest` uses `FakeSettingsRepository` (in memory, with failing updates on demand) and `MainDispatcherRule` for every state and action. `ShortDistanceStepTest` covers the steps and their limits. `SettingsContentTest` runs on Robolectric (SDK 35, set in `src/test/resources/robolectric.properties`): every setting, selected choices, the stepper limits, back, the save error, control sizes and the Spanish texts. It finds controls by their text plus a click action, and the icon-only back button by `SettingsTestTags.BACK`.
+- `SettingsViewModelTest` uses `FakeSettingsRepository` (in memory, with failing updates on demand) and `MainDispatcherRule` for every state and action. `ShortDistanceStepTest` covers the steps and their limits. `SettingsContentTest` runs on Robolectric (SDK 35, set in `src/test/resources/robolectric.properties`): every setting, selected choices (the theme's and the orientation's "System" share their label, so they are told apart by their order), the stepper limits, back, the save error, control sizes and the Spanish texts. It finds controls by their text plus a click action, and the icon-only back button by `SettingsTestTags.BACK`.
 - `DataStoreSettingsRepositoryTest` uses `FakePreferencesDataStore`, which can fail reads and writes on demand, for the shared behavior (through the roadbook repository) and checks that the location and odometer repositories read their own keys.
 - `DataStoreSettingsRepositoryIntegrationTest` uses a real DataStore file in a `TemporaryFolder`, and closes and reopens it to check that the settings survive. DataStore allows one open instance per file, so each instance runs in its own `Job`.
 - `:core` does not share its test doubles, so `FakeLogger` lives in this module's test source set.

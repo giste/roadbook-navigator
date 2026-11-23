@@ -25,6 +25,7 @@ import dev.giste.roadbook.ShortDistanceThreshold
 import dev.giste.roadbooknavigator.settings.AppSettings
 import dev.giste.roadbooknavigator.settings.FakeSettingsRepository
 import dev.giste.roadbooknavigator.settings.MainDispatcherRule
+import dev.giste.roadbooknavigator.settings.ScreenOrientation
 import dev.giste.roadbooknavigator.settings.ThemeMode
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -46,6 +47,7 @@ class SettingsViewModelTest {
 
     private val defaults = SettingsUiState.Loaded(
         themeMode = ThemeMode.SYSTEM,
+        orientation = ScreenOrientation.FOLLOW_SYSTEM,
         roadbookStyle = RoadbookStyle.APP_THEME,
         shortDistanceThreshold = ShortDistanceThreshold.DEFAULT,
         canDecreaseThreshold = true,
@@ -99,6 +101,25 @@ class SettingsViewModelTest {
         advanceUntilIdle()
 
         assertEquals(ThemeMode.DARK, app.settings.value.themeMode)
+    }
+
+    @Test
+    fun uiState_storedOrientation_showsIt() = runTest {
+        app.settings.value = AppSettings(orientation = ScreenOrientation.VERTICAL)
+
+        viewModel.uiState.test {
+            skipItems(1)
+
+            assertEquals(defaults.copy(orientation = ScreenOrientation.VERTICAL), awaitItem())
+        }
+    }
+
+    @Test
+    fun setOrientation_storesIt() = runTest {
+        viewModel.setOrientation(ScreenOrientation.HORIZONTAL)
+        advanceUntilIdle()
+
+        assertEquals(ScreenOrientation.HORIZONTAL, app.settings.value.orientation)
     }
 
     @Test
