@@ -28,8 +28,8 @@ class RemoteSettingsTest {
     )
 
     @Test
-    fun defaults_areDnd2WithDnd2CustomKeys() {
-        assertEquals(RemoteSettings(RemoteModel.DND2, RemoteKeys.DND2), RemoteSettings())
+    fun defaults_areTerraPirataWithItsKeysAsCustomKeys() {
+        assertEquals(RemoteSettings(RemoteModel.TERRA_PIRATA, RemoteKeys.TERRA_PIRATA), RemoteSettings())
     }
 
     @Test

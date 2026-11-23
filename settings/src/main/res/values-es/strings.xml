@@ -47,6 +47,15 @@
     <!-- Any other key: %1$s is Android's name for it, e.g. BUTTON_A -->
     <string name="settings_key_other">Tecla %1$s</string>
 
+    <!-- Custom keys: the hint above the keys, and the dialog that captures one -->
+    <string name="settings_remote_keys_custom_hint">Toca la tecla de una acción para cambiarla.</string>
+    <string name="settings_key_capture_message">Pulsa en el mando la tecla para esta acción.</string>
+    <!-- %1$s is the key or keys the action has now, or "Sin tecla" -->
+    <string name="settings_key_capture_current">Ahora: %1$s</string>
+    <string name="settings_action_cancel">Cancelar</string>
+    <!-- Shown when an assigned key is taken from another action: %1$s is the key, %2$s the action that had it, %3$s the action that has it now -->
+    <string name="settings_key_moved">%1$s pasa de «%2$s» a «%3$s».</string>
+
     <!-- Roadbook -->
     <string name="settings_section_roadbook">Roadbook</string>
     <string name="settings_roadbook_style_title">Colores del roadbook</string>

@@ -47,10 +47,12 @@ public fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
         onThemeModeChange = viewModel::setThemeMode,
         onOrientationChange = viewModel::setOrientation,
         onRemoteModelChange = viewModel::setRemoteModel,
+        onAssignCustomKey = viewModel::assignCustomKey,
         onRoadbookStyleChange = viewModel::setRoadbookStyle,
         onDecreaseThreshold = viewModel::decreaseShortDistanceThreshold,
         onIncreaseThreshold = viewModel::increaseShortDistanceThreshold,
         onSaveErrorShown = viewModel::dismissSaveError,
+        onKeyMoveShown = viewModel::dismissKeyMoved,
         modifier = modifier,
     )
 }

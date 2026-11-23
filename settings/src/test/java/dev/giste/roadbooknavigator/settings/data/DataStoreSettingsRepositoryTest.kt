@@ -144,11 +144,11 @@ class DataStoreSettingsRepositoryTest {
     @Test
     fun remoteRepository_storedValues_emitsThem() = runTest {
         val store = FakePreferencesDataStore(
-            preferencesOf(RemoteSettingsCodec.MODEL_KEY to "TERRA_PIRATA"),
+            preferencesOf(RemoteSettingsCodec.MODEL_KEY to "DND2"),
         )
 
         val settings = DataStoreRemoteSettingsRepository(store, logger).settings.first()
 
-        assertEquals(RemoteSettings(model = RemoteModel.TERRA_PIRATA), settings)
+        assertEquals(RemoteSettings(model = RemoteModel.DND2), settings)
     }
 }

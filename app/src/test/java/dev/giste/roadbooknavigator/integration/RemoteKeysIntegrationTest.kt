@@ -19,13 +19,17 @@ package dev.giste.roadbooknavigator.integration
 
 import android.os.SystemClock
 import android.view.KeyEvent
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.pressKey
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import dagger.hilt.android.testing.HiltTestApplication
@@ -96,11 +100,13 @@ class RemoteKeysIntegrationTest {
         composeRule.waitUntil(TIMEOUT_MILLIS) { dispatch(KeyEvent.ACTION_UP, keyCode) }
     }
 
+    // Terra Pirata is the default remote: volume keys change the partial, play/pause resets it.
+
     @Test
     fun increasePartialKey_onTheDashboard_increasesThePartial() {
-        awaitDashboard(KeyEvent.KEYCODE_DPAD_RIGHT)
+        awaitDashboard(KeyEvent.KEYCODE_VOLUME_UP)
 
-        tap(KeyEvent.KEYCODE_DPAD_RIGHT)
+        tap(KeyEvent.KEYCODE_VOLUME_UP)
 
         composeRule.awaitPartial("0.01")
     }
@@ -108,10 +114,15 @@ class RemoteKeysIntegrationTest {
     @Test
     fun resetKey_heldOnTheDashboard_resetsThePartial() {
         runBlocking { odometer.setTrip(Distance.meters(500.0)) }
-        awaitDashboard(KeyEvent.KEYCODE_F6, partial = "0.50")
+        awaitDashboard(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, partial = "0.50")
 
-        dispatch(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_F6)
-        dispatch(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_F6, repeatCount = 10, heldMillis = RESET_HOLD_MILLIS)
+        dispatch(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
+        dispatch(
+            KeyEvent.ACTION_DOWN,
+            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
+            repeatCount = 10,
+            heldMillis = RESET_HOLD_MILLIS,
+        )
 
         composeRule.awaitPartial("0.00")
     }
@@ -127,10 +138,9 @@ class RemoteKeysIntegrationTest {
     @Test
     fun dashboard_backFromTheSettings_takesTheFocusAgain() {
         composeRule.awaitPartial("0.00")
-        composeRule.onNodeWithTag(DashboardTestTags.SETTINGS).performClick()
-        composeRule.awaitText("Settings")
+        openSettings()
 
-        composeRule.runOnUiThread { composeRule.activity.onBackPressedDispatcher.onBackPressed() }
+        goBack()
         composeRule.awaitPartial("0.00")
 
         composeRule.onNode(isFocused()).assertExists()
@@ -138,21 +148,20 @@ class RemoteKeysIntegrationTest {
 
     @Test
     fun unboundKey_onTheDashboard_reachesTheSystem() {
-        awaitDashboard(KeyEvent.KEYCODE_DPAD_RIGHT)
+        awaitDashboard(KeyEvent.KEYCODE_VOLUME_UP)
 
-        assertFalse(dispatch(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_VOLUME_UP))
+        assertFalse(dispatch(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_F6))
     }
 
     @Test
     fun remoteKey_inTheSettings_doesNotChangeThePartial() {
-        awaitDashboard(KeyEvent.KEYCODE_DPAD_RIGHT)
-        composeRule.onNodeWithTag(DashboardTestTags.SETTINGS).performClick()
-        composeRule.awaitText("Settings")
+        awaitDashboard(KeyEvent.KEYCODE_VOLUME_UP)
+        openSettings()
 
-        tap(KeyEvent.KEYCODE_DPAD_RIGHT)
-        composeRule.runOnUiThread { composeRule.activity.onBackPressedDispatcher.onBackPressed() }
+        tap(KeyEvent.KEYCODE_VOLUME_UP)
+        goBack()
         composeRule.awaitPartial("0.00")
-        tap(KeyEvent.KEYCODE_DPAD_RIGHT)
+        tap(KeyEvent.KEYCODE_VOLUME_UP)
 
         // Only the press on the dashboard counted.
         composeRule.awaitPartial("0.01")
@@ -160,14 +169,42 @@ class RemoteKeysIntegrationTest {
 
     @Test
     fun otherModelPicked_itsKeysControlTheDashboard() {
-        awaitDashboard(KeyEvent.KEYCODE_DPAD_RIGHT)
-        composeRule.onNodeWithTag(DashboardTestTags.SETTINGS).performClick()
-        composeRule.onNode(hasText("Terra Pirata") and hasClickAction()).performScrollTo().performClick()
-        composeRule.runOnUiThread { composeRule.activity.onBackPressedDispatcher.onBackPressed() }
         awaitDashboard(KeyEvent.KEYCODE_VOLUME_UP)
+        openSettings()
+        composeRule.onNode(hasText("DND2") and hasClickAction()).performScrollTo().performClick()
+        goBack()
+        awaitDashboard(KeyEvent.KEYCODE_DPAD_RIGHT)
 
-        tap(KeyEvent.KEYCODE_VOLUME_UP)
+        tap(KeyEvent.KEYCODE_DPAD_RIGHT)
 
         composeRule.awaitPartial("0.01")
+    }
+
+    @Test
+    fun customKeyAssigned_controlsTheDashboard() {
+        awaitDashboard(KeyEvent.KEYCODE_VOLUME_UP)
+        openSettings()
+        composeRule.onNode(hasText("Custom") and hasClickAction()).performScrollTo().performClick()
+        // Custom starts with Terra Pirata's keys.
+        composeRule.onNode(hasText("Volume up") and hasClickAction()).performScrollTo().performClick()
+        composeRule.onNodeWithText("Now: Volume up").performKeyInput { pressKey(Key(KeyEvent.KEYCODE_F7)) }
+        composeRule.awaitText("Now: Volume up", exists = false)
+        goBack()
+        awaitDashboard(KeyEvent.KEYCODE_F7)
+
+        tap(KeyEvent.KEYCODE_F7)
+
+        composeRule.awaitPartial("0.01")
+    }
+
+    /** Opens the settings from the dashboard, with the button shown while stopped. */
+    private fun openSettings() {
+        composeRule.onNodeWithTag(DashboardTestTags.SETTINGS).performClick()
+        composeRule.awaitText("Settings")
+    }
+
+    /** Leaves the settings with the system back gesture. */
+    private fun goBack() {
+        composeRule.runOnUiThread { composeRule.activity.onBackPressedDispatcher.onBackPressed() }
     }
 }

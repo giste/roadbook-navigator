@@ -19,6 +19,8 @@ package dev.giste.roadbooknavigator.settings.ui
 
 import dev.giste.roadbook.RoadbookStyle
 import dev.giste.roadbook.ShortDistanceThreshold
+import dev.giste.roadbooknavigator.settings.RemoteAction
+import dev.giste.roadbooknavigator.settings.RemoteKey
 import dev.giste.roadbooknavigator.settings.RemoteKeys
 import dev.giste.roadbooknavigator.settings.RemoteModel
 import dev.giste.roadbooknavigator.settings.ScreenOrientation
@@ -43,6 +45,8 @@ internal sealed interface SettingsUiState {
      * @property canIncreaseThreshold whether the threshold can get longer.
      * @property saveFailed whether the last change could not be stored, so the screen tells the
      * user until they dismiss it.
+     * @property keyMoved the key the last custom assignment took from another action, so the
+     * screen tells the user until they dismiss it; `null` if none.
      */
     data class Loaded(
         val themeMode: ThemeMode,
@@ -54,5 +58,15 @@ internal sealed interface SettingsUiState {
         val canDecreaseThreshold: Boolean,
         val canIncreaseThreshold: Boolean,
         val saveFailed: Boolean,
+        val keyMoved: KeyMove? = null,
     ) : SettingsUiState
 }
+
+/**
+ * A custom key that moved from one action to another, because a key triggers only one action.
+ *
+ * @property key the key.
+ * @property from the action that had it, and now has no key.
+ * @property to the action that has it now.
+ */
+internal data class KeyMove(val key: RemoteKey, val from: RemoteAction, val to: RemoteAction)
