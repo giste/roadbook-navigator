@@ -27,6 +27,7 @@ import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import dagger.hilt.android.testing.HiltTestApplication
 import dev.giste.roadbooknavigator.MainActivity
+import dev.giste.roadbooknavigator.settings.AppSettings
 import dev.giste.roadbooknavigator.settings.AppSettingsSource
 import dev.giste.roadbooknavigator.settings.ScreenOrientation
 import dev.giste.roadbooknavigator.settings.ThemeMode
@@ -34,7 +35,7 @@ import dev.giste.roadbooknavigator.ui.dashboard.DashboardTestTags
 import javax.inject.Inject
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import org.junit.Assert.assertEquals
+import kotlinx.coroutines.withTimeout
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -99,7 +100,7 @@ class NavigationIntegrationTest {
         composeRule.onNode(hasText("Dark") and hasClickAction()).performClick()
         composeRule.waitForIdle()
 
-        assertEquals(ThemeMode.DARK, runBlocking { appSettings.settings.first() }.themeMode)
+        awaitStored { it.themeMode == ThemeMode.DARK }
     }
 
     @Test
@@ -109,11 +110,24 @@ class NavigationIntegrationTest {
         composeRule.onNode(hasText("Horizontal") and hasClickAction()).performClick()
         composeRule.waitForIdle()
 
-        val stored = runBlocking { appSettings.settings.first() }.orientation
-        assertEquals(ScreenOrientation.HORIZONTAL, stored)
-        assertEquals(
-            ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE,
-            composeRule.activity.requestedOrientation,
-        )
+        awaitStored { it.orientation == ScreenOrientation.HORIZONTAL }
+        // Applied once the stored value reaches the activity, on the main thread.
+        composeRule.waitUntil(TIMEOUT_MILLIS) {
+            composeRule.activity.requestedOrientation ==
+                ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE
+        }
+    }
+
+    /**
+     * Waits until the stored app settings match [predicate], or fails after [TIMEOUT_MILLIS].
+     * Call it once the change has been made (e.g. after `waitForIdle`), since it blocks the main
+     * thread, where Compose handles clicks.
+     *
+     * DataStore stores them on its own thread, in real time: the first write of a test JVM can take
+     * seconds while it loads its classes. `waitUntil` would not do, because under Robolectric it
+     * measures its timeout on the test clock, which runs much faster than real time.
+     */
+    private fun awaitStored(predicate: (AppSettings) -> Boolean) {
+        runBlocking { withTimeout(TIMEOUT_MILLIS) { appSettings.settings.first(predicate) } }
     }
 }
