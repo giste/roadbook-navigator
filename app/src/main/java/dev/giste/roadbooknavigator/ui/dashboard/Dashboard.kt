@@ -63,6 +63,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.giste.core.ui.component.AutoSizeText
 import dev.giste.core.ui.theme.GisteTheme
 import dev.giste.geo.Distance
+import dev.giste.map.MapViewer
 import dev.giste.roadbook.RoadbookViewer
 import dev.giste.roadbooknavigator.R
 import dev.giste.roadbooknavigator.ui.InterceptKeyEvents
@@ -141,8 +142,7 @@ internal fun Dashboard(onOpenSettings: () -> Unit, modifier: Modifier = Modifier
         roadbook = { showImportButton, roadbookModifier ->
             RoadbookViewer(showImportButton = showImportButton, modifier = roadbookModifier)
         },
-        // TODO(map): replace with the map once the :map module exists.
-        map = { mapModifier -> MapPlaceholder(mapModifier) },
+        map = { mapModifier -> MapViewer(modifier = mapModifier) },
     )
 }
 
@@ -430,7 +430,8 @@ private fun DistanceReading(
 }
 
 /**
- * Keeps the map's place until the map module exists: an empty area in the surface variant color.
+ * Stands in for the map in previews, where `:map`'s OpenGL map cannot be drawn: an empty area in
+ * the surface variant color.
  *
  * @param modifier applied to the root layout.
  */

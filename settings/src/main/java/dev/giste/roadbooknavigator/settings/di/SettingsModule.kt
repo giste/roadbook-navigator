@@ -32,6 +32,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dev.giste.core.coroutines.IoDispatcher
 import dev.giste.location.LocationSettingsSource
+import dev.giste.map.MapSettingsSource
 import dev.giste.odometer.OdometerSettingsSource
 import dev.giste.roadbook.RoadbookSettings
 import dev.giste.roadbook.RoadbookSettingsSource
@@ -44,6 +45,7 @@ import dev.giste.roadbooknavigator.settings.data.DataStoreAppSettingsRepository
 import dev.giste.roadbooknavigator.settings.data.DataStoreRemoteSettingsRepository
 import dev.giste.roadbooknavigator.settings.data.DataStoreRoadbookSettingsRepository
 import dev.giste.roadbooknavigator.settings.data.FixedLocationSettingsSource
+import dev.giste.roadbooknavigator.settings.data.FixedMapSettingsSource
 import dev.giste.roadbooknavigator.settings.data.FixedOdometerSettingsSource
 import dev.giste.roadbooknavigator.settings.data.RemoteSettingsDataStore
 import dev.giste.roadbooknavigator.settings.data.RoadbookSettingsDataStore
@@ -93,6 +95,10 @@ internal interface SettingsModule {
     /** Provides the fixed `:location` settings wherever a [LocationSettingsSource] is injected. */
     @Binds
     fun bindLocationSettingsSource(source: FixedLocationSettingsSource): LocationSettingsSource
+
+    /** Provides the fixed `:map` settings wherever a [MapSettingsSource] is injected. */
+    @Binds
+    fun bindMapSettingsSource(source: FixedMapSettingsSource): MapSettingsSource
 
     /** Provides the fixed `:odometer` settings wherever an [OdometerSettingsSource] is injected. */
     @Binds

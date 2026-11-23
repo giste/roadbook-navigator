@@ -21,7 +21,9 @@ import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import dev.giste.map.MapLocationSource
 import dev.giste.odometer.OdometerLocationSource
+import dev.giste.roadbooknavigator.adapter.LocationMapLocationSource
 import dev.giste.roadbooknavigator.adapter.LocationOdometerLocationSource
 
 /** Binds the adapters that connect one module's outputs to another module's input ports. */
@@ -32,4 +34,8 @@ internal interface AdapterModule {
     /** Feeds the odometer from `:location` through [LocationOdometerLocationSource]. */
     @Binds
     fun bindOdometerLocationSource(source: LocationOdometerLocationSource): OdometerLocationSource
+
+    /** Makes the map follow `:location` through [LocationMapLocationSource]. */
+    @Binds
+    fun bindMapLocationSource(source: LocationMapLocationSource): MapLocationSource
 }

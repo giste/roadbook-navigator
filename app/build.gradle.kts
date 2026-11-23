@@ -49,6 +49,7 @@ android {
 dependencies {
     implementation(project(":core"))
     implementation(project(":location"))
+    implementation(project(":map"))
     implementation(project(":odometer"))
     implementation(project(":roadbook"))
     // Stores and provides the settings of every module (AGENTS.md §4.4).

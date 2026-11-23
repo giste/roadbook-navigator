@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Map strings (English, default). -->
+<resources>
+    <!-- Shown in place of the map when no offline map is installed. -->
+    <string name="map_no_maps">No maps installed</string>
+    <!-- Shown in place of the map when map files are installed but none can be read. -->
+    <string name="map_unreadable_maps">The installed maps cannot be read</string>
+    <!--
+      Credit for the map data, required by its license (ODbL). Shown in a corner of the map. Legally
+      fixed text: the OpenStreetMap Foundation's attribution guidelines name "© OpenStreetMap" as
+      an accepted form, so it is not translated (AGENTS.md §8).
+    -->
+    <string name="map_attribution" translatable="false">© OpenStreetMap</string>
+</resources>

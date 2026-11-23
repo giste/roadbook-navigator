@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Map strings (Spanish). -->
+<resources>
+    <!-- Shown in place of the map when no offline map is installed. -->
+    <string name="map_no_maps">No hay mapas instalados</string>
+    <!-- Shown in place of the map when map files are installed but none can be read. -->
+    <string name="map_unreadable_maps">No se pueden leer los mapas instalados</string>
+</resources>
