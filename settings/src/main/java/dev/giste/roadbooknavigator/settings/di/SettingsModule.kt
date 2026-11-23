@@ -41,12 +41,10 @@ import dev.giste.roadbooknavigator.settings.RemoteSettings
 import dev.giste.roadbooknavigator.settings.RemoteSettingsSource
 import dev.giste.roadbooknavigator.settings.data.AppSettingsDataStore
 import dev.giste.roadbooknavigator.settings.data.DataStoreAppSettingsRepository
-import dev.giste.roadbooknavigator.settings.data.DataStoreLocationSettingsRepository
-import dev.giste.roadbooknavigator.settings.data.DataStoreOdometerSettingsRepository
 import dev.giste.roadbooknavigator.settings.data.DataStoreRemoteSettingsRepository
 import dev.giste.roadbooknavigator.settings.data.DataStoreRoadbookSettingsRepository
-import dev.giste.roadbooknavigator.settings.data.LocationSettingsDataStore
-import dev.giste.roadbooknavigator.settings.data.OdometerSettingsDataStore
+import dev.giste.roadbooknavigator.settings.data.FixedLocationSettingsSource
+import dev.giste.roadbooknavigator.settings.data.FixedOdometerSettingsSource
 import dev.giste.roadbooknavigator.settings.data.RemoteSettingsDataStore
 import dev.giste.roadbooknavigator.settings.data.RoadbookSettingsDataStore
 import dev.giste.roadbooknavigator.settings.domain.SettingsRepository
@@ -56,8 +54,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 
 /**
- * Binds the settings source of every feature module and of the app to its DataStore repository,
- * for the whole app (AGENTS.md §4.4), and the repositories the settings screen changes.
+ * Binds the settings source of every feature module and of the app, for the whole app (AGENTS.md
+ * §4.4), and the repositories the settings screen changes. The settings the screen changes come
+ * from their DataStore repositories; the `:location` and `:odometer` ones are fixed.
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -91,17 +90,13 @@ internal interface SettingsModule {
         repository: DataStoreRoadbookSettingsRepository,
     ): SettingsRepository<RoadbookSettings>
 
-    /** Provides the stored `:location` settings wherever a [LocationSettingsSource] is injected. */
+    /** Provides the fixed `:location` settings wherever a [LocationSettingsSource] is injected. */
     @Binds
-    fun bindLocationSettingsSource(
-        repository: DataStoreLocationSettingsRepository,
-    ): LocationSettingsSource
+    fun bindLocationSettingsSource(source: FixedLocationSettingsSource): LocationSettingsSource
 
-    /** Provides the stored `:odometer` settings wherever an [OdometerSettingsSource] is injected. */
+    /** Provides the fixed `:odometer` settings wherever an [OdometerSettingsSource] is injected. */
     @Binds
-    fun bindOdometerSettingsSource(
-        repository: DataStoreOdometerSettingsRepository,
-    ): OdometerSettingsSource
+    fun bindOdometerSettingsSource(source: FixedOdometerSettingsSource): OdometerSettingsSource
 
     /** Provides the stored `:roadbook` settings wherever a [RoadbookSettingsSource] is injected. */
     @Binds
@@ -148,38 +143,6 @@ internal interface SettingsModule {
             @IoDispatcher ioDispatcher: CoroutineDispatcher,
         ): DataStore<Preferences> =
             settingsDataStore(context, ioDispatcher, DataStoreRemoteSettingsRepository.FILE_NAME)
-
-        /**
-         * Provides the DataStore of the `:location` settings.
-         *
-         * @param context the application context, to locate the file.
-         * @param ioDispatcher the dispatcher DataStore reads and writes the file on.
-         * @return the DataStore stored in the `settings_location` file.
-         */
-        @Provides
-        @Singleton
-        @LocationSettingsDataStore
-        fun provideLocationSettingsDataStore(
-            @ApplicationContext context: Context,
-            @IoDispatcher ioDispatcher: CoroutineDispatcher,
-        ): DataStore<Preferences> =
-            settingsDataStore(context, ioDispatcher, DataStoreLocationSettingsRepository.FILE_NAME)
-
-        /**
-         * Provides the DataStore of the `:odometer` settings.
-         *
-         * @param context the application context, to locate the file.
-         * @param ioDispatcher the dispatcher DataStore reads and writes the file on.
-         * @return the DataStore stored in the `settings_odometer` file.
-         */
-        @Provides
-        @Singleton
-        @OdometerSettingsDataStore
-        fun provideOdometerSettingsDataStore(
-            @ApplicationContext context: Context,
-            @IoDispatcher ioDispatcher: CoroutineDispatcher,
-        ): DataStore<Preferences> =
-            settingsDataStore(context, ioDispatcher, DataStoreOdometerSettingsRepository.FILE_NAME)
 
         /**
          * Provides the DataStore of the `:roadbook` settings.

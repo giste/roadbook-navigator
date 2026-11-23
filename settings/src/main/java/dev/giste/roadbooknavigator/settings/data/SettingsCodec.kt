@@ -21,9 +21,6 @@ import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import dev.giste.core.logging.Logger
 import dev.giste.geo.Distance
-import dev.giste.geo.Speed
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Turns a module's settings of type [T] into DataStore preferences and back.
@@ -73,37 +70,6 @@ internal fun Preferences.readDistance(
         return default
     }
     return Distance.meters(meters)
-}
-
-/**
- * The speed stored in meters per second under [key], or [default] if it is missing, negative or
- * not finite.
- */
-internal fun Preferences.readSpeed(
-    key: Preferences.Key<Double>,
-    default: Speed,
-    logger: Logger,
-): Speed {
-    val metersPerSecond = this[key] ?: return default
-    if (!metersPerSecond.isFinite() || metersPerSecond < 0.0) {
-        logger.w("Invalid stored %s: %s, using the default", key.name, metersPerSecond)
-        return default
-    }
-    return Speed.metersPerSecond(metersPerSecond)
-}
-
-/** The duration stored in milliseconds under [key], or [default] if it is missing or not positive. */
-internal fun Preferences.readPositiveDuration(
-    key: Preferences.Key<Long>,
-    default: Duration,
-    logger: Logger,
-): Duration {
-    val millis = this[key] ?: return default
-    if (millis <= 0) {
-        logger.w("Invalid stored %s: %s, using the default", key.name, millis)
-        return default
-    }
-    return millis.milliseconds
 }
 
 /** The enum entry whose name is stored under [key], or [default] if it is missing or unknown. */

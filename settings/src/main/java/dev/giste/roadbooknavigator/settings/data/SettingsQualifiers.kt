@@ -29,16 +29,6 @@ internal annotation class AppSettingsDataStore
 @Retention(AnnotationRetention.BINARY)
 internal annotation class RemoteSettingsDataStore
 
-/** Qualifies the DataStore of the `:location` settings (file `settings_location`). */
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-internal annotation class LocationSettingsDataStore
-
-/** Qualifies the DataStore of the `:odometer` settings (file `settings_odometer`). */
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-internal annotation class OdometerSettingsDataStore
-
 /** Qualifies the DataStore of the `:roadbook` settings (file `settings_roadbook`). */
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
