@@ -32,20 +32,26 @@ import dev.giste.map.ui.MapViewerContent
  * It gets its state from Hilt, so the app only places it: as a whole screen, or as part of one
  * (e.g. next to an odometer). It draws the mapsforge `.map` files installed in the app's
  * `map_files` folder (in its no-backup folder), with the zoom level and tilt of
- * [MapSettingsSource]. The user may pan, zoom and tilt it with gestures; the next location fix
- * centers it again. Without maps, or when none can be read, it shows a message instead. The
+ * [MapSettingsSource]. Without maps, or when none can be read, it shows a message instead. The
  * installed maps are looked for each time it is shown.
+ *
+ * By default it is read-only: touches pass through it to what is under it, so a glove or a bump
+ * cannot move or zoom the map while riding, and it always shows the settings' zoom level and
+ * tilt. An interactive map lets the user pan, zoom, rotate and tilt it with gestures until the
+ * next location fix centers it again; the zoom level and tilt are kept until the settings change.
  *
  * While it is shown and has maps, it collects [MapLocationSource.locations]. The app must bind a
  * [MapLocationSource] and a [MapSettingsSource]. If the location needs a permission, show the
  * viewer only once it is granted.
  *
  * @param modifier the modifier applied to the viewer.
+ * @param interactive whether the user may move, zoom, rotate and tilt the map with gestures.
+ * Defaults to `false`: a read-only map.
  */
 @Composable
-public fun MapViewer(modifier: Modifier = Modifier) {
+public fun MapViewer(modifier: Modifier = Modifier, interactive: Boolean = false) {
     val viewModel: MapViewModel = hiltViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    MapViewerContent(state = state, modifier = modifier)
+    MapViewerContent(state = state, modifier = modifier, interactive = interactive)
 }

@@ -59,16 +59,20 @@ private const val ATTRIBUTION_BACKGROUND_ALPHA: Float = 0.7f
  *
  * @param state what to show.
  * @param modifier the modifier applied to the viewer.
- * @param map draws the map of a ready state in the modifier it is given. A slot, so tests and
- * previews can use a placeholder instead of the OpenGL view.
+ * @param interactive whether the user may move, zoom, rotate and tilt the map with gestures.
+ * Read-only by default.
+ * @param map draws the map of a ready state, interactive or not, in the modifier it is given. A
+ * slot, so tests and previews can use a placeholder instead of the OpenGL view.
  */
 @Composable
 internal fun MapViewerContent(
     state: MapUiState,
     modifier: Modifier = Modifier,
-    map: @Composable (state: MapUiState.Ready, modifier: Modifier) -> Unit = { readyState, mapModifier ->
-        VtmMap(state = readyState, modifier = mapModifier)
-    },
+    interactive: Boolean = false,
+    map: @Composable (state: MapUiState.Ready, interactive: Boolean, modifier: Modifier) -> Unit =
+        { readyState, isInteractive, mapModifier ->
+            VtmMap(state = readyState, interactive = isInteractive, modifier = mapModifier)
+        },
 ) {
     when (state) {
         MapUiState.Loading -> Box(modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant)) {
@@ -78,7 +82,7 @@ internal fun MapViewerContent(
         MapUiState.NoMaps -> MapMessage(stringResource(R.string.map_no_maps), modifier)
         MapUiState.UnreadableMaps -> MapMessage(stringResource(R.string.map_unreadable_maps), modifier)
         is MapUiState.Ready -> Box(modifier = modifier) {
-            map(state, Modifier.fillMaxSize())
+            map(state, interactive, Modifier.fillMaxSize())
             Text(
                 text = stringResource(R.string.map_attribution),
                 modifier = Modifier
@@ -135,7 +139,7 @@ private fun MapViewerPreview(state: MapUiState) {
         MapViewerContent(
             state = state,
             modifier = Modifier.fillMaxSize(),
-            map = { _, mapModifier ->
+            map = { _, _, mapModifier ->
                 Box(mapModifier.background(MaterialTheme.colorScheme.tertiaryContainer))
             },
         )

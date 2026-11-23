@@ -31,7 +31,7 @@ Package `dev.giste.map`:
 
 | Type | Purpose |
 |---|---|
-| `MapViewer(modifier)` | The map, with its state from Hilt. Place it anywhere: a whole screen or part of one. Each time it is shown it looks for the installed maps. While it is shown and has maps, it collects `MapLocationSource.locations`. The user may pan, zoom and tilt it; the next fix centers it again, keeping the zoom and tilt. |
+| `MapViewer(modifier, interactive = false)` | The map, with its state from Hilt. Place it anywhere: a whole screen or part of one. Each time it is shown it looks for the installed maps. While it is shown and has maps, it collects `MapLocationSource.locations`. Read-only by default: touches pass through it, and it always shows the settings' zoom and tilt. With `interactive = true` the user may pan, zoom, rotate and tilt it; the next fix centers it again, keeping the zoom and tilt. |
 | `MapLocationSource` | Input port: a `Flow` of `:geo` `LocationFix`es. The app implements it and binds it with Hilt. Only the position and the bearing are used. A fix without a bearing keeps the last one. |
 | `MapSettings` | `zoomLevel` and `tilt`, with documented defaults. |
 | `MapZoomLevel` | Web map zoom level in `2..20` (VTM's limits), default 18. `of` rejects values out of range, `coerce` clamps them. |
@@ -52,7 +52,7 @@ Package `dev.giste.map`:
 | `zoomLevel` | `MapZoomLevel` | 18 | How close the map is shown. Each level shows the ground twice as large as the one before. |
 | `tilt` | `MapTilt` | 60° | How much the map leans towards the horizon. 0° looks straight down. |
 
-The map starts with these values and goes back to them whenever they change; in between, the user's gestures are kept. If the settings flow throws, `:map` logs it and uses the defaults. In Roadbook Navigator they are fixed to the defaults for now (`:settings`' `FixedMapSettingsSource`).
+A read-only map always shows these values. An interactive map starts with them and goes back to them whenever they change; in between, the user's gestures are kept. If the settings flow throws, `:map` logs it and uses the defaults. In Roadbook Navigator they are fixed to the defaults for now (`:settings`' `FixedMapSettingsSource`).
 
 ## Persisted state
 
@@ -69,6 +69,7 @@ No DataStore. The map files live in `map_files` inside the app's **no-backup** f
 - **Starting point.** Before the first fix, the map is centered on the middle of the installed maps, rather than on a fixed place.
 - **Attribution not translated.** The map data's license (ODbL) requires crediting OpenStreetMap, and the OpenStreetMap Foundation's [attribution guidelines](https://osmfoundation.org/wiki/Licence/Attribution_Guidelines) name "© OpenStreetMap" as an accepted form, without covering translations. So `map_attribution` is that exact text, declared once with `translatable="false"` (AGENTS.md §8). The guidelines also ask for a way to reach the data's origin and license (e.g. a link to openstreetmap.org/copyright); the app does not offer one yet.
 - **Corners.** The scale bar sits at the bottom left and the OpenStreetMap attribution at the bottom right, leaving the top corners free for the app's floating controls (Roadbook Navigator puts the settings button in the top end corner).
+- **Read-only by default.** A map read in glances while riding must not move under a glove or a bump, so `MapViewer` ignores touches unless the app asks for `interactive = true`. VTM's `MapView` handles no touch while it is not clickable, so read-only sets `isClickable` (and the focus flags) to `false`: touches reach what is under the map, and the map cannot take the focus. VTM can also turn single gestures off (`map().eventLayer.enableMove`/`enableZoom`/`enableRotation`/`enableTilt`); that is not offered, as no app needs it yet.
 - **View lifecycle.** The `MapView` pauses and resumes with the lifecycle, and is destroyed when it leaves the composition, not only when the lifecycle ends: navigating to another screen disposes the dashboard, and otherwise every return would leak a view and its threads. A different set of files creates a new view, since VTM sets its tile source once.
 - **Default theme.** The map uses VTM's `DEFAULT` render theme in both light and dark app themes, as the previous project did. A dark map theme could follow later.
 - **No coordinates in logs.** Only file names and failures are logged.

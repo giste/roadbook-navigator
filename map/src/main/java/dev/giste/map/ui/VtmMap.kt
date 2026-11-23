@@ -57,18 +57,23 @@ private const val SCALE_BAR_OFFSET: Float = 5f
  *
  * It starts with the settings' zoom level and tilt, centered on the location, or on the middle of
  * the maps before the first fix. Every fix then moves the map to the location and turns it so the
- * bearing points up, in a short animation. The zoom level and tilt are set again only when the
- * settings change, so the user's pinch and tilt gestures are kept meanwhile. A different set of
- * files creates a new view.
+ * bearing points up, in a short animation. A different set of files creates a new view.
+ *
+ * A read-only map ignores touches: they pass through to what is under it. VTM's `MapView` does
+ * nothing with a touch when it is not clickable, so no gesture can pan, zoom, rotate or tilt it,
+ * and it never takes the focus either. Its zoom level and tilt are then always the settings'. An
+ * interactive map handles VTM's gestures, and its zoom level and tilt are set again only when the
+ * settings change, so the user's pinch and tilt are kept meanwhile.
  *
  * It needs OpenGL and VTM's native library, so it is not used in tests or previews:
  * [MapViewerContent] takes it as a slot.
  *
  * @param state the map to draw.
+ * @param interactive whether the user may move, zoom, rotate and tilt the map with gestures.
  * @param modifier the modifier applied to the view.
  */
 @Composable
-internal fun VtmMap(state: MapUiState.Ready, modifier: Modifier = Modifier) {
+internal fun VtmMap(state: MapUiState.Ready, interactive: Boolean, modifier: Modifier = Modifier) {
     // The tile source is set once per view, so new files need a new view.
     key(state.files) {
         val mapView = rememberMapView()
@@ -78,13 +83,18 @@ internal fun VtmMap(state: MapUiState.Ready, modifier: Modifier = Modifier) {
             factory = { mapView.apply { map().setUp(state.files, state.settings, state.center) } },
             modifier = modifier,
             update = { view ->
+                view.isClickable = interactive
+                view.isFocusable = interactive
+                view.isFocusableInTouchMode = interactive
                 val map = view.map()
-                val settingsChanged = state.settings != applied.settings
-                if (settingsChanged || state.center != null) {
+                // A read-only map goes back to the settings at once, e.g. after it stops being
+                // interactive with the user's zoom still on it.
+                val applySettings = !interactive || state.settings != applied.settings
+                if (applySettings || state.center != null) {
                     // getMapPosition() returns a copy, so changing it changes nothing on screen
                     // until it is animated to.
                     val target = map.mapPosition
-                    if (settingsChanged) {
+                    if (applySettings) {
                         target.applySettings(state.settings)
                         applied.settings = state.settings
                     }

@@ -19,6 +19,7 @@ package dev.giste.map.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -57,24 +58,49 @@ class MapViewerContentTest {
     /** The states the map slot was drawn with, in order. */
     private val drawnStates = mutableListOf<MapUiState.Ready>()
 
+    /** Whether the map slot was asked for an interactive map, each time it was drawn, in order. */
+    private val drawnInteractive = mutableListOf<Boolean>()
+
     /** What the viewer shows. Tests change it to update the viewer. */
     private var state: MapUiState by mutableStateOf(MapUiState.Loading)
 
-    /** Shows the viewer in a 300 × 200 box, with a tagged placeholder for the map. */
-    private fun showViewer(initial: MapUiState) {
+    /**
+     * Shows the viewer in a 300 × 200 box, with a tagged placeholder for the map.
+     *
+     * @param interactive passed to the viewer, or `null` to leave its default.
+     */
+    private fun showViewer(initial: MapUiState, interactive: Boolean? = null) {
         state = initial
+        val map: @Composable (MapUiState.Ready, Boolean, Modifier) -> Unit =
+            { readyState, isInteractive, mapModifier ->
+                drawnStates += readyState
+                drawnInteractive += isInteractive
+                Box(mapModifier.testTag(MAP_TAG))
+            }
+        val modifier = Modifier.size(width = 300.dp, height = 200.dp).testTag(VIEWER_TAG)
         rule.setContent {
             GisteTheme {
-                MapViewerContent(
-                    state = state,
-                    modifier = Modifier.size(width = 300.dp, height = 200.dp).testTag(VIEWER_TAG),
-                    map = { readyState, mapModifier ->
-                        drawnStates += readyState
-                        Box(mapModifier.testTag(MAP_TAG))
-                    },
-                )
+                if (interactive == null) {
+                    MapViewerContent(state = state, modifier = modifier, map = map)
+                } else {
+                    MapViewerContent(state = state, modifier = modifier, interactive = interactive, map = map)
+                }
             }
         }
+    }
+
+    @Test
+    fun mapViewerContent_byDefault_drawsAReadOnlyMap() {
+        showViewer(ready)
+
+        assertEquals(false, drawnInteractive.last())
+    }
+
+    @Test
+    fun mapViewerContent_interactive_drawsAnInteractiveMap() {
+        showViewer(ready, interactive = true)
+
+        assertEquals(true, drawnInteractive.last())
     }
 
     @Test
