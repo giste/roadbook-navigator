@@ -277,10 +277,11 @@ The same visibility rules apply: everything is `internal` or `private`.
 
 ## 8. Strings and localization
 
-- All user-facing text lives in `res/values/strings.xml` (English, the default) **and** `res/values-es/strings.xml` (Spanish, used for every Spanish locale). Every key must exist in both files.
+- All user-facing text lives in `res/values/strings.xml` (English, the default) **and** `res/values-es/strings.xml` (Spanish, used for every Spanish locale). Every key must exist in both files, except legally fixed text (see below).
 - Add a regional folder (e.g. `values-es-rMX`) only for the strings whose wording differs in that region. It overrides `values-es` and does not need every key.
 - This includes error messages, units shown to users, notification text and labels. Use `plurals` and placeholders (`%1$s`, `%1$d`) instead of string concatenation.
 - Format numbers and distances with the current locale.
+- **Legally fixed text**, whose exact wording is required by a license or by law (e.g. a data attribution such as `© OpenStreetMap`), is a resource declared only in `res/values/strings.xml` with `translatable="false"`, and a comment that says why it is fixed. Use it only for such text, never to skip a translation.
 - **Accepted exceptions** (no resource needed): log messages, exception or `require` messages meant for developers, DataStore keys, intent extras and other identifiers, MIME types, file extensions, test names and test data, `@Preview` sample data, and format patterns that are not user-visible.
 - Each Android module sets `resourcePrefix` to its module name (e.g. `odometer_`), and every resource name uses it.
 - Strings in `:core` are only generic ones (e.g. `core_action_retry`). Feature strings belong to their feature.
