@@ -17,25 +17,34 @@
 
 package dev.giste.roadbooknavigator.settings.ui
 
+import android.view.KeyEvent
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.height
 import dev.giste.core.ui.theme.GisteTheme
 import dev.giste.geo.Distance
 import dev.giste.roadbook.RoadbookStyle
 import dev.giste.roadbook.ShortDistanceThreshold
+import dev.giste.roadbooknavigator.settings.RemoteAction
+import dev.giste.roadbooknavigator.settings.RemoteKey
+import dev.giste.roadbooknavigator.settings.RemoteKeys
+import dev.giste.roadbooknavigator.settings.RemoteModel
 import dev.giste.roadbooknavigator.settings.ScreenOrientation
 import dev.giste.roadbooknavigator.settings.ThemeMode
+import kotlin.math.abs
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -56,6 +65,8 @@ class SettingsContentTest {
     private val defaults = SettingsUiState.Loaded(
         themeMode = ThemeMode.SYSTEM,
         orientation = ScreenOrientation.FOLLOW_SYSTEM,
+        remoteModel = RemoteModel.DND2,
+        remoteKeys = RemoteKeys.DND2,
         roadbookStyle = RoadbookStyle.APP_THEME,
         shortDistanceThreshold = ShortDistanceThreshold.DEFAULT,
         canDecreaseThreshold = true,
@@ -71,6 +82,7 @@ class SettingsContentTest {
                     onBack = { calls += "back" },
                     onThemeModeChange = { calls += "theme $it" },
                     onOrientationChange = { calls += "orientation $it" },
+                    onRemoteModelChange = { calls += "remote $it" },
                     onRoadbookStyleChange = { calls += "style $it" },
                     onDecreaseThreshold = { calls += "decrease" },
                     onIncreaseThreshold = { calls += "increase" },
@@ -81,14 +93,20 @@ class SettingsContentTest {
     }
 
     /** The clickable control labeled [text], e.g. a segmented button or a stepper button. */
-    private fun control(text: String) = composeRule.onNode(hasText(text) and hasClickAction())
+    private fun control(text: String) =
+        composeRule.onNode(hasText(text) and hasClickAction()).performScrollTo()
+
+    /** The text [text] in the row of [action] and its keys. */
+    private fun inBinding(action: RemoteAction, text: String) = composeRule.onNode(
+        hasText(text) and hasAnyAncestor(hasTestTag(SettingsTestTags.keyBinding(action))),
+    )
 
     /**
      * The "System" choice of the theme (index 0) or of the screen orientation (index 1), which
      * share their label. They are found in the order the screen shows them.
      */
     private fun systemChoice(index: Int) =
-        composeRule.onAllNodes(hasText("System") and hasClickAction())[index]
+        composeRule.onAllNodes(hasText("System") and hasClickAction())[index].performScrollTo()
 
     @Test
     fun settingsContent_loaded_showsEverySetting() {
@@ -97,6 +115,8 @@ class SettingsContentTest {
         composeRule.onNodeWithText("Settings").assertExists()
         composeRule.onNodeWithText("Theme").assertExists()
         composeRule.onNodeWithText("Screen orientation").assertExists()
+        composeRule.onNodeWithText("Remote control").assertExists()
+        composeRule.onNodeWithText("Keys").assertExists()
         composeRule.onNodeWithText("Roadbook colors").assertExists()
         composeRule.onNodeWithText("Highlight close waypoints").assertExists()
         composeRule.onNodeWithText("250 m").assertExists()
@@ -149,6 +169,91 @@ class SettingsContentTest {
             listOf("orientation HORIZONTAL", "orientation FOLLOW_SYSTEM"),
             calls,
         )
+    }
+
+    @Test
+    fun settingsContent_selectedChoice_showsNoCheckMark() {
+        show(defaults.copy(remoteModel = RemoteModel.TERRA_PIRATA))
+
+        // A check mark would push the label off the button's center, towards the end.
+        val button = control("Terra Pirata").getUnclippedBoundsInRoot()
+        val label = composeRule.onNode(hasText("Terra Pirata"), useUnmergedTree = true)
+            .getUnclippedBoundsInRoot()
+        val buttonCenter = (button.left + button.right) / 2
+        val labelCenter = (label.left + label.right) / 2
+        assertTrue(
+            "Label centered at $labelCenter, button at $buttonCenter",
+            abs((labelCenter - buttonCenter).value) < 1f,
+        )
+    }
+
+    @Test
+    fun settingsContent_remoteModel_selectsTheCurrentOne() {
+        show(defaults.copy(remoteModel = RemoteModel.TERRA_PIRATA))
+
+        control("Terra Pirata").assertIsSelected()
+        control("DND2").assertIsNotSelected()
+        control("Custom").assertIsNotSelected()
+    }
+
+    @Test
+    fun settingsContent_remoteModelPicked_reportsIt() {
+        show(defaults)
+
+        control("Custom").performClick()
+
+        assertEquals(listOf("remote CUSTOM"), calls)
+    }
+
+    @Test
+    fun settingsContent_dnd2_showsEachActionWithItsKey() {
+        show(defaults)
+
+        inBinding(RemoteAction.NEXT_WAYPOINT, "Next waypoint").assertExists()
+        inBinding(RemoteAction.NEXT_WAYPOINT, "D-pad up").assertExists()
+        inBinding(RemoteAction.PREVIOUS_WAYPOINT, "D-pad down").assertExists()
+        inBinding(RemoteAction.INCREASE_PARTIAL, "D-pad right").assertExists()
+        inBinding(RemoteAction.DECREASE_PARTIAL, "D-pad left").assertExists()
+        inBinding(RemoteAction.RESET_PARTIAL, "F6").assertExists()
+    }
+
+    @Test
+    fun settingsContent_terraPirata_showsEveryKeyOfAnAction() {
+        show(
+            defaults.copy(
+                remoteModel = RemoteModel.TERRA_PIRATA,
+                remoteKeys = RemoteKeys.TERRA_PIRATA,
+            ),
+        )
+
+        inBinding(RemoteAction.NEXT_WAYPOINT, "Next track").assertExists()
+        inBinding(RemoteAction.PREVIOUS_WAYPOINT, "Previous track").assertExists()
+        inBinding(RemoteAction.INCREASE_PARTIAL, "Volume up").assertExists()
+        inBinding(RemoteAction.DECREASE_PARTIAL, "Volume down").assertExists()
+        inBinding(RemoteAction.RESET_PARTIAL, "Play/pause").assertExists()
+        inBinding(RemoteAction.RESET_PARTIAL, "Play").assertExists()
+    }
+
+    @Test
+    fun settingsContent_customKeys_namesAnyKeyAndActionsWithoutKeys() {
+        val custom = RemoteKeys(
+            mapOf(
+                RemoteAction.NEXT_WAYPOINT to setOf(RemoteKey(KeyEvent.KEYCODE_F1)),
+                RemoteAction.PREVIOUS_WAYPOINT to setOf(RemoteKey(KeyEvent.KEYCODE_BUTTON_A)),
+                RemoteAction.INCREASE_PARTIAL to setOf(RemoteKey(KeyEvent.KEYCODE_ENTER)),
+                RemoteAction.DECREASE_PARTIAL to setOf(RemoteKey(KeyEvent.KEYCODE_MEDIA_PAUSE)),
+            ),
+        )
+
+        show(defaults.copy(remoteModel = RemoteModel.CUSTOM, remoteKeys = custom))
+
+        inBinding(RemoteAction.NEXT_WAYPOINT, "F1").assertExists()
+        // Android's own name, which Robolectric gives as the bare number.
+        val buttonA = KeyEvent.keyCodeToString(KeyEvent.KEYCODE_BUTTON_A).removePrefix("KEYCODE_")
+        inBinding(RemoteAction.PREVIOUS_WAYPOINT, "Key $buttonA").assertExists()
+        inBinding(RemoteAction.INCREASE_PARTIAL, "Enter").assertExists()
+        inBinding(RemoteAction.DECREASE_PARTIAL, "Pause").assertExists()
+        inBinding(RemoteAction.RESET_PARTIAL, "No key").assertExists()
     }
 
     @Test
@@ -216,7 +321,7 @@ class SettingsContentTest {
     fun settingsContent_controls_areAtLeastTheMinimumTouchTarget() {
         show(defaults)
 
-        listOf("Dark", "Horizontal", "FIA", "−", "+").forEach { label ->
+        listOf("Dark", "Horizontal", "Terra Pirata", "FIA", "−", "+").forEach { label ->
             val height = control(label).getUnclippedBoundsInRoot().height
             assertTrue("$label is $height high", height >= 56.dp)
         }
@@ -232,6 +337,9 @@ class SettingsContentTest {
         composeRule.onNodeWithText("Ajustes").assertExists()
         control("Oscuro").assertExists()
         composeRule.onNodeWithText("Orientación de la pantalla").assertExists()
+        control("Personalizado").assertExists()
+        inBinding(RemoteAction.NEXT_WAYPOINT, "Viñeta siguiente").assertExists()
+        inBinding(RemoteAction.NEXT_WAYPOINT, "Cruceta arriba").assertExists()
         composeRule.onNodeWithText("Resaltar viñetas cercanas").assertExists()
     }
 

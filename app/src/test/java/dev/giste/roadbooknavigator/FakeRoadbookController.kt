@@ -24,8 +24,14 @@ import dev.giste.roadbook.RoadbookEvent
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 
-/** [RoadbookController] whose events the test emits with [emit]. Its commands do nothing. */
+/**
+ * [RoadbookController] whose events the test emits with [emit], and that records the waypoint
+ * moves in [calls]. Imports always succeed.
+ */
 internal class FakeRoadbookController : RoadbookController {
+
+    /** The waypoint moves received, in order, e.g. `"moveToNextWaypoint"`. */
+    val calls: MutableList<String> = mutableListOf()
 
     private val mutableEvents = MutableSharedFlow<RoadbookEvent>()
 
@@ -38,7 +44,11 @@ internal class FakeRoadbookController : RoadbookController {
 
     override suspend fun importRoadbook(uri: Uri): ImportRoadbookResult = ImportRoadbookResult.Success
 
-    override suspend fun moveToNextWaypoint() = Unit
+    override suspend fun moveToNextWaypoint() {
+        calls += "moveToNextWaypoint"
+    }
 
-    override suspend fun moveToPreviousWaypoint() = Unit
+    override suspend fun moveToPreviousWaypoint() {
+        calls += "moveToPreviousWaypoint"
+    }
 }

@@ -17,11 +17,14 @@
 
 package dev.giste.roadbooknavigator
 
+import android.annotation.SuppressLint
 import android.os.Bundle
+import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -33,6 +36,8 @@ import dev.giste.roadbooknavigator.permission.PreciseLocationPermission
 import dev.giste.roadbooknavigator.settings.AppSettings
 import dev.giste.roadbooknavigator.settings.AppSettingsSource
 import dev.giste.roadbooknavigator.ui.AppNavHost
+import dev.giste.roadbooknavigator.ui.KeyEventInterceptors
+import dev.giste.roadbooknavigator.ui.LocalKeyEventInterceptors
 import dev.giste.roadbooknavigator.ui.RiderTypography
 import dev.giste.roadbooknavigator.ui.isDarkTheme
 import dev.giste.roadbooknavigator.ui.toActivityOrientation
@@ -44,6 +49,9 @@ import javax.inject.Inject
  * It shows the app in the theme mode and the screen orientation of the [AppSettings], following
  * every change, with the larger [RiderTypography], and every screen behind the location
  * permission gate.
+ *
+ * Its key events go first to the [KeyEventInterceptors] the screens add (the dashboard's remote
+ * control), and only then to the views and the system.
  */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -51,6 +59,9 @@ class MainActivity : ComponentActivity() {
     /** The app settings, for the theme mode and the orientation. Injected by Hilt in [onCreate]. */
     @Inject
     internal lateinit var appSettingsSource: AppSettingsSource
+
+    /** Where the screens intercept key events, provided to them as [LocalKeyEventInterceptors]. */
+    private val keyEventInterceptors = KeyEventInterceptors()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,11 +80,21 @@ class MainActivity : ComponentActivity() {
                 darkTheme = appSettings.themeMode.isDarkTheme(),
                 typography = RiderTypography,
             ) {
-                // Every screen needs precise location, so the whole app waits behind the gate.
-                PermissionGate(permissions = listOf(PreciseLocationPermission)) {
-                    AppNavHost(modifier = Modifier.fillMaxSize())
+                CompositionLocalProvider(LocalKeyEventInterceptors provides keyEventInterceptors) {
+                    // Every screen needs precise location, so the whole app waits behind the gate.
+                    PermissionGate(permissions = listOf(PreciseLocationPermission)) {
+                        AppNavHost(modifier = Modifier.fillMaxSize())
+                    }
                 }
             }
         }
     }
+
+    // Before the views and the window: otherwise the window would change the volume or skip music
+    // with keys that a remote control uses for the dashboard.
+    // dispatchKeyEvent is public API of android.app.Activity. Lint flags it only because
+    // androidx.core's ComponentActivity marks its own override as restricted.
+    @SuppressLint("RestrictedApi")
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean =
+        keyEventInterceptors.intercept(event) || super.dispatchKeyEvent(event)
 }

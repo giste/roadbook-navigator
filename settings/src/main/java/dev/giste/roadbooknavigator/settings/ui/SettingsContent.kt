@@ -18,9 +18,11 @@
 package dev.giste.roadbooknavigator.settings.ui
 
 import android.content.res.Configuration
+import android.view.KeyEvent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -29,7 +31,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -57,6 +58,10 @@ import dev.giste.geo.Distance
 import dev.giste.roadbook.RoadbookStyle
 import dev.giste.roadbook.ShortDistanceThreshold
 import dev.giste.roadbooknavigator.settings.R
+import dev.giste.roadbooknavigator.settings.RemoteAction
+import dev.giste.roadbooknavigator.settings.RemoteKey
+import dev.giste.roadbooknavigator.settings.RemoteKeys
+import dev.giste.roadbooknavigator.settings.RemoteModel
 import dev.giste.roadbooknavigator.settings.ScreenOrientation
 import dev.giste.roadbooknavigator.settings.ThemeMode
 import kotlin.math.roundToInt
@@ -66,6 +71,16 @@ internal object SettingsTestTags {
 
     /** The back button, which shows an icon instead of text. */
     const val BACK: String = "settings_back"
+
+    /**
+     * The row of one remote action and its keys, whose texts may repeat in other rows (e.g. "No
+     * key").
+     *
+     * @param action the action of the row.
+     * @return the tag of its row, e.g. `settings_key_binding_next_waypoint`.
+     */
+    fun keyBinding(action: RemoteAction): String =
+        "settings_key_binding_${action.name.lowercase()}"
 }
 
 /**
@@ -74,6 +89,8 @@ internal object SettingsTestTags {
  *
  * - **Theme:** system, light or dark.
  * - **Screen orientation:** system, vertical or horizontal.
+ * - **Remote:** DND2, Terra Pirata or custom, and the keys of each action. The keys are only
+ *   shown: they cannot be changed yet.
  * - **Roadbook colors:** the app theme or the FIA palette.
  * - **Highlight close waypoints:** the short-distance threshold, changed in steps with − and +.
  *
@@ -84,19 +101,20 @@ internal object SettingsTestTags {
  * @param onBack called when the back button is pressed.
  * @param onThemeModeChange called with the theme mode the user picks.
  * @param onOrientationChange called with the screen orientation the user picks.
+ * @param onRemoteModelChange called with the remote model the user picks.
  * @param onRoadbookStyleChange called with the roadbook style the user picks.
  * @param onDecreaseThreshold called when the threshold's − is pressed.
  * @param onIncreaseThreshold called when the threshold's + is pressed.
  * @param onSaveErrorShown called once the save error has been shown.
  * @param modifier applied to the root layout.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun SettingsContent(
     state: SettingsUiState,
     onBack: () -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
     onOrientationChange: (ScreenOrientation) -> Unit,
+    onRemoteModelChange: (RemoteModel) -> Unit,
     onRoadbookStyleChange: (RoadbookStyle) -> Unit,
     onDecreaseThreshold: () -> Unit,
     onIncreaseThreshold: () -> Unit,
@@ -140,6 +158,7 @@ internal fun SettingsContent(
                 state = state,
                 onThemeModeChange = onThemeModeChange,
                 onOrientationChange = onOrientationChange,
+                onRemoteModelChange = onRemoteModelChange,
                 onRoadbookStyleChange = onRoadbookStyleChange,
                 onDecreaseThreshold = onDecreaseThreshold,
                 onIncreaseThreshold = onIncreaseThreshold,
@@ -157,6 +176,7 @@ internal fun SettingsContent(
  * @param state the loaded settings.
  * @param onThemeModeChange called with the theme mode the user picks.
  * @param onOrientationChange called with the screen orientation the user picks.
+ * @param onRemoteModelChange called with the remote model the user picks.
  * @param onRoadbookStyleChange called with the roadbook style the user picks.
  * @param onDecreaseThreshold called when the threshold's − is pressed.
  * @param onIncreaseThreshold called when the threshold's + is pressed.
@@ -167,6 +187,7 @@ private fun SettingsSections(
     state: SettingsUiState.Loaded,
     onThemeModeChange: (ThemeMode) -> Unit,
     onOrientationChange: (ScreenOrientation) -> Unit,
+    onRemoteModelChange: (RemoteModel) -> Unit,
     onRoadbookStyleChange: (RoadbookStyle) -> Unit,
     onDecreaseThreshold: () -> Unit,
     onIncreaseThreshold: () -> Unit,
@@ -194,6 +215,19 @@ private fun SettingsSections(
             label = { it.label() },
             onSelect = onOrientationChange,
         )
+
+        SectionTitle(stringResource(R.string.settings_section_remote))
+        SettingTitle(stringResource(R.string.settings_remote_model_title))
+        Choices(
+            options = RemoteModel.entries,
+            selected = state.remoteModel,
+            label = { it.label() },
+            onSelect = onRemoteModelChange,
+        )
+        SettingTitle(stringResource(R.string.settings_remote_keys_title))
+        RemoteAction.entries.forEach { action ->
+            KeyBinding(action = action, keys = state.remoteKeys.keysFor(action))
+        }
 
         SectionTitle(stringResource(R.string.settings_section_roadbook))
         SettingTitle(stringResource(R.string.settings_roadbook_style_title))
@@ -241,6 +275,9 @@ private fun SettingTitle(text: String) {
 /**
  * One choice among [options], as a row of segmented buttons as wide as the screen.
  *
+ * The selected button shows no check mark: its color already marks it, and the label gets the
+ * whole button, so longer names (e.g. "Terra Pirata") fit on narrow screens with large text.
+ *
  * @param T the type of the options.
  * @param options the options, in the order they are shown.
  * @param selected the current option.
@@ -261,8 +298,42 @@ private fun <T> Choices(
                 onClick = { onSelect(option) },
                 shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
                 modifier = Modifier.heightIn(min = GisteTheme.dimensions.minTouchTarget),
+                icon = {},
             ) {
                 Text(label(option))
+            }
+        }
+    }
+}
+
+/**
+ * One action and the keys that trigger it, on one row: the action on the start side, and its keys
+ * one below the other on the end side, or a note that it has none.
+ *
+ * @param action the action.
+ * @param keys its keys.
+ */
+@Composable
+private fun KeyBinding(action: RemoteAction, keys: Set<RemoteKey>) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(SettingsTestTags.keyBinding(action)),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text = action.label(), style = MaterialTheme.typography.bodyLarge)
+        Spacer(modifier = Modifier.weight(1f))
+        Column(horizontalAlignment = Alignment.End) {
+            if (keys.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.settings_remote_no_key),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            // Sorted by code, so the order never changes between recompositions or runs.
+            keys.sortedBy { it.code }.forEach { key ->
+                Text(text = key.label(), style = MaterialTheme.typography.bodyLarge)
             }
         }
     }
@@ -334,6 +405,64 @@ private fun ScreenOrientation.label(): String = stringResource(
     },
 )
 
+/** The name of this remote model, as the user sees it. */
+@Composable
+private fun RemoteModel.label(): String = stringResource(
+    when (this) {
+        RemoteModel.DND2 -> R.string.settings_remote_model_dnd2
+        RemoteModel.TERRA_PIRATA -> R.string.settings_remote_model_terra_pirata
+        RemoteModel.CUSTOM -> R.string.settings_remote_model_custom
+    },
+)
+
+/** The name of this remote action, as the user sees it. */
+@Composable
+private fun RemoteAction.label(): String = stringResource(
+    when (this) {
+        RemoteAction.NEXT_WAYPOINT -> R.string.settings_remote_action_next_waypoint
+        RemoteAction.PREVIOUS_WAYPOINT -> R.string.settings_remote_action_previous_waypoint
+        RemoteAction.INCREASE_PARTIAL -> R.string.settings_remote_action_increase_partial
+        RemoteAction.DECREASE_PARTIAL -> R.string.settings_remote_action_decrease_partial
+        RemoteAction.RESET_PARTIAL -> R.string.settings_remote_action_reset_partial
+    },
+)
+
+/**
+ * The name of this key, as the user sees it: a translated name for the keys remotes usually send,
+ * `F1` to `F12` for the function keys, and otherwise Android's name for the key code, which is
+ * still enough to tell keys apart.
+ */
+@Composable
+private fun RemoteKey.label(): String {
+    val named = KEY_NAMES[code]
+    return when {
+        named != null -> stringResource(named)
+        code in KeyEvent.KEYCODE_F1..KeyEvent.KEYCODE_F12 ->
+            stringResource(R.string.settings_key_function, code - KeyEvent.KEYCODE_F1 + 1)
+        else -> stringResource(
+            R.string.settings_key_other,
+            KeyEvent.keyCodeToString(code).removePrefix("KEYCODE_"),
+        )
+    }
+}
+
+/** The translated names of the keys remotes usually send, by key code. */
+private val KEY_NAMES: Map<Int, Int> = mapOf(
+    KeyEvent.KEYCODE_DPAD_UP to R.string.settings_key_dpad_up,
+    KeyEvent.KEYCODE_DPAD_DOWN to R.string.settings_key_dpad_down,
+    KeyEvent.KEYCODE_DPAD_LEFT to R.string.settings_key_dpad_left,
+    KeyEvent.KEYCODE_DPAD_RIGHT to R.string.settings_key_dpad_right,
+    KeyEvent.KEYCODE_DPAD_CENTER to R.string.settings_key_dpad_center,
+    KeyEvent.KEYCODE_ENTER to R.string.settings_key_enter,
+    KeyEvent.KEYCODE_VOLUME_UP to R.string.settings_key_volume_up,
+    KeyEvent.KEYCODE_VOLUME_DOWN to R.string.settings_key_volume_down,
+    KeyEvent.KEYCODE_MEDIA_NEXT to R.string.settings_key_media_next,
+    KeyEvent.KEYCODE_MEDIA_PREVIOUS to R.string.settings_key_media_previous,
+    KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE to R.string.settings_key_media_play_pause,
+    KeyEvent.KEYCODE_MEDIA_PLAY to R.string.settings_key_media_play,
+    KeyEvent.KEYCODE_MEDIA_PAUSE to R.string.settings_key_media_pause,
+)
+
 /** The name of this roadbook style, as the user sees it. */
 @Composable
 private fun RoadbookStyle.label(): String = stringResource(
@@ -361,6 +490,8 @@ private const val PHONE_PORTRAIT = "spec:width=411dp,height=891dp,dpi=420"
 private val DEFAULTS = SettingsUiState.Loaded(
     themeMode = ThemeMode.SYSTEM,
     orientation = ScreenOrientation.FOLLOW_SYSTEM,
+    remoteModel = RemoteModel.DND2,
+    remoteKeys = RemoteKeys.DND2,
     roadbookStyle = RoadbookStyle.APP_THEME,
     shortDistanceThreshold = ShortDistanceThreshold.DEFAULT,
     canDecreaseThreshold = true,
@@ -368,10 +499,15 @@ private val DEFAULTS = SettingsUiState.Loaded(
     saveFailed = false,
 )
 
-/** Preview sample: dark theme, horizontal, FIA colors and the shortest threshold. */
+/**
+ * Preview sample: dark theme, horizontal, Terra Pirata (an action with two keys), FIA colors and
+ * the shortest threshold.
+ */
 private val CHANGED = SettingsUiState.Loaded(
     themeMode = ThemeMode.DARK,
     orientation = ScreenOrientation.HORIZONTAL,
+    remoteModel = RemoteModel.TERRA_PIRATA,
+    remoteKeys = RemoteKeys.TERRA_PIRATA,
     roadbookStyle = RoadbookStyle.FIA,
     shortDistanceThreshold = ShortDistanceThreshold.of(Distance.meters(50.0)),
     canDecreaseThreshold = false,
@@ -388,6 +524,7 @@ private fun SettingsPreview(state: SettingsUiState) {
             onBack = {},
             onThemeModeChange = {},
             onOrientationChange = {},
+            onRemoteModelChange = {},
             onRoadbookStyleChange = {},
             onDecreaseThreshold = {},
             onIncreaseThreshold = {},

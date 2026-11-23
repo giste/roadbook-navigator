@@ -24,6 +24,11 @@ import javax.inject.Qualifier
 @Retention(AnnotationRetention.BINARY)
 internal annotation class AppSettingsDataStore
 
+/** Qualifies the DataStore of the remote control settings (file `settings_remote`). */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+internal annotation class RemoteSettingsDataStore
+
 /** Qualifies the DataStore of the `:location` settings (file `settings_location`). */
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
