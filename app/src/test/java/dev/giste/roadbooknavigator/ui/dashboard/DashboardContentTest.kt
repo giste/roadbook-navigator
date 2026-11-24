@@ -151,6 +151,32 @@ class DashboardContentTest {
     }
 
     @Test
+    fun dashboardContent_portrait_centersTheDistancesVertically() {
+        show(moving, width = 500.dp, height = 1_000.dp)
+
+        assertCenteredVertically(value = "12.35", reading = partial())
+        assertCenteredVertically(value = "234.6", reading = total())
+    }
+
+    @Test
+    fun dashboardContent_landscape_centersTheDistancesVertically() {
+        show(moving, width = 1_000.dp, height = 500.dp)
+
+        assertCenteredVertically(value = "12.35", reading = partial())
+        assertCenteredVertically(value = "234.6", reading = total())
+    }
+
+    /** Asserts the line of [value] is as far from the top of [reading] as from its bottom. */
+    private fun assertCenteredVertically(value: String, reading: SemanticsNodeInteraction) {
+        val box = reading.getUnclippedBoundsInRoot()
+        val line = composeRule.onNodeWithText(value).getUnclippedBoundsInRoot()
+        val above = line.top - box.top
+        val below = box.bottom - line.bottom
+        assertTrue("$value: $above above, $below below", (above - below).value in -1f..1f)
+        assertTrue("$value: $above above", above > 0.dp)
+    }
+
+    @Test
     fun dashboardContent_distancesAboveTheirLargestValues_showsThemCapped() {
         show(
             DashboardUiState(

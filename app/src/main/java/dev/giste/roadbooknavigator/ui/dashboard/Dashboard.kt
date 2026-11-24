@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -430,7 +431,7 @@ private fun SettingsButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
 }
 
 /**
- * One distance, as large as its box allows and without a visible label.
+ * One distance, as large as its box allows, centered vertically and without a visible label.
  *
  * The long press uses a plain gesture detector instead of `combinedClickable`, so a tap does
  * nothing and shows no ripple. It vibrates, so the rider feels it was taken even with gloves.
@@ -469,9 +470,12 @@ private fun DistanceReading(
         AutoSizeText(
             text = value,
             color = color,
+            // As tall as its line and centered: the digits are usually limited by the width, so the
+            // line is shorter than the box.
             modifier = Modifier
                 .fillMaxSize()
-                .padding(GisteTheme.dimensions.spacingExtraSmall),
+                .padding(GisteTheme.dimensions.spacingExtraSmall)
+                .wrapContentHeight(),
             fontWeight = if (highlighted) FontWeight.Bold else null,
             textAlign = TextAlign.End,
             widestText = widestValue,
@@ -567,11 +571,4 @@ private fun DashboardPhoneStoppedPreview() {
 @Composable
 private fun DashboardMovingPreview() {
     DashboardPreview(MOVING)
-}
-
-@Preview(name = "Phone landscape, loading, light", device = PHONE_LANDSCAPE, uiMode = Configuration.UI_MODE_NIGHT_NO)
-@Preview(name = "Phone landscape, loading, dark", device = PHONE_LANDSCAPE, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun DashboardLoadingPreview() {
-    DashboardPreview(DashboardUiState.INITIAL)
 }
