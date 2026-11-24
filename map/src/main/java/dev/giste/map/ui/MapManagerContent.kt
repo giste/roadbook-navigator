@@ -70,6 +70,9 @@ internal object MapManagerTestTags {
     /** The back button, which shows an icon instead of text. */
     const val BACK: String = "map_manager_back"
 
+    /** The button that opens the map downloader, which shows an icon instead of text. */
+    const val DOWNLOAD: String = "map_manager_download"
+
     /** The empty area shown while the maps are looked for. */
     const val LOADING: String = "map_manager_loading"
 
@@ -95,7 +98,8 @@ internal object MapManagerTestTags {
 }
 
 /**
- * The map manager for [state]: a top bar with a back button, then the installed map files.
+ * The map manager for [state]: a top bar with a back button (and a download button, if
+ * [onDownloadMaps] is given), then the installed map files.
  *
  * - [MapManagerUiState.Loading]: only the top bar, as looking for the maps takes a moment.
  * - [MapManagerUiState.FolderUnreadable]: a message.
@@ -112,6 +116,8 @@ internal object MapManagerTestTags {
  *
  * @param state what to show.
  * @param onBack called when the back button is pressed.
+ * @param onDownloadMaps called when the download button is pressed, or `null` for no download
+ * button.
  * @param onDelete called with a file once the rider has confirmed deleting it.
  * @param onDeleteErrorShown called once the deletion failure has been shown.
  * @param modifier applied to the root layout.
@@ -120,6 +126,7 @@ internal object MapManagerTestTags {
 internal fun MapManagerContent(
     state: MapManagerUiState,
     onBack: () -> Unit,
+    onDownloadMaps: (() -> Unit)?,
     onDelete: (InstalledMapFile) -> Unit,
     onDeleteErrorShown: () -> Unit,
     modifier: Modifier = Modifier,
@@ -150,6 +157,18 @@ internal fun MapManagerContent(
                             .testTag(MapManagerTestTags.BACK),
                     ) {
                         Icon(painter = painterResource(R.drawable.map_ic_arrow_back), contentDescription = null)
+                    }
+                },
+                actions = {
+                    if (onDownloadMaps != null) {
+                        IconButton(
+                            onClick = onDownloadMaps,
+                            modifier = Modifier
+                                .size(GisteTheme.dimensions.minTouchTarget)
+                                .testTag(MapManagerTestTags.DOWNLOAD),
+                        ) {
+                            Icon(painter = painterResource(R.drawable.map_ic_download), contentDescription = null)
+                        }
                     }
                 },
             )
@@ -337,7 +356,13 @@ private val PREVIEW_FILES = listOf(
 @Composable
 private fun MapManagerPreview(state: MapManagerUiState) {
     GisteTheme {
-        MapManagerContent(state = state, onBack = {}, onDelete = {}, onDeleteErrorShown = {})
+        MapManagerContent(
+            state = state,
+            onBack = {},
+            onDownloadMaps = {},
+            onDelete = {},
+            onDeleteErrorShown = {},
+        )
     }
 }
 

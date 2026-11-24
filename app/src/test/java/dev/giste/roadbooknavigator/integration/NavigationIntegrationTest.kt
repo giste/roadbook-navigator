@@ -23,9 +23,11 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import dagger.hilt.android.testing.BindValue
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import dagger.hilt.android.testing.HiltTestApplication
+import dev.giste.map.MapDownloadServer
 import dev.giste.roadbooknavigator.MainActivity
 import dev.giste.roadbooknavigator.settings.AppSettings
 import dev.giste.roadbooknavigator.settings.AppSettingsSource
@@ -44,8 +46,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Moving between the dashboard, the settings and the map manager in the real app, with the real Hilt graph and
- * location granted.
+ * Moving between the dashboard, the settings, the map manager and the map downloader in the real
+ * app, with the real Hilt graph and location granted.
  */
 @HiltAndroidTest
 @RunWith(RobolectricTestRunner::class)
@@ -63,6 +65,14 @@ class NavigationIntegrationTest {
 
     @Inject
     lateinit var appSettings: AppSettingsSource
+
+    /**
+     * The map downloader reads its folders from this server: a closed local port, so the tests
+     * never use the network (the downloader then says it cannot reach the site).
+     */
+    @BindValue
+    @JvmField
+    val mapDownloadServer: MapDownloadServer = MapDownloadServer("http://127.0.0.1:1/")
 
     @Before
     fun setUp() {
@@ -101,6 +111,27 @@ class NavigationIntegrationTest {
 
         composeRule.awaitText("Maps", exists = false)
         composeRule.awaitPartial("0.00")
+    }
+
+    @Test
+    fun downloadButton_pressedInTheMapManager_opensTheMapDownloader() {
+        openMapManager()
+
+        composeRule.onNodeWithTag(MAP_MANAGER_DOWNLOAD_TAG).performClick()
+
+        composeRule.awaitText("Download maps")
+    }
+
+    @Test
+    fun systemBack_inTheMapDownloader_returnsToTheMapManager() {
+        openMapManager()
+        composeRule.onNodeWithTag(MAP_MANAGER_DOWNLOAD_TAG).performClick()
+        composeRule.awaitText("Download maps")
+
+        composeRule.runOnUiThread { composeRule.activity.onBackPressedDispatcher.onBackPressed() }
+
+        composeRule.awaitText("Download maps", exists = false)
+        composeRule.awaitText("Maps")
     }
 
     @Test
@@ -164,5 +195,8 @@ class NavigationIntegrationTest {
          * internal to `:map`, so it is repeated here.
          */
         const val MAP_MANAGE_TAG = "map_viewer_manage"
+
+        /** The tag of the map manager's download button: `:map`'s `MapManagerTestTags.DOWNLOAD`. */
+        const val MAP_MANAGER_DOWNLOAD_TAG = "map_manager_download"
     }
 }

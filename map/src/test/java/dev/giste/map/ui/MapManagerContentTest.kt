@@ -60,20 +60,29 @@ class MapManagerContentTest {
     private val listed = MapManagerUiState.Listed(listOf(damaged, spain))
 
     private var backs = 0
+    private var downloads = 0
     private val deleted = mutableListOf<InstalledMapFile>()
     private var errorsShown = 0
 
     /** What the manager shows. Tests change it to update the screen. */
     private var state: MapManagerUiState by mutableStateOf(MapManagerUiState.Loading)
 
-    /** Shows the manager in [initial], recording its callbacks. */
-    private fun show(initial: MapManagerUiState, restorationTester: StateRestorationTester? = null) {
+    /**
+     * Shows the manager in [initial], recording its callbacks. It has a download button unless
+     * [downloadable] is `false`.
+     */
+    private fun show(
+        initial: MapManagerUiState,
+        restorationTester: StateRestorationTester? = null,
+        downloadable: Boolean = true,
+    ) {
         state = initial
         val content: @Composable () -> Unit = {
             GisteTheme {
                 MapManagerContent(
                     state = state,
                     onBack = { backs++ },
+                    onDownloadMaps = if (downloadable) ({ downloads++ }) else null,
                     onDelete = { deleted += it },
                     onDeleteErrorShown = { errorsShown++ },
                 )
@@ -97,6 +106,22 @@ class MapManagerContentTest {
         rule.onNodeWithText("Maps").assertIsDisplayed()
         rule.onNodeWithTag(MapManagerTestTags.LOADING).assertExists()
         rule.onNodeWithText("No maps installed").assertDoesNotExist()
+    }
+
+    @Test
+    fun mapManagerContent_downloadPressed_callsOnDownloadMaps() {
+        show(listed)
+
+        rule.onNodeWithTag(MapManagerTestTags.DOWNLOAD).performClick()
+
+        assertEquals(1, downloads)
+    }
+
+    @Test
+    fun mapManagerContent_withoutOnDownloadMaps_hasNoDownloadButton() {
+        show(listed, downloadable = false)
+
+        rule.onNodeWithTag(MapManagerTestTags.DOWNLOAD).assertDoesNotExist()
     }
 
     @Test
@@ -151,6 +176,9 @@ class MapManagerContentTest {
             .assertWidthIsAtLeast(MIN_TOUCH_TARGET)
             .assertHeightIsAtLeast(MIN_TOUCH_TARGET)
         rule.onNode(inRow(spain, MapManagerTestTags.DELETE))
+            .assertWidthIsAtLeast(MIN_TOUCH_TARGET)
+            .assertHeightIsAtLeast(MIN_TOUCH_TARGET)
+        rule.onNodeWithTag(MapManagerTestTags.DOWNLOAD)
             .assertWidthIsAtLeast(MIN_TOUCH_TARGET)
             .assertHeightIsAtLeast(MIN_TOUCH_TARGET)
     }
