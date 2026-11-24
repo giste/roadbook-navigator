@@ -129,10 +129,11 @@ internal object DashboardTestTags {
  * mode, before the activity sees it, and that press is lost.
  *
  * @param onOpenSettings called when the rider opens the settings.
+ * @param onManageMaps called when the rider opens the map manager from the map.
  * @param modifier applied to the root layout.
  */
 @Composable
-internal fun Dashboard(onOpenSettings: () -> Unit, modifier: Modifier = Modifier) {
+internal fun Dashboard(onOpenSettings: () -> Unit, onManageMaps: () -> Unit, modifier: Modifier = Modifier) {
     val viewModel: DashboardViewModel = hiltViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     InterceptKeyEvents { event -> event.toKeyPress()?.let(viewModel::onKeyPress) ?: false }
@@ -149,7 +150,9 @@ internal fun Dashboard(onOpenSettings: () -> Unit, modifier: Modifier = Modifier
         roadbook = { showImportButton, roadbookModifier ->
             RoadbookViewer(showImportButton = showImportButton, modifier = roadbookModifier)
         },
-        map = { mapModifier -> MapViewer(modifier = mapModifier) },
+        map = { showManageButton, mapModifier ->
+            MapViewer(modifier = mapModifier, showManageButton = showManageButton, onManageMaps = onManageMaps)
+        },
     )
 }
 
@@ -179,7 +182,7 @@ internal fun Dashboard(onOpenSettings: () -> Unit, modifier: Modifier = Modifier
  * total's background covers, and its gear grows with the slot. It is shown only while [DashboardUiState.showStoppedActions] is set, so a touch
  * while riding cannot leave the dashboard (which would stop the odometer). While moving, the slot
  * stays empty instead of going away, so the total keeps its size and place. The roadbook offers its
- * import button under the same condition.
+ * import button, and the map its manage button, under the same condition.
  *
  * The screen stays on while the dashboard is in the composition, and may go off again once it
  * leaves it.
@@ -192,7 +195,8 @@ internal fun Dashboard(onOpenSettings: () -> Unit, modifier: Modifier = Modifier
  * @param roadbook draws the roadbook in the modifier it is given, and shows its import button only
  * when told to. A slot, so tests and previews can use a placeholder instead of the Hilt-backed
  * viewer.
- * @param map draws the map in the modifier it is given. A slot for the same reason.
+ * @param map draws the map in the modifier it is given, and shows its manage button when told to
+ * (it may show it anyway when it has no map to draw). A slot for the same reason.
  */
 @Composable
 internal fun DashboardContent(
@@ -202,7 +206,7 @@ internal fun DashboardContent(
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
     roadbook: @Composable (showImportButton: Boolean, modifier: Modifier) -> Unit,
-    map: @Composable (modifier: Modifier) -> Unit,
+    map: @Composable (showManageButton: Boolean, modifier: Modifier) -> Unit,
 ) {
     val locale = LocalConfiguration.current.locales[0]
     val loading = stringResource(R.string.app_odometer_value_loading)
@@ -260,6 +264,9 @@ internal fun DashboardContent(
     val roadbookSlot: @Composable (Modifier) -> Unit = { roadbookModifier ->
         roadbook(state.showStoppedActions, roadbookModifier)
     }
+    val mapSlot: @Composable (Modifier) -> Unit = { mapModifier ->
+        map(state.showStoppedActions, mapModifier)
+    }
 
     // The rider reads the dashboard in glances, without touching it, so the screen must not go off
     // while it is shown. Elsewhere (the settings, a coffee stop) the screen may sleep as usual.
@@ -273,14 +280,14 @@ internal fun DashboardContent(
             LandscapeLayout(
                 total = totalReading,
                 partial = partialReading,
-                map = map,
+                map = mapSlot,
                 roadbook = roadbookSlot,
             )
         } else {
             PortraitLayout(
                 total = totalReading,
                 partial = partialReading,
-                map = map,
+                map = mapSlot,
                 roadbook = roadbookSlot,
             )
         }
@@ -541,7 +548,7 @@ private fun DashboardPreview(state: DashboardUiState) {
                     )
                 }
             },
-            map = { modifier -> MapPlaceholder(modifier) },
+            map = { _, modifier -> MapPlaceholder(modifier) },
         )
     }
 }

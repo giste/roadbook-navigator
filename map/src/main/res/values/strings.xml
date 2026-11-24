@@ -5,6 +5,14 @@
     <string name="map_no_maps">No maps installed</string>
     <!-- Shown in place of the map when map files are installed but none can be read. -->
     <string name="map_unreadable_maps">The installed maps cannot be read</string>
+    <!-- Title of the map manager screen. -->
+    <string name="map_manager_title">Maps</string>
+    <!-- Shown in the map manager when the folder that holds the maps cannot be read. -->
+    <string name="map_manager_folder_unreadable">The map folder cannot be read</string>
+    <!-- Title of the dialog that confirms deleting a map file. %1$s is the file name. -->
+    <string name="map_manager_delete_title">Delete %1$s?</string>
+    <!-- Shown briefly when a map file could not be deleted. %1$s is the file name. -->
+    <string name="map_manager_delete_failed">%1$s could not be deleted</string>
     <!--
       Credit for the map data, required by its license (ODbL). Shown in a corner of the map. Legally
       fixed text: the OpenStreetMap Foundation's attribution guidelines name "© OpenStreetMap" as

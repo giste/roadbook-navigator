@@ -5,4 +5,12 @@
     <string name="map_no_maps">No hay mapas instalados</string>
     <!-- Shown in place of the map when map files are installed but none can be read. -->
     <string name="map_unreadable_maps">No se pueden leer los mapas instalados</string>
+    <!-- Title of the map manager screen. -->
+    <string name="map_manager_title">Mapas</string>
+    <!-- Shown in the map manager when the folder that holds the maps cannot be read. -->
+    <string name="map_manager_folder_unreadable">No se puede leer la carpeta de mapas</string>
+    <!-- Title of the dialog that confirms deleting a map file. %1$s is the file name. -->
+    <string name="map_manager_delete_title">¿Borrar %1$s?</string>
+    <!-- Shown briefly when a map file could not be deleted. %1$s is the file name. -->
+    <string name="map_manager_delete_failed">No se ha podido borrar %1$s</string>
 </resources>

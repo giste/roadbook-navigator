@@ -109,7 +109,11 @@ class DashboardContentTest {
                             Text("roadbook, import $showImportButton")
                         }
                     },
-                    map = { modifier -> Box(modifier = modifier.testTag(MAP_TAG)) },
+                    map = { showManageButton, modifier ->
+                        Box(modifier = modifier.testTag(MAP_TAG)) {
+                            Text("map, manage $showManageButton")
+                        }
+                    },
                 )
             }
         }
@@ -212,6 +216,20 @@ class DashboardContentTest {
         show(moving)
 
         composeRule.onNodeWithText("roadbook, import false").assertExists()
+    }
+
+    @Test
+    fun dashboardContent_stopped_tellsTheMapToShowManage() {
+        show(DashboardUiState.INITIAL)
+
+        composeRule.onNodeWithText("map, manage true").assertExists()
+    }
+
+    @Test
+    fun dashboardContent_moving_tellsTheMapToHideManage() {
+        show(moving)
+
+        composeRule.onNodeWithText("map, manage false").assertExists()
     }
 
     @Test

@@ -21,12 +21,12 @@ package dev.giste.map.domain
  * An offline map file the map can draw: a mapsforge `.map` file whose header was read
  * successfully.
  *
- * @property name the file name, e.g. `spain.map`. Meant for logs and, later, for listing maps.
+ * @property name the file name, e.g. `spain.map`, for the logs.
  * @property path the absolute path of the file, which the renderer opens.
  */
 internal data class MapFile(val name: String, val path: String)
 
-/** The offline maps installed on the device, as found by [MapFileRepository]. */
+/** The offline maps the viewer can draw, from [InstalledMapFiles.toInstalledMaps]. */
 internal sealed interface InstalledMaps {
 
     /**

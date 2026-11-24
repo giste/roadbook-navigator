@@ -44,7 +44,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Moving between the dashboard and the settings in the real app, with the real Hilt graph and
+ * Moving between the dashboard, the settings and the map manager in the real app, with the real Hilt graph and
  * location granted.
  */
 @HiltAndroidTest
@@ -74,6 +74,33 @@ class NavigationIntegrationTest {
         composeRule.awaitPartial("0.00")
         composeRule.onNodeWithTag(DashboardTestTags.SETTINGS).performClick()
         composeRule.awaitText("Settings")
+    }
+
+    /**
+     * Opens the map manager from the map on the dashboard. The vehicle starts stopped, and the
+     * tests install no map, so the map shows its manage button either way.
+     */
+    private fun openMapManager() {
+        composeRule.awaitPartial("0.00")
+        composeRule.onNodeWithTag(MAP_MANAGE_TAG).performClick()
+        composeRule.awaitText("Maps")
+    }
+
+    @Test
+    fun manageMapsButton_pressed_opensTheMapManager() {
+        openMapManager()
+
+        composeRule.onNodeWithTag(DashboardTestTags.PARTIAL).assertDoesNotExist()
+    }
+
+    @Test
+    fun systemBack_inTheMapManager_returnsToTheDashboard() {
+        openMapManager()
+
+        composeRule.runOnUiThread { composeRule.activity.onBackPressedDispatcher.onBackPressed() }
+
+        composeRule.awaitText("Maps", exists = false)
+        composeRule.awaitPartial("0.00")
     }
 
     @Test
@@ -129,5 +156,13 @@ class NavigationIntegrationTest {
      */
     private fun awaitStored(predicate: (AppSettings) -> Boolean) {
         runBlocking { withTimeout(TIMEOUT_MILLIS) { appSettings.settings.first(predicate) } }
+    }
+
+    private companion object {
+        /**
+         * The tag of the map's manage button: `:map`'s `MapViewerTestTags.MANAGE`, which is
+         * internal to `:map`, so it is repeated here.
+         */
+        const val MAP_MANAGE_TAG = "map_viewer_manage"
     }
 }
