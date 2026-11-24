@@ -18,7 +18,7 @@
 package dev.giste.core.ui.component
 
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
@@ -68,6 +68,10 @@ private const val FONT_SIZE_STEP_SP: Float = 0.25f
  *
  * The box comes from [modifier]: give the text a bounded size (e.g. `fillMaxSize()` or `weight()`
  * in a bounded parent). With unbounded constraints the text takes the largest size.
+ *
+ * As with [Text], the line is drawn at the top of a box taller than it. To center it vertically,
+ * let the text be as tall as its line within the box: `Modifier.fillMaxSize().wrapContentHeight()`.
+ * The font size still fits the whole box, since `wrapContentHeight()` keeps its maximum height.
  *
  * @param text what to write.
  * @param color the text color.
@@ -120,9 +124,11 @@ public fun AutoSizeText(
             val fontSize = remember(measurer, widestText, measuredStyle, constraints) {
                 measurer.largestFittingFontSize(widestText, measuredStyle, constraints)
             }
+            // Only as tall as its line, like Text: a box given a fixed height still draws the line
+            // at the top, and wrapContentHeight() in the caller's modifier can center it.
             Text(
                 text = text,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxWidth(),
                 style = textStyle.copy(fontSize = fontSize),
                 maxLines = 1,
                 softWrap = false,

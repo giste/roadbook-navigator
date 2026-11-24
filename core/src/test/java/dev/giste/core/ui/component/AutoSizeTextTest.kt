@@ -17,8 +17,11 @@
 
 package dev.giste.core.ui.component
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -27,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.text.TextLayoutResult
@@ -287,4 +291,79 @@ class AutoSizeTextTest {
 
         assertEquals(1, layoutOf("1234567890").lineCount)
     }
+
+    /**
+     * Shows "1" sized for "999,99" in a [WIDTH_LIMITED_BOX_WIDTH] × [TALL_BOX_HEIGHT] box, so the
+     * line is shorter than the box, with [modifier] on the text.
+     */
+    private fun showInTallBox(modifier: Modifier, widestText: String?) {
+        rule.setContent {
+            Box(modifier = Modifier.size(WIDTH_LIMITED_BOX_WIDTH, TALL_BOX_HEIGHT)) {
+                AutoSizeText(text = "1", color = Color.Red, modifier = modifier, widestText = widestText)
+            }
+        }
+    }
+
+    /** Asserts the shown "1" is as far from the top of its tall box as from the bottom. */
+    private fun assertCenteredInTallBox() {
+        val bounds = rule.onNodeWithText("1").getUnclippedBoundsInRoot()
+        val below = TALL_BOX_HEIGHT - bounds.bottom
+        assertTrue("${bounds.top} above, $below below", (bounds.top - below).value in -1f..1f)
+        assertTrue("${bounds.top} above", bounds.top > 0.dp)
+    }
+
+    @Test
+    fun autoSizeText_widestTextGivenAndWrapContentHeight_isCenteredVertically() {
+        showInTallBox(Modifier.fillMaxSize().wrapContentHeight(), widestText = "999,99")
+
+        assertCenteredInTallBox()
+    }
+
+    @Test
+    fun autoSizeText_wrapContentHeight_isCenteredVertically() {
+        // Without widestText the text is sized for itself, so give it a box limited by the width.
+        rule.setContent {
+            Box(modifier = Modifier.size(WIDTH_LIMITED_BOX_WIDTH, TALL_BOX_HEIGHT)) {
+                AutoSizeText(
+                    text = "999,99",
+                    color = Color.Red,
+                    modifier = Modifier.fillMaxSize().wrapContentHeight(),
+                )
+            }
+        }
+
+        val bounds = rule.onNodeWithText("999,99").getUnclippedBoundsInRoot()
+        val below = TALL_BOX_HEIGHT - bounds.bottom
+        assertTrue("${bounds.top} above, $below below", (bounds.top - below).value in -1f..1f)
+        assertTrue("${bounds.top} above", bounds.top > 0.dp)
+    }
+
+    @Test
+    fun autoSizeText_widestTextGivenAndFillMaxSize_staysAtTheTop() {
+        showInTallBox(Modifier.fillMaxSize(), widestText = "999,99")
+
+        assertEquals(0.dp, rule.onNodeWithText("1").getUnclippedBoundsInRoot().top)
+    }
+
+    @Test
+    fun autoSizeText_widestTextGivenAndWrapContentHeight_keepsTheWidestTextSize() {
+        rule.setContent {
+            Column {
+                AutoSizeText(text = "999,99", color = Color.Red, modifier = Modifier.size(WIDTH_LIMITED_BOX_WIDTH, 40.dp))
+                Box(modifier = Modifier.size(WIDTH_LIMITED_BOX_WIDTH, 40.dp)) {
+                    AutoSizeText(
+                        text = "1",
+                        color = Color.Red,
+                        modifier = Modifier.fillMaxSize().wrapContentHeight(),
+                        widestText = "999,99",
+                    )
+                }
+            }
+        }
+
+        assertEquals(shownLineHeight("999,99"), shownLineHeight("1"))
+    }
+
+    // Much taller than the line "999,99" fits in at WIDTH_LIMITED_BOX_WIDTH.
+    private val TALL_BOX_HEIGHT = 200.dp
 }
