@@ -19,13 +19,16 @@ package dev.giste.map.data
 
 import app.cash.turbine.test
 import dev.giste.map.FakeLogger
-import dev.giste.map.domain.InstalledMaps
-import dev.giste.map.domain.MapFile
+import dev.giste.map.domain.DeleteMapResult
+import dev.giste.map.domain.FileSize
+import dev.giste.map.domain.InstalledMapFile
+import dev.giste.map.domain.InstalledMapFiles
 import java.io.File
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -51,132 +54,128 @@ class LocalMapFileRepositoryTest {
     private fun TestScope.repository(folder: File = mapFolder, testChecker: MapFileChecker = checker) =
         LocalMapFileRepository(folder, testChecker, StandardTestDispatcher(testScheduler), logger)
 
-    private fun addFile(relativePath: String): File =
+    /** Writes a file of [size] bytes at [relativePath] in the map folder. */
+    private fun addFile(relativePath: String, size: Int = 10): File =
         File(mapFolder, relativePath).apply {
             parentFile?.mkdirs()
-            writeText("content does not matter: the checker is fake")
+            // The content does not matter: the checker is fake.
+            writeBytes(ByteArray(size))
         }
 
-    private fun mapFile(relativePath: String): MapFile {
+    /** The listed file expected for [relativePath], as [addFile] wrote it. */
+    private fun installed(
+        relativePath: String,
+        folder: String = "",
+        size: Long = 10,
+        readable: Boolean = true,
+    ): InstalledMapFile {
         val file = File(mapFolder, relativePath)
-        return MapFile(name = file.name, path = file.absolutePath)
+        return InstalledMapFile(
+            name = file.name,
+            path = file.absolutePath,
+            folder = folder,
+            size = FileSize(size),
+            readable = readable,
+        )
     }
 
-    @Test
-    fun installedMaps_missingFolder_createsItAndIsNone() = runTest {
-        repository().installedMaps.test {
-            assertEquals(InstalledMaps.None, awaitItem())
+    /** Collects the installed files once and returns them. */
+    private suspend fun LocalMapFileRepository.list(): InstalledMapFiles {
+        var result: InstalledMapFiles? = null
+        installedFiles.test {
+            result = awaitItem()
             awaitComplete()
         }
+        return checkNotNull(result)
+    }
+
+    // --- installedFiles ---
+
+    @Test
+    fun installedFiles_missingFolder_createsItAndIsEmpty() = runTest {
+        assertEquals(InstalledMapFiles.Listed(emptyList()), repository().list())
         assertTrue(mapFolder.isDirectory)
     }
 
     @Test
-    fun installedMaps_onlyOtherFiles_isNone() = runTest {
+    fun installedFiles_onlyOtherFiles_isEmpty() = runTest {
         addFile("readme.txt")
         addFile("spain.map.tmp")
 
-        repository().installedMaps.test {
-            assertEquals(InstalledMaps.None, awaitItem())
-            awaitComplete()
-        }
+        assertEquals(InstalledMapFiles.Listed(emptyList()), repository().list())
     }
 
     @Test
-    fun installedMaps_mapFiles_areAvailableInPathOrder() = runTest {
-        addFile("spain.map")
-        addFile("andorra.map")
+    fun installedFiles_mapFiles_areListedInPathOrderWithTheirSizes() = runTest {
+        addFile("spain.map", size = 300)
+        addFile("andorra.map", size = 20)
         addFile("notes.txt")
 
-        repository().installedMaps.test {
-            assertEquals(
-                InstalledMaps.Available(listOf(mapFile("andorra.map"), mapFile("spain.map"))),
-                awaitItem(),
-            )
-            awaitComplete()
-        }
+        assertEquals(
+            InstalledMapFiles.Listed(
+                listOf(installed("andorra.map", size = 20), installed("spain.map", size = 300)),
+            ),
+            repository().list(),
+        )
     }
 
     @Test
-    fun installedMaps_upperCaseExtension_isIncluded() = runTest {
+    fun installedFiles_upperCaseExtension_isIncluded() = runTest {
         addFile("PORTUGAL.MAP")
 
-        repository().installedMaps.test {
-            assertEquals(InstalledMaps.Available(listOf(mapFile("PORTUGAL.MAP"))), awaitItem())
-            awaitComplete()
-        }
+        assertEquals(InstalledMapFiles.Listed(listOf(installed("PORTUGAL.MAP"))), repository().list())
     }
 
     @Test
-    fun installedMaps_mapFilesInSubFolders_areIncluded() = runTest {
+    fun installedFiles_mapFilesInSubFolders_areListedWithTheirFolder() = runTest {
         addFile("europe/spain.map")
         addFile("europe/france/corsica.map")
 
-        repository().installedMaps.test {
-            assertEquals(
-                InstalledMaps.Available(
-                    listOf(mapFile("europe/france/corsica.map"), mapFile("europe/spain.map")),
+        assertEquals(
+            InstalledMapFiles.Listed(
+                listOf(
+                    installed("europe/france/corsica.map", folder = "europe/france"),
+                    installed("europe/spain.map", folder = "europe"),
                 ),
-                awaitItem(),
-            )
-            awaitComplete()
-        }
+            ),
+            repository().list(),
+        )
     }
 
     @Test
-    fun installedMaps_folderNamedLikeAMap_isNotAFile() = runTest {
+    fun installedFiles_folderNamedLikeAMap_isNotAFile() = runTest {
         File(mapFolder, "folder.map").mkdirs()
 
-        repository().installedMaps.test {
-            assertEquals(InstalledMaps.None, awaitItem())
-            awaitComplete()
-        }
+        assertEquals(InstalledMapFiles.Listed(emptyList()), repository().list())
     }
 
     @Test
-    fun installedMaps_someUnreadable_leavesThemOutAndLogs() = runTest {
+    fun installedFiles_unreadableFiles_areListedAsUnreadableAndLogged() = runTest {
         addFile("spain.map")
         addFile("damaged.map")
         unreadableNames += "damaged.map"
 
-        repository().installedMaps.test {
-            assertEquals(InstalledMaps.Available(listOf(mapFile("spain.map"))), awaitItem())
-            awaitComplete()
-        }
+        assertEquals(
+            InstalledMapFiles.Listed(listOf(installed("damaged.map", readable = false), installed("spain.map"))),
+            repository().list(),
+        )
         assertEquals(1, logger.warnings.size)
     }
 
     @Test
-    fun installedMaps_allUnreadable_isUnreadable() = runTest {
-        addFile("damaged.map")
-        unreadableNames += "damaged.map"
-
-        repository().installedMaps.test {
-            assertEquals(InstalledMaps.Unreadable, awaitItem())
-            awaitComplete()
-        }
-    }
-
-    @Test
-    fun installedMaps_folderIsAFile_isUnreadable() = runTest {
+    fun installedFiles_folderIsAFile_isFolderUnreadable() = runTest {
         mapFolder.writeText("a file where the folder should be")
 
-        repository().installedMaps.test {
-            assertEquals(InstalledMaps.Unreadable, awaitItem())
-            awaitComplete()
-        }
+        assertEquals(InstalledMapFiles.FolderUnreadable, repository().list())
         assertEquals(1, logger.warnings.size)
     }
 
     @Test
-    fun installedMaps_folderCannotBeListed_isUnreadable() = runTest {
+    fun installedFiles_folderCannotBeListed_isFolderUnreadable() = runTest {
         addFile("spain.map")
         mapFolder.setReadable(false)
         try {
-            repository().installedMaps.test {
-                assertEquals(InstalledMaps.Unreadable, awaitItem())
-                awaitComplete()
-            }
+            assertEquals(InstalledMapFiles.FolderUnreadable, repository().list())
         } finally {
             // Lets TemporaryFolder delete it.
             mapFolder.setReadable(true)
@@ -185,23 +184,20 @@ class LocalMapFileRepositoryTest {
     }
 
     @Test
-    fun installedMaps_fileSystemDeniesAccess_isUnreadableAndLogs() = runTest {
+    fun installedFiles_fileSystemDeniesAccess_isFolderUnreadableAndLogs() = runTest {
         addFile("spain.map")
         val failure = SecurityException("denied")
 
-        repository(testChecker = { throw failure }).installedMaps.test {
-            assertEquals(InstalledMaps.Unreadable, awaitItem())
-            awaitComplete()
-        }
+        assertEquals(InstalledMapFiles.FolderUnreadable, repository(testChecker = { throw failure }).list())
         assertEquals(listOf<Throwable>(failure), logger.loggedErrors)
     }
 
     @Test
-    fun installedMaps_unexpectedFailure_propagates() = runTest {
+    fun installedFiles_unexpectedFailure_propagates() = runTest {
         addFile("spain.map")
         val failure = IllegalStateException("a bug")
 
-        repository(testChecker = { throw failure }).installedMaps.test {
+        repository(testChecker = { throw failure }).installedFiles.test {
             // Coroutines may rebuild the exception across coroutines, so compare its contents.
             val error = awaitError()
             assertTrue(error is IllegalStateException)
@@ -210,17 +206,102 @@ class LocalMapFileRepositoryTest {
     }
 
     @Test
-    fun installedMaps_eachCollection_looksAgain() = runTest {
+    fun installedFiles_eachCollection_looksAgain() = runTest {
         val repository = repository()
-        repository.installedMaps.test {
-            assertEquals(InstalledMaps.None, awaitItem())
-            awaitComplete()
-        }
+        assertEquals(InstalledMapFiles.Listed(emptyList()), repository.list())
         addFile("spain.map")
 
-        repository.installedMaps.test {
-            assertEquals(InstalledMaps.Available(listOf(mapFile("spain.map"))), awaitItem())
-            awaitComplete()
+        assertEquals(InstalledMapFiles.Listed(listOf(installed("spain.map"))), repository.list())
+    }
+
+    // --- delete ---
+
+    @Test
+    fun delete_mapFile_deletesItAndIsDeleted() = runTest {
+        val file = addFile("spain.map")
+        addFile("andorra.map")
+
+        assertEquals(DeleteMapResult.Deleted, repository().delete(installed("spain.map")))
+        assertFalse(file.exists())
+        assertTrue(File(mapFolder, "andorra.map").exists())
+    }
+
+    @Test
+    fun delete_mapFileInASubFolder_deletesIt() = runTest {
+        val file = addFile("europe/spain.map")
+
+        assertEquals(
+            DeleteMapResult.Deleted,
+            repository().delete(installed("europe/spain.map", folder = "europe")),
+        )
+        assertFalse(file.exists())
+    }
+
+    @Test
+    fun delete_fileAlreadyGone_isDeleted() = runTest {
+        mapFolder.mkdirs()
+
+        assertEquals(DeleteMapResult.Deleted, repository().delete(installed("spain.map")))
+    }
+
+    @Test
+    fun delete_fileOutsideTheMapFolder_isFailedAndKeepsIt() = runTest {
+        mapFolder.mkdirs()
+        val outside = temporaryFolder.newFile("outside.map")
+        val file = installed("spain.map").copy(name = outside.name, path = outside.absolutePath)
+
+        assertEquals(DeleteMapResult.Failed, repository().delete(file))
+        assertTrue(outside.exists())
+        assertEquals(1, logger.warnings.size)
+    }
+
+    @Test
+    fun delete_pathLeavingTheMapFolder_isFailedAndKeepsTheFile() = runTest {
+        mapFolder.mkdirs()
+        val outside = temporaryFolder.newFile("outside.map")
+        val file = installed("../outside.map")
+
+        assertEquals(DeleteMapResult.Failed, repository().delete(file))
+        assertTrue(outside.exists())
+    }
+
+    @Test
+    fun delete_otherFileInTheMapFolder_isFailedAndKeepsIt() = runTest {
+        val notes = addFile("notes.txt")
+
+        assertEquals(DeleteMapResult.Failed, repository().delete(installed("notes.txt")))
+        assertTrue(notes.exists())
+    }
+
+    @Test
+    fun delete_folderNamedLikeAMap_isFailedAndKeepsIt() = runTest {
+        val folder = File(mapFolder, "folder.map").apply { mkdirs() }
+
+        assertEquals(DeleteMapResult.Failed, repository().delete(installed("folder.map")))
+        assertTrue(folder.isDirectory)
+        assertEquals(1, logger.warnings.size)
+    }
+
+    @Test
+    fun delete_fileSystemRefuses_isFailedAndKeepsTheFile() = runTest {
+        val file = addFile("spain.map")
+        mapFolder.setWritable(false)
+        try {
+            assertEquals(DeleteMapResult.Failed, repository().delete(installed("spain.map")))
+            assertTrue(file.exists())
+        } finally {
+            // Lets TemporaryFolder delete it.
+            mapFolder.setWritable(true)
         }
+    }
+
+    @Test
+    fun delete_invalidPath_isFailedAndLogs() = runTest {
+        mapFolder.mkdirs()
+        // The file system rejects a path with a NUL character with an IOException.
+        val file = installed("spain.map").copy(path = File(mapFolder, "bad\u0000.map").path)
+
+        assertEquals(DeleteMapResult.Failed, repository().delete(file))
+        assertEquals(1, logger.loggedErrors.size)
     }
 }

@@ -9,19 +9,22 @@ Shows an **offline map** that follows the device location, turned so the directi
 - Find the mapsforge `.map` files installed on the device, and check that each one can be read.
 - Draw them with [VTM](https://github.com/mapsforge/vtm) (mapsforge's OpenGL vector map), centered on the location and turned to its bearing.
 - Say so when no map is installed, or when none can be read.
+- Manage the installed maps: list them with their size, mark the ones that cannot be read, and delete them.
 
-It does **not** read the location itself: the app forwards the `LocationFix`es of its location provider (in Roadbook Navigator, `:location`) through `MapLocationSource` (AGENTS.md §4.2). It does **not** store its settings either: the app provides them through `MapSettingsSource` (AGENTS.md §4.4; in Roadbook Navigator, `:settings` does). It does **not** install maps yet: map management (getting, listing and deleting map files) is planned as a next step.
+It does **not** read the location itself: the app forwards the `LocationFix`es of its location provider (in Roadbook Navigator, `:location`) through `MapLocationSource` (AGENTS.md §4.2). It does **not** store its settings either: the app provides them through `MapSettingsSource` (AGENTS.md §4.4; in Roadbook Navigator, `:settings` does). It does **not** download maps yet: that is the next step of map management. For now, maps are copied into the folder by hand (see Testing notes).
 
 ## Package layout
 
 ```
 dev/giste/map/
-├── MapViewer, MapLocationSource, MapSettings, MapSettingsSource,
+├── MapViewer, MapManager, MapLocationSource, MapSettings, MapSettingsSource,
 │   MapZoomLevel, MapTilt                                      ← public API
-├── domain/         InstalledMaps (+ MapFile), MapFileRepository, MapCenter (+ follow)
+├── domain/         InstalledMapFiles (+ InstalledMapFile, FileSize, toInstalledMaps, DeleteMapResult),
+│                   InstalledMaps (+ MapFile), MapFileRepository, MapCenter (+ follow)
 ├── data/           LocalMapFileRepository, MapFileChecker (+ VtmMapFileChecker), MapFolder
 ├── ui/             MapViewModel, MapUiState, MapViewerContent (+ MapViewerTestTags and previews),
-│                   VtmMap, MapCamera
+│                   VtmMap, MapCamera, MapManagerViewModel, MapManagerUiState,
+│                   MapManagerContent (+ MapManagerTestTags and previews)
 └── di/             MapModule
 ```
 
@@ -31,7 +34,8 @@ Package `dev.giste.map`:
 
 | Type | Purpose |
 |---|---|
-| `MapViewer(modifier, interactive = false)` | The map, with its state from Hilt. Place it anywhere: a whole screen or part of one. Each time it is shown it looks for the installed maps. While it is shown and has maps, it collects `MapLocationSource.locations`. Read-only by default: touches pass through it, and it always shows the settings' zoom and tilt. With `interactive = true` the user may pan, zoom, rotate and tilt it; the next fix centers it again, keeping the zoom and tilt. |
+| `MapViewer(modifier, interactive = false, showManageButton = false, onManageMaps = null)` | The map, with its state from Hilt. Place it anywhere: a whole screen or part of one. Each time it is shown it looks for the installed maps. While it is shown and has maps, it collects `MapLocationSource.locations`. Read-only by default: touches pass through it, and it always shows the settings' zoom and tilt. With `interactive = true` the user may pan, zoom, rotate and tilt it; the next fix centers it again, keeping the zoom and tilt. With `onManageMaps`, a manage button (a map icon) floats in the top end corner while `showManageButton` is set, and always when there is no map to draw; the app opens `MapManager` from it. |
+| `MapManager(onBack, modifier)` | The map manager screen, with its state from Hilt: a top bar with a back button, and the installed map files with their sub-folder and size. Unreadable files have a warning mark. Each has a delete button, which asks first. The app adds it as a destination of its own; its back button calls `onBack`, and the system back gesture is the app's. |
 | `MapLocationSource` | Input port: a `Flow` of `:geo` `LocationFix`es. The app implements it and binds it with Hilt. Only the position and the bearing are used. A fix without a bearing keeps the last one. |
 | `MapSettings` | `zoomLevel` and `tilt`, with documented defaults. |
 | `MapZoomLevel` | Web map zoom level in `2..20` (VTM's limits), default 18. `of` rejects values out of range, `coerce` clamps them. |
@@ -43,7 +47,7 @@ Package `dev.giste.map`:
 ## Inputs and outputs
 
 - **Inputs:** a `MapLocationSource` and a `MapSettingsSource`, which the app must bind in `SingletonComponent`. Without them the Hilt graph does not compile as soon as `MapViewer` is used. The map files, in the app's `map_files` folder (see Persisted state).
-- **Outputs:** none besides the UI.
+- **Outputs:** none besides the UI, and the `onManageMaps` callback of `MapViewer`.
 
 ## Settings
 
@@ -73,12 +77,21 @@ No DataStore. The map files live in `map_files` inside the app's **no-backup** f
 - **View lifecycle.** The `MapView` pauses and resumes with the lifecycle, and is destroyed when it leaves the composition, not only when the lifecycle ends: navigating to another screen disposes the dashboard, and otherwise every return would leak a view and its threads. A different set of files creates a new view, since VTM sets its tile source once.
 - **Default theme.** The map uses VTM's `DEFAULT` render theme in both light and dark app themes, as the previous project did. A dark map theme could follow later.
 - **No coordinates in logs.** Only file names and failures are logged.
+- **One look at the folder for both screens.** `MapFileRepository.installedFiles` lists every `.map` file, readable or not, with its size and sub-folder. The manager shows that list; the viewer sums it up with `toInstalledMaps()` (readable files only), so both agree on what is installed.
+- **Unreadable files are listed.** The viewer leaves them out, so without the manager a damaged file could only be removed by hand. The manager marks them with a warning icon, so they can be deleted.
+- **Deleting is guarded.** It always asks first, in a dialog (AGENTS.md §5.3). The repository deletes only `.map` files inside the map folder (checked on the canonical path), whatever path it is given. A file already gone counts as deleted. Failures are a `DeleteMapResult.Failed`, shown in a snackbar.
+- **Icons for actions.** Manage, back, delete, confirm (a filled error-colored delete button), cancel (an outlined close button) and the unreadable mark are icons, not text: fewer strings to translate, and the same space in every language. File sizes come from Android's `Formatter.formatShortFileSize`, already localized.
+- **The manage button.** It shows while the app says so (in Roadbook Navigator, only while stopped, so a touch while riding cannot leave the dashboard) and always when there is no map to draw, since managing maps is then the only way forward. It never takes the focus, so a remote control's arrow keys cannot land on it.
+- **Changes reach the viewer by being shown again.** The manager is a separate destination, so the dashboard (and its viewer) leaves the composition while it is open, and the viewer looks for the maps again when it comes back. Maps downloaded in the background (next step) will need the viewer to notice them while it is shown.
 
 ## Testing notes
 
 - `VtmMapFileCheckerTest` and `LocalMapFileRepositoryIntegrationTest` use real VTM on small map files written by `writeMapFile` (`TestMapFiles.kt`): a valid mapsforge header and an empty sub-file, so no real map has to be shipped. It also writes damaged variants (wrong magic bytes, unsupported version, truncated).
 - `LocalMapFileRepositoryTest` uses a `TemporaryFolder` and a fake checker. The repository's dispatcher must share `runTest`'s scheduler (`StandardTestDispatcher(testScheduler)`), or `flowOn` never runs and the test hangs.
+- `LocalMapFileRepositoryTest` also covers deleting: files in sub-folders, files already gone, paths outside the folder (direct or with `..`), files that are not maps, a folder the file system will not change (`setWritable(false)`), and a path with a NUL character, which `java.io.File` rejects with an `IOException`.
 - `MapViewModelTest` uses `FakeMapFileRepository`, `FakeMapLocationSource` (which counts its collectors), `FakeMapSettingsSource`, `FakeLogger` and `MainDispatcherRule`.
 - `MapCameraTest` runs VTM's pure-Java `MapPosition` on the JVM, and checks that `MapZoomLevel` and `MapTilt` match VTM's limits.
+- `MapManagerViewModelTest` uses `FakeMapFileRepository`, whose deletions answer a chosen `DeleteMapResult` and do not change the listed files.
+- `MapManagerContentTest` runs on Robolectric. It finds rows by `MapManagerTestTags.file(file)`, and the icon-only buttons and marks by their tags inside a row; sizes are compared with `Formatter.formatShortFileSize` in the test's locale.
 - `MapViewerContentTest` runs on Robolectric (SDK 35) with a placeholder in the map slot. `VtmMap` needs OpenGL and VTM's native library, which neither Robolectric nor previews have, so it is checked on a device: copy a map file with `adb push spain.map /data/local/tmp/` then `adb shell run-as dev.giste.roadbooknavigator sh -c 'mkdir -p no_backup/map_files && cp /data/local/tmp/spain.map no_backup/map_files/'`, and open the dashboard again. Maps are at https://download.mapsforge.org/maps/v5/.
 - `:core` does not share its test doubles, so `FakeLogger` lives in this module's test source set.

@@ -19,8 +19,10 @@ package dev.giste.map.data
 
 import dev.giste.core.coroutines.IoDispatcher
 import dev.giste.core.logging.Logger
-import dev.giste.map.domain.InstalledMaps
-import dev.giste.map.domain.MapFile
+import dev.giste.map.domain.DeleteMapResult
+import dev.giste.map.domain.FileSize
+import dev.giste.map.domain.InstalledMapFile
+import dev.giste.map.domain.InstalledMapFiles
 import dev.giste.map.domain.MapFileRepository
 import java.io.File
 import java.io.IOException
@@ -30,19 +32,20 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.withContext
 
 /**
- * Finds the map files in [folder] and its sub-folders: every file with the `.map` extension
- * (in any case) whose header the renderer can read.
+ * Finds the map files in [folder] and its sub-folders (every file with the `.map` extension, in
+ * any case), checks which ones the renderer can read, and deletes them.
  *
  * The folder is created if it does not exist, so map files can be copied into it. Unreadable files
- * are left out and logged with their name. If the folder cannot be read, the result is
- * [InstalledMaps.Unreadable].
+ * are listed as such and logged with their name. If the folder cannot be read, the result is
+ * [InstalledMapFiles.FolderUnreadable].
  *
  * @param folder the folder that holds the map files.
  * @param checker tells which files the renderer can open.
- * @param ioDispatcher the dispatcher the file system is read on.
- * @param logger logs left-out files and failures.
+ * @param ioDispatcher the dispatcher the file system is read and changed on.
+ * @param logger logs unreadable files and failures.
  */
 internal class LocalMapFileRepository @Inject constructor(
     @param:MapFolder private val folder: File,
@@ -51,45 +54,81 @@ internal class LocalMapFileRepository @Inject constructor(
     private val logger: Logger,
 ) : MapFileRepository {
 
-    override val installedMaps: Flow<InstalledMaps> = flow { emit(findMaps()) }
+    override val installedFiles: Flow<InstalledMapFiles> = flow { emit(findFiles()) }
         .catch { error ->
             // Only file-system failures are expected here. Anything else is a bug and propagates.
-            if (error !is IOException && error !is SecurityException) throw error
+            if (!error.isFileSystemFailure()) throw error
             logger.e(error, "Cannot read the map folder")
-            emit(InstalledMaps.Unreadable)
+            emit(InstalledMapFiles.FolderUnreadable)
         }
         .flowOn(ioDispatcher)
 
-    /** Looks for the map files, checks them and sums up the result. */
-    private fun findMaps(): InstalledMaps {
+    override suspend fun delete(file: InstalledMapFile): DeleteMapResult = withContext(ioDispatcher) {
+        try {
+            deleteFile(File(file.path))
+        } catch (error: Exception) {
+            // Only file-system failures are expected here (cancellation is not one, so it is
+            // rethrown too). Anything else is a bug and propagates.
+            if (!error.isFileSystemFailure()) throw error
+            logger.e(error, "Cannot delete the map file %s", file.name)
+            DeleteMapResult.Failed
+        }
+    }
+
+    /** Looks for the map files and checks them. */
+    private fun findFiles(): InstalledMapFiles {
         folder.mkdirs()
         if (!folder.isDirectory) {
             logger.w("The map folder does not exist and cannot be created")
-            return InstalledMaps.Unreadable
+            return InstalledMapFiles.FolderUnreadable
         }
         // listFiles() returns null when the folder cannot be read, so walk() would silently find
         // nothing: check it, to report an unreadable folder rather than no maps.
         if (folder.listFiles() == null) {
             logger.w("The map folder cannot be read")
-            return InstalledMaps.Unreadable
+            return InstalledMapFiles.FolderUnreadable
         }
-        val candidates = folder.walk()
+        val files = folder.walk()
             .filter { it.isFile && it.extension.equals(MAP_FILE_EXTENSION, ignoreCase = true) }
             .sortedBy { it.path }
+            .map { file ->
+                val problem = checker.problemWith(file)
+                if (problem != null) logger.w("Unreadable map file %s: %s", file.name, problem)
+                InstalledMapFile(
+                    name = file.name,
+                    path = file.absolutePath,
+                    folder = file.parentFile?.relativeTo(folder)?.invariantSeparatorsPath.orEmpty(),
+                    size = FileSize(file.length()),
+                    readable = problem == null,
+                )
+            }
             .toList()
-        if (candidates.isEmpty()) return InstalledMaps.None
-
-        val readable = candidates.filter { file ->
-            val problem = checker.problemWith(file)
-            if (problem != null) logger.w("Leaving out the map file %s: %s", file.name, problem)
-            problem == null
-        }
-        return if (readable.isEmpty()) {
-            InstalledMaps.Unreadable
-        } else {
-            InstalledMaps.Available(readable.map { MapFile(name = it.name, path = it.absolutePath) })
-        }
+        return InstalledMapFiles.Listed(files)
     }
+
+    /**
+     * Deletes [file], but only if it is a map file inside [folder]: the path comes from outside
+     * the repository, and nothing else in the app's storage may be deleted through it.
+     */
+    private fun deleteFile(file: File): DeleteMapResult {
+        val canonical = file.canonicalFile
+        val inFolder = canonical.toPath().startsWith(folder.canonicalFile.toPath())
+        if (!inFolder || !canonical.extension.equals(MAP_FILE_EXTENSION, ignoreCase = true)) {
+            logger.w("Not deleting %s: it is not a map file in the map folder", file.name)
+            return DeleteMapResult.Failed
+        }
+        // A file that is already gone counts as deleted: the rider wanted it gone.
+        if (!canonical.exists()) return DeleteMapResult.Deleted
+        if (canonical.isFile && canonical.delete()) {
+            logger.i("Deleted the map file %s", file.name)
+            return DeleteMapResult.Deleted
+        }
+        logger.w("Cannot delete the map file %s", file.name)
+        return DeleteMapResult.Failed
+    }
+
+    /** Whether this is a failure of the file system, which is expected and reported. */
+    private fun Throwable.isFileSystemFailure(): Boolean = this is IOException || this is SecurityException
 
     /** Names of the files and folder this repository uses. */
     companion object {

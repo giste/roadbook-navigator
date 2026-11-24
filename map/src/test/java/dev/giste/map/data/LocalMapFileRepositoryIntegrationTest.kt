@@ -19,8 +19,9 @@ package dev.giste.map.data
 
 import app.cash.turbine.test
 import dev.giste.map.FakeLogger
-import dev.giste.map.domain.InstalledMaps
-import dev.giste.map.domain.MapFile
+import dev.giste.map.domain.FileSize
+import dev.giste.map.domain.InstalledMapFile
+import dev.giste.map.domain.InstalledMapFiles
 import java.io.File
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -38,21 +39,32 @@ class LocalMapFileRepositoryIntegrationTest {
     private val logger = FakeLogger()
 
     @Test
-    fun installedMaps_validAndDamagedFiles_keepsOnlyTheValidOnes() = runTest {
+    fun installedFiles_validAndDamagedFiles_marksOnlyTheValidOnesReadable() = runTest {
         val folder = temporaryFolder.newFolder("map_files")
         val valid = writeMapFile(File(folder, "valid.map"))
-        File(folder, "damaged.map").writeText("not a map")
-        writeMapFile(File(folder, "future.map"), fileVersion = 99)
+        val damaged = File(folder, "damaged.map").apply { writeText("not a map") }
+        val future = writeMapFile(File(folder, "future.map"), fileVersion = 99)
         val repository =
             LocalMapFileRepository(folder, VtmMapFileChecker(), StandardTestDispatcher(testScheduler), logger)
 
-        repository.installedMaps.test {
+        repository.installedFiles.test {
             assertEquals(
-                InstalledMaps.Available(listOf(MapFile(name = "valid.map", path = valid.absolutePath))),
+                InstalledMapFiles.Listed(
+                    listOf(installed(damaged, readable = false), installed(future, readable = false), installed(valid, readable = true)),
+                ),
                 awaitItem(),
             )
             awaitComplete()
         }
         assertEquals(2, logger.warnings.size)
     }
+
+    /** [file] as listed, in the map folder itself. */
+    private fun installed(file: File, readable: Boolean) = InstalledMapFile(
+        name = file.name,
+        path = file.absolutePath,
+        folder = "",
+        size = FileSize(file.length()),
+        readable = readable,
+    )
 }

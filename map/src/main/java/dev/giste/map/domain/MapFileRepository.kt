@@ -23,10 +23,20 @@ import kotlinx.coroutines.flow.Flow
 internal interface MapFileRepository {
 
     /**
-     * The installed maps.
+     * Every installed map file, readable or not.
      *
-     * A cold flow: each collection looks for the files once, emits the result and completes. It
-     * never throws: failures are [InstalledMaps.Unreadable].
+     * A cold flow: each collection looks for the files once, emits the result and completes, so
+     * collect it again to see changes. It never throws: a folder that cannot be read is
+     * [InstalledMapFiles.FolderUnreadable].
      */
-    val installedMaps: Flow<InstalledMaps>
+    val installedFiles: Flow<InstalledMapFiles>
+
+    /**
+     * Deletes [file] from the device. Main-safe.
+     *
+     * @param file a file listed by [installedFiles].
+     * @return [DeleteMapResult.Deleted] once the file is gone (also when it was already gone), or
+     * [DeleteMapResult.Failed] when it is still there. It never throws, except to cancel.
+     */
+    suspend fun delete(file: InstalledMapFile): DeleteMapResult
 }

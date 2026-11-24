@@ -44,14 +44,33 @@ import dev.giste.map.ui.MapViewerContent
  * [MapLocationSource] and a [MapSettingsSource]. If the location needs a permission, show the
  * viewer only once it is granted.
  *
+ * With [onManageMaps], a manage button floats in the top end corner: while [showManageButton] is
+ * set (e.g. only while the vehicle is stopped), and always when there is no map to draw. The app
+ * opens [MapManager] from it. The button never takes the focus.
+ *
  * @param modifier the modifier applied to the viewer.
  * @param interactive whether the user may move, zoom, rotate and tilt the map with gestures.
  * Defaults to `false`: a read-only map.
+ * @param showManageButton whether to show the manage button while there are maps to draw.
+ * Defaults to `false`.
+ * @param onManageMaps called when the manage button is pressed, or `null` (the default) for no
+ * manage button at all.
  */
 @Composable
-public fun MapViewer(modifier: Modifier = Modifier, interactive: Boolean = false) {
+public fun MapViewer(
+    modifier: Modifier = Modifier,
+    interactive: Boolean = false,
+    showManageButton: Boolean = false,
+    onManageMaps: (() -> Unit)? = null,
+) {
     val viewModel: MapViewModel = hiltViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    MapViewerContent(state = state, modifier = modifier, interactive = interactive)
+    MapViewerContent(
+        state = state,
+        modifier = modifier,
+        interactive = interactive,
+        showManageButton = showManageButton,
+        onManageMaps = onManageMaps,
+    )
 }

@@ -28,8 +28,9 @@ import dev.giste.map.MapSettings
 import dev.giste.map.MapTilt
 import dev.giste.map.MapZoomLevel
 import dev.giste.map.domain.FakeMapFileRepository
-import dev.giste.map.domain.InstalledMaps
+import dev.giste.map.domain.InstalledMapFiles
 import dev.giste.map.domain.MapCenter
+import dev.giste.map.domain.testInstalledFile
 import dev.giste.map.domain.testMapFile
 import dev.giste.map.testFix
 import java.io.IOException
@@ -44,7 +45,15 @@ class MapViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val files = listOf(testMapFile("north.map"), testMapFile("south.map"))
-    private val repository = FakeMapFileRepository(InstalledMaps.Available(files))
+    private val repository = FakeMapFileRepository(
+        InstalledMapFiles.Listed(
+            listOf(
+                testInstalledFile("damaged.map", readable = false),
+                testInstalledFile("north.map"),
+                testInstalledFile("south.map"),
+            ),
+        ),
+    )
     private val settingsSource = FakeMapSettingsSource()
     private val locationSource = FakeMapLocationSource()
     private val logger = FakeLogger()
@@ -58,7 +67,7 @@ class MapViewModelTest {
 
     @Test
     fun uiState_noMaps_isNoMapsAndDoesNotFollowTheLocation() = runTest {
-        repository.result = InstalledMaps.None
+        repository.result = InstalledMapFiles.Listed(emptyList())
         val viewModel = viewModel()
 
         viewModel.uiState.test {
@@ -70,13 +79,24 @@ class MapViewModelTest {
 
     @Test
     fun uiState_unreadableMaps_isUnreadableMapsAndDoesNotFollowTheLocation() = runTest {
-        repository.result = InstalledMaps.Unreadable
+        repository.result = InstalledMapFiles.FolderUnreadable
         val viewModel = viewModel()
 
         viewModel.uiState.test {
             assertEquals(MapUiState.Loading, awaitItem())
             assertEquals(MapUiState.UnreadableMaps, awaitItem())
             assertEquals(0, locationSource.collectors)
+        }
+    }
+
+    @Test
+    fun uiState_onlyUnreadableFiles_isUnreadableMaps() = runTest {
+        repository.result = InstalledMapFiles.Listed(listOf(testInstalledFile("damaged.map", readable = false)))
+        val viewModel = viewModel()
+
+        viewModel.uiState.test {
+            assertEquals(MapUiState.Loading, awaitItem())
+            assertEquals(MapUiState.UnreadableMaps, awaitItem())
         }
     }
 
@@ -180,7 +200,7 @@ class MapViewModelTest {
         val viewModel = viewModel()
         viewModel.uiState.test { skipItems(2) }
         testScheduler.advanceTimeBy(6_000)
-        repository.result = InstalledMaps.None
+        repository.result = InstalledMapFiles.Listed(emptyList())
 
         viewModel.uiState.test {
             // The stale value is replayed first, then the new search replaces it.

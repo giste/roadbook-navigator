@@ -29,6 +29,7 @@ import dev.giste.map.domain.InstalledMaps
 import dev.giste.map.domain.MapCenter
 import dev.giste.map.domain.MapFileRepository
 import dev.giste.map.domain.follow
+import dev.giste.map.domain.toInstalledMaps
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -38,6 +39,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.stateIn
 
@@ -82,7 +84,8 @@ internal class MapViewModel @Inject constructor(
      */
     // flatMapLatest is still experimental in kotlinx.coroutines.
     @OptIn(ExperimentalCoroutinesApi::class)
-    val uiState: StateFlow<MapUiState> = mapFileRepository.installedMaps
+    val uiState: StateFlow<MapUiState> = mapFileRepository.installedFiles
+        .map { it.toInstalledMaps() }
         .flatMapLatest { maps ->
             when (maps) {
                 InstalledMaps.None -> flowOf(MapUiState.NoMaps)

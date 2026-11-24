@@ -22,21 +22,51 @@ import kotlinx.coroutines.flow.flow
 
 /**
  * [MapFileRepository] for tests: each collection emits [result] and completes, like the real one,
- * and is counted.
+ * and is counted. Deletions answer [deleteResult] and are recorded; they do not change [result].
  *
- * @param result the installed maps to report.
+ * @param result the installed map files to report.
  */
-internal class FakeMapFileRepository(var result: InstalledMaps) : MapFileRepository {
+internal class FakeMapFileRepository(var result: InstalledMapFiles) : MapFileRepository {
 
-    /** How many times [installedMaps] was collected. */
+    /** How many times [installedFiles] was collected. */
     var collections: Int = 0
         private set
 
-    override val installedMaps: Flow<InstalledMaps> = flow {
+    /** What [delete] answers. */
+    var deleteResult: DeleteMapResult = DeleteMapResult.Deleted
+
+    /** The files passed to [delete], in call order. */
+    val deleted: MutableList<InstalledMapFile> = mutableListOf()
+
+    override val installedFiles: Flow<InstalledMapFiles> = flow {
         collections++
         emit(result)
     }
+
+    override suspend fun delete(file: InstalledMapFile): DeleteMapResult {
+        deleted += file
+        return deleteResult
+    }
 }
 
-/** A readable map file for tests. */
+/** A readable map file for tests, at `/maps/<name>`. */
 internal fun testMapFile(name: String = "spain.map"): MapFile = MapFile(name = name, path = "/maps/$name")
+
+/**
+ * An installed map file for tests, at `/maps/<name>` like [testMapFile], in the map folder itself.
+ *
+ * @param name the file name.
+ * @param readable whether the renderer can open it.
+ * @param size its size in bytes.
+ */
+internal fun testInstalledFile(
+    name: String = "spain.map",
+    readable: Boolean = true,
+    size: Long = 1_000,
+): InstalledMapFile = InstalledMapFile(
+    name = name,
+    path = "/maps/$name",
+    folder = "",
+    size = FileSize(size),
+    readable = readable,
+)
