@@ -26,10 +26,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.InputMode
+import androidx.compose.ui.input.InputModeManager
+import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
@@ -40,6 +44,7 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -49,6 +54,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.requestFocus
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.giste.core.ui.theme.GisteTheme
@@ -142,6 +148,32 @@ class DashboardContentTest {
 
         composeRule.onNodeWithText("12.35").assertExists()
         composeRule.onNodeWithText("234.6").assertExists()
+    }
+
+    @Test
+    fun dashboardContent_portrait_centersTheDistancesVertically() {
+        show(moving, width = 500.dp, height = 1_000.dp)
+
+        assertCenteredVertically(value = "12.35", reading = partial())
+        assertCenteredVertically(value = "234.6", reading = total())
+    }
+
+    @Test
+    fun dashboardContent_landscape_centersTheDistancesVertically() {
+        show(moving, width = 1_000.dp, height = 500.dp)
+
+        assertCenteredVertically(value = "12.35", reading = partial())
+        assertCenteredVertically(value = "234.6", reading = total())
+    }
+
+    /** Asserts the line of [value] is as far from the top of [reading] as from its bottom. */
+    private fun assertCenteredVertically(value: String, reading: SemanticsNodeInteraction) {
+        val box = reading.getUnclippedBoundsInRoot()
+        val line = composeRule.onNodeWithText(value).getUnclippedBoundsInRoot()
+        val above = line.top - box.top
+        val below = box.bottom - line.bottom
+        assertTrue("$value: $above above, $below below", (above - below).value in -1f..1f)
+        assertTrue("$value: $above above", above > 0.dp)
     }
 
     @Test
@@ -382,6 +414,23 @@ class DashboardContentTest {
         composeRule.onNodeWithTag(DashboardTestTags.SETTINGS).performClick()
 
         assertEquals(1, settingsOpened)
+    }
+
+    @Test
+    fun dashboardContent_keyModeFocusRequestedOnTheSettingsButton_buttonDoesNotTakeIt() {
+        lateinit var inputModeManager: InputModeManager
+        composeRule.setContent {
+            inputModeManager = LocalInputModeManager.current
+            TestDashboard(DashboardUiState.INITIAL)
+        }
+        // As after a key of the remote: in touch mode no button takes the focus anyway.
+        composeRule.runOnIdle { inputModeManager.requestInputMode(InputMode.Keyboard) }
+        val button = composeRule.onNodeWithTag(DashboardTestTags.SETTINGS)
+
+        // Where an unbound arrow or Tab key would move the focus.
+        button.requestFocus()
+
+        button.assert(isFocused().not())
     }
 
     @Test
