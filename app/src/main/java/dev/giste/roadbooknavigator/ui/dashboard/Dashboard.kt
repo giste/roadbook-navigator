@@ -45,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -401,6 +402,11 @@ private fun SettingsSlot(
  * shows a larger gear. Without a container it reads as part of the total's box rather than as a
  * separate control, as in the previous app; the primary color keeps it easy to spot.
  *
+ * It never takes the focus. It is meant to be touched, and the remote's keys act on the dashboard as
+ * a whole. Otherwise, in key mode (after a key press), an arrow or Tab key not bound to a remote
+ * action would move the focus onto it: it would draw its focus circle, and an Enter or centre key
+ * would leave the dashboard and stop the odometer.
+ *
  * @param onClick called when the button is pressed.
  * @param modifier applied to the button. It sets the button's size.
  */
@@ -408,7 +414,9 @@ private fun SettingsSlot(
 private fun SettingsButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     IconButton(
         onClick = onClick,
-        modifier = modifier.testTag(DashboardTestTags.SETTINGS),
+        modifier = modifier
+            .testTag(DashboardTestTags.SETTINGS)
+            .focusProperties { canFocus = false },
         colors = IconButtonDefaults.iconButtonColors(
             contentColor = MaterialTheme.colorScheme.primary,
         ),
@@ -496,23 +504,20 @@ private const val PHONE_PORTRAIT = "spec:width=411dp,height=891dp,dpi=420"
 /** A typical phone in landscape. */
 private const val PHONE_LANDSCAPE = "spec:width=891dp,height=411dp,dpi=420"
 
-/** Preview sample: moving, with ordinary distances. */
-private val MOVING = DashboardUiState(
-    odometer = OdometerUiState.Available(
-        partial = Distance.meters(12_345.0),
-        total = Distance.meters(234_567.0),
-    ),
-    showStoppedActions = false,
+/**
+ * The largest distances shown (999.99 and 9,999.9), so the previews show the digits at the size
+ * they keep however long the distances get.
+ */
+private val LARGEST_DISTANCES = OdometerUiState.Available(
+    partial = Distance.meters(999_990.0),
+    total = Distance.meters(9_999_900.0),
 )
 
-/** Preview sample: stopped, with the largest distances shown (999.99 and 9,999.9). */
-private val LARGEST_DISTANCES = DashboardUiState(
-    odometer = OdometerUiState.Available(
-        partial = Distance.meters(999_990.0),
-        total = Distance.meters(9_999_900.0),
-    ),
-    showStoppedActions = true,
-)
+/** Preview sample: stopped, with the settings and import buttons. */
+private val STOPPED = DashboardUiState(odometer = LARGEST_DISTANCES, showStoppedActions = true)
+
+/** Preview sample: moving, without the settings and import buttons. */
+private val MOVING = DashboardUiState(odometer = LARGEST_DISTANCES, showStoppedActions = false)
 
 /** The dashboard in [state], with placeholders instead of the roadbook and the map. */
 @Composable
@@ -537,28 +542,31 @@ private fun DashboardPreview(state: DashboardUiState) {
     }
 }
 
-@Preview(name = "Tab Active3 landscape, light", device = TAB_ACTIVE3_LANDSCAPE, uiMode = Configuration.UI_MODE_NIGHT_NO)
-@Preview(name = "Tab Active3 landscape, dark", device = TAB_ACTIVE3_LANDSCAPE, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Preview(name = "Tab Active3 portrait, light", device = TAB_ACTIVE3_PORTRAIT, uiMode = Configuration.UI_MODE_NIGHT_NO)
-@Preview(name = "Tab Active3 portrait, dark", device = TAB_ACTIVE3_PORTRAIT, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(name = "Tab Active3 landscape, stopped, light", device = TAB_ACTIVE3_LANDSCAPE, uiMode = Configuration.UI_MODE_NIGHT_NO)
+@Preview(name = "Tab Active3 landscape, stopped, dark", device = TAB_ACTIVE3_LANDSCAPE, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(name = "Tab Active3 portrait, stopped, light", device = TAB_ACTIVE3_PORTRAIT, uiMode = Configuration.UI_MODE_NIGHT_NO)
+@Preview(name = "Tab Active3 portrait, stopped, dark", device = TAB_ACTIVE3_PORTRAIT, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
-private fun DashboardTabletPreview() {
-    DashboardPreview(MOVING)
+private fun DashboardTabletStoppedPreview() {
+    DashboardPreview(STOPPED)
 }
 
-@Preview(name = "Phone portrait, light", device = PHONE_PORTRAIT, uiMode = Configuration.UI_MODE_NIGHT_NO)
-@Preview(name = "Phone portrait, dark", device = PHONE_PORTRAIT, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(name = "Phone portrait, stopped, light", device = PHONE_PORTRAIT, uiMode = Configuration.UI_MODE_NIGHT_NO)
+@Preview(name = "Phone portrait, stopped, dark", device = PHONE_PORTRAIT, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(name = "Phone landscape, stopped, light", device = PHONE_LANDSCAPE, uiMode = Configuration.UI_MODE_NIGHT_NO)
+@Preview(name = "Phone landscape, stopped, dark", device = PHONE_LANDSCAPE, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
-private fun DashboardPhonePortraitPreview() {
-    DashboardPreview(MOVING)
+private fun DashboardPhoneStoppedPreview() {
+    DashboardPreview(STOPPED)
 }
 
-@Preview(name = "Phone portrait, largest distances", device = PHONE_PORTRAIT, uiMode = Configuration.UI_MODE_NIGHT_NO)
-@Preview(name = "Tab Active3 portrait, largest distances", device = TAB_ACTIVE3_PORTRAIT, uiMode = Configuration.UI_MODE_NIGHT_NO)
-@Preview(name = "Phone landscape, largest distances", device = PHONE_LANDSCAPE, uiMode = Configuration.UI_MODE_NIGHT_NO)
+@Preview(name = "Tab Active3 landscape, moving, light", device = TAB_ACTIVE3_LANDSCAPE, uiMode = Configuration.UI_MODE_NIGHT_NO)
+@Preview(name = "Tab Active3 landscape, moving, dark", device = TAB_ACTIVE3_LANDSCAPE, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(name = "Phone portrait, moving, light", device = PHONE_PORTRAIT, uiMode = Configuration.UI_MODE_NIGHT_NO)
+@Preview(name = "Phone portrait, moving, dark", device = PHONE_PORTRAIT, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
-private fun DashboardLargestDistancesPreview() {
-    DashboardPreview(LARGEST_DISTANCES)
+private fun DashboardMovingPreview() {
+    DashboardPreview(MOVING)
 }
 
 @Preview(name = "Phone landscape, loading, light", device = PHONE_LANDSCAPE, uiMode = Configuration.UI_MODE_NIGHT_NO)
