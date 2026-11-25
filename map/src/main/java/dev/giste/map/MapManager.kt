@@ -39,14 +39,21 @@ import dev.giste.map.ui.MapManagerViewModel
  * @param onBack called when the user leaves the screen with its back button. The system back
  * gesture is the caller's, e.g. its navigation.
  * @param modifier applied to the root layout.
+ * @param onDownloadMaps called when the floating add button is pressed, e.g. to show
+ * [MapDownloader]. Without it, the screen has no add button.
  */
 @Composable
-public fun MapManager(onBack: () -> Unit, modifier: Modifier = Modifier) {
+public fun MapManager(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    onDownloadMaps: (() -> Unit)? = null,
+) {
     val viewModel: MapManagerViewModel = hiltViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     MapManagerContent(
         state = state,
         onBack = onBack,
+        onDownloadMaps = onDownloadMaps,
         onDelete = viewModel::delete,
         onDeleteErrorShown = viewModel::dismissDeleteError,
         modifier = modifier,

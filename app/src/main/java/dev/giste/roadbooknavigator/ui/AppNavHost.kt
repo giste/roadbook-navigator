@@ -26,6 +26,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import dev.giste.map.MapDownloader
 import dev.giste.map.MapManager
 import dev.giste.roadbooknavigator.settings.SettingsScreen
 import dev.giste.roadbooknavigator.ui.dashboard.Dashboard
@@ -43,10 +44,14 @@ internal data object SettingsRoute
 @Serializable
 internal data object MapManagerRoute
 
+/** Route of the map downloader, opened from the map manager. */
+@Serializable
+internal data object MapDownloaderRoute
+
 /**
- * The app's screens and how to move between them: the dashboard, and the settings and the map
- * manager on top of it. Back from either, with its back button or the system gesture, returns to
- * the dashboard.
+ * The app's screens and how to move between them: the dashboard, the settings and the map
+ * manager on top of it, and the map downloader on top of the map manager. Back, with a screen's
+ * back button or the system gesture, returns to the screen below.
  *
  * @param modifier applied to the navigation host.
  * @param navController moves between the screens. A parameter so tests can pass their own.
@@ -72,7 +77,13 @@ internal fun AppNavHost(
             SettingsScreen(onBack = { navController.popBackStack() })
         }
         composable<MapManagerRoute> {
-            MapManager(onBack = { navController.popBackStack() })
+            MapManager(
+                onBack = { navController.popBackStack() },
+                onDownloadMaps = { navController.navigate(MapDownloaderRoute) },
+            )
+        }
+        composable<MapDownloaderRoute> {
+            MapDownloader(onBack = { navController.popBackStack() })
         }
     }
 }

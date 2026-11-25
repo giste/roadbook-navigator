@@ -19,17 +19,25 @@ package dev.giste.map.di
 
 import android.content.Context
 import dagger.Binds
+import dagger.BindsOptionalOf
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import dev.giste.map.MapDownloadServer
+import dev.giste.map.data.HttpRemoteMapRepository
 import dev.giste.map.data.LocalMapFileRepository
 import dev.giste.map.data.MapFileChecker
 import dev.giste.map.data.MapFolder
+import dev.giste.map.data.MapHttpClient
 import dev.giste.map.data.VtmMapFileChecker
 import dev.giste.map.domain.MapFileRepository
+import dev.giste.map.domain.RemoteMapRepository
 import java.io.File
+import java.util.concurrent.TimeUnit
+import javax.inject.Singleton
+import okhttp3.OkHttpClient
 
 /** Binds the `:map` implementations for the whole app. */
 @Module
@@ -48,6 +56,21 @@ internal interface MapModule {
     @Binds
     fun bindMapFileChecker(checker: VtmMapFileChecker): MapFileChecker
 
+    /**
+     * Provides [HttpRemoteMapRepository] wherever a [RemoteMapRepository] is injected.
+     *
+     * It holds no state (each call reads the site), so it is not scoped.
+     */
+    @Binds
+    fun bindRemoteMapRepository(repository: HttpRemoteMapRepository): RemoteMapRepository
+
+    /**
+     * Lets an app provide its own [MapDownloadServer]. Without one, `:map` uses the default
+     * server.
+     */
+    @BindsOptionalOf
+    fun optionalMapDownloadServer(): MapDownloadServer
+
     /** Locations used by the bindings above. */
     companion object {
 
@@ -65,5 +88,27 @@ internal interface MapModule {
         @MapFolder
         fun provideMapFolder(@ApplicationContext context: Context): File =
             File(context.noBackupFilesDir, LocalMapFileRepository.FOLDER_NAME)
+
+        /**
+         * Provides the HTTP client for the download site.
+         *
+         * One client for the whole app, so its connections and threads are shared. The timeouts
+         * are for a silent server, not for a slow download: they apply to each wait for data.
+         *
+         * @return the client.
+         */
+        @Provides
+        @Singleton
+        @MapHttpClient
+        fun provideHttpClient(): OkHttpClient = OkHttpClient.Builder()
+            .connectTimeout(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .readTimeout(READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .build()
+
+        /** How long to wait for the download site to accept a connection. */
+        private const val CONNECT_TIMEOUT_SECONDS = 15L
+
+        /** How long to wait for the next data from the download site. */
+        private const val READ_TIMEOUT_SECONDS = 30L
     }
 }

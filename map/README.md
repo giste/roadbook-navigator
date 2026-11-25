@@ -10,21 +10,26 @@ Shows an **offline map** that follows the device location, turned so the directi
 - Draw them with [VTM](https://github.com/mapsforge/vtm) (mapsforge's OpenGL vector map), centered on the location and turned to its bearing.
 - Say so when no map is installed, or when none can be read.
 - Manage the installed maps: list them with their size, mark the ones that cannot be read, and delete them.
+- Browse the maps on a download site (by default, the mapsforge server), one folder at a time, marking the ones already installed.
 
-It does **not** read the location itself: the app forwards the `LocationFix`es of its location provider (in Roadbook Navigator, `:location`) through `MapLocationSource` (AGENTS.md §4.2). It does **not** store its settings either: the app provides them through `MapSettingsSource` (AGENTS.md §4.4; in Roadbook Navigator, `:settings` does). It does **not** download maps yet: that is the next step of map management. For now, maps are copied into the folder by hand (see Testing notes).
+It does **not** read the location itself: the app forwards the `LocationFix`es of its location provider (in Roadbook Navigator, `:location`) through `MapLocationSource` (AGENTS.md §4.2). It does **not** store its settings either: the app provides them through `MapSettingsSource` (AGENTS.md §4.4; in Roadbook Navigator, `:settings` does). It does **not** download maps yet: the map downloader only browses the site so far, and downloading is the next step of map management. For now, maps are copied into the folder by hand (see Testing notes).
 
 ## Package layout
 
 ```
 dev/giste/map/
-├── MapViewer, MapManager, MapLocationSource, MapSettings, MapSettingsSource,
-│   MapZoomLevel, MapTilt                                      ← public API
+├── MapViewer, MapManager, MapDownloader, MapDownloadServer, MapLocationSource,
+│   MapSettings, MapSettingsSource, MapZoomLevel, MapTilt      ← public API
 ├── domain/         InstalledMapFiles (+ InstalledMapFile, FileSize, toInstalledMaps, DeleteMapResult),
-│                   InstalledMaps (+ MapFile), MapFileRepository, MapCenter (+ follow)
-├── data/           LocalMapFileRepository, MapFileChecker (+ VtmMapFileChecker), MapFolder
+│                   InstalledMaps (+ MapFile), MapFileRepository, MapCenter (+ follow),
+│                   RemoteMaps (RemoteFolderPath, isSafeRemoteName, RemoteMapEntry, RemoteListing,
+│                   RemoteListingFailure, RemoteMapRepository)
+├── data/           LocalMapFileRepository, MapFileChecker (+ VtmMapFileChecker), MapFolder,
+│                   HttpRemoteMapRepository, DirectoryListingParser, MapHttpClient
 ├── ui/             MapViewModel, MapUiState, MapViewerContent (+ MapViewerTestTags and previews),
 │                   VtmMap, MapCamera, MapManagerViewModel, MapManagerUiState,
-│                   MapManagerContent (+ MapManagerTestTags and previews)
+│                   MapManagerContent (+ MapManagerTestTags and previews), MapDownloaderViewModel,
+│                   MapDownloaderUiState, MapDownloaderContent (+ MapDownloaderTestTags and previews)
 └── di/             MapModule
 ```
 
@@ -35,7 +40,9 @@ Package `dev.giste.map`:
 | Type | Purpose |
 |---|---|
 | `MapViewer(modifier, interactive = false, showManageButton = false, onManageMaps = null)` | The map, with its state from Hilt. Place it anywhere: a whole screen or part of one. Each time it is shown it looks for the installed maps. While it is shown and has maps, it collects `MapLocationSource.locations`. Read-only by default: touches pass through it, and it always shows the settings' zoom and tilt. With `interactive = true` the user may pan, zoom, rotate and tilt it; the next fix centers it again, keeping the zoom and tilt. With `onManageMaps`, a manage button (a map icon) floats in the top end corner while `showManageButton` is set, and always when there is no map to draw; the app opens `MapManager` from it. |
-| `MapManager(onBack, modifier)` | The map manager screen, with its state from Hilt: a top bar with a back button, and the installed map files with their sub-folder and size. Unreadable files have a warning mark. Each has a delete button, which asks first. The app adds it as a destination of its own; its back button calls `onBack`, and the system back gesture is the app's. |
+| `MapManager(onBack, modifier, onDownloadMaps = null)` | The map manager screen, with its state from Hilt: a top bar with a back button, the installed map files and, with `onDownloadMaps`, a floating add button at the bottom end (the list leaves room under its last row so the button never hides it) with their sub-folder and size. Unreadable files have a warning mark. Each has a delete button, which asks first. The app adds it as a destination of its own; its back button calls `onBack`, and the system back gesture is the app's. The app opens `MapDownloader` from `onDownloadMaps`. |
+| `MapDownloader(onBack, modifier)` | The map downloader screen, with its state from Hilt: the download site's maps folder, then each folder the user opens. Folder rows open the folder; map rows show the name, the day it changed, the approximate size and a mark if it is already installed. If a folder cannot be read it says why, with a button to try again. In a sub-folder, its back button and the system back gesture go up one folder; in the maps folder, its back button calls `onBack`, and the system back gesture is the app's. The app adds it as a destination of its own. |
+| `MapDownloadServer` | Where the maps are downloaded from: an `http(s)` folder address ending in `/`, served as plain directory listings. Defaults to `DEFAULT_URL`, the mapsforge server. An app may provide its own through Hilt (e.g. a mirror); `:map` uses it if bound (`@BindsOptionalOf`). |
 | `MapLocationSource` | Input port: a `Flow` of `:geo` `LocationFix`es. The app implements it and binds it with Hilt. Only the position and the bearing are used. A fix without a bearing keeps the last one. |
 | `MapSettings` | `zoomLevel` and `tilt`, with documented defaults. |
 | `MapZoomLevel` | Web map zoom level in `2..20` (VTM's limits), default 18. `of` rejects values out of range, `coerce` clamps them. |
@@ -46,8 +53,8 @@ Package `dev.giste.map`:
 
 ## Inputs and outputs
 
-- **Inputs:** a `MapLocationSource` and a `MapSettingsSource`, which the app must bind in `SingletonComponent`. Without them the Hilt graph does not compile as soon as `MapViewer` is used. The map files, in the app's `map_files` folder (see Persisted state).
-- **Outputs:** none besides the UI, and the `onManageMaps` callback of `MapViewer`.
+- **Inputs:** a `MapLocationSource` and a `MapSettingsSource`, which the app must bind in `SingletonComponent`. Without them the Hilt graph does not compile as soon as `MapViewer` is used. Optionally, a `MapDownloadServer`. The map files, in the app's `map_files` folder (see Persisted state). The download site's folder listings, over HTTP: `:map` declares the `INTERNET` permission.
+- **Outputs:** none besides the UI, and the `onManageMaps` callback of `MapViewer` and `onDownloadMaps` of `MapManager`.
 
 ## Settings
 
@@ -83,6 +90,12 @@ No DataStore. The map files live in `map_files` inside the app's **no-backup** f
 - **Icons for actions.** Manage, back, delete, confirm (a filled error-colored delete button), cancel (an outlined close button) and the unreadable mark are icons, not text: fewer strings to translate, and the same space in every language. File sizes come from Android's `Formatter.formatShortFileSize`, already localized.
 - **The manage button.** It shows while the app says so (in Roadbook Navigator, only while stopped, so a touch while riding cannot leave the dashboard) and always when there is no map to draw, since managing maps is then the only way forward. It never takes the focus, so a remote control's arrow keys cannot land on it.
 - **Changes reach the viewer by being shown again.** The manager is a separate destination, so the dashboard (and its viewer) leaves the composition while it is open, and the viewer looks for the maps again when it comes back. Maps downloaded in the background (next step) will need the viewer to notice them while it is shown.
+- **A small listing parser, not an HTML library.** The download site's folders are Apache autoindex pages, generated by the server and regular in form, so `DirectoryListingParser` reads their table rows with regular expressions. Jsoup was considered and left out: it would not make the parser more robust to a change of layout, and it adds a dependency. Real listings saved from the site are its test fixtures. A page that is not a listing is `UNREADABLE_LISTING`, never a crash.
+- **One folder at a time.** The site nests continents, countries and regions, so the downloader reads only the folder being shown, never the whole site. Folders come first, then maps, each in the site's order; other files are left out.
+- **The site's names are untrusted.** They will become file and folder names on the device when maps are downloaded, so names that could leave the map folder (`..`, separators, control characters) are dropped by the parser and rejected by `RemoteFolderPath`.
+- **Listed dates and sizes are approximate.** The site rounds sizes (`2.4M`, in powers of 1024) and lists dates in its own time zone (8 hours ahead of the files' HTTP `Last-Modified`), so the screen shows only the day. Exact sizes and times will come from the download itself.
+- **Installed means the same folder and name.** Downloads will keep the site's folders (`europe/italy/centro.map`), so a map is marked as installed when a file of the same name is in the same folder of `map_files`. A map copied by hand to another folder is not marked.
+- **Its own HTTP client.** `:map` provides an `OkHttpClient` qualified with `MapHttpClient`, so an app that provides its own client does not clash with it. Requests run on OkHttp's threads, and cancelling the coroutine cancels the call.
 
 ## Testing notes
 
@@ -94,4 +107,8 @@ No DataStore. The map files live in `map_files` inside the app's **no-backup** f
 - `MapManagerViewModelTest` uses `FakeMapFileRepository`, whose deletions answer a chosen `DeleteMapResult` and do not change the listed files.
 - `MapManagerContentTest` runs on Robolectric. It finds rows by `MapManagerTestTags.file(file)`, and the icon-only buttons and marks by their tags inside a row; sizes are compared with `Formatter.formatShortFileSize` in the test's locale.
 - `MapViewerContentTest` runs on Robolectric (SDK 35) with a placeholder in the map slot. `VtmMap` needs OpenGL and VTM's native library, which neither Robolectric nor previews have, so it is checked on a device: copy a map file with `adb push spain.map /data/local/tmp/` then `adb shell run-as dev.giste.roadbooknavigator sh -c 'mkdir -p no_backup/map_files && cp /data/local/tmp/spain.map no_backup/map_files/'`, and open the dashboard again. Maps are at https://download.mapsforge.org/maps/v5/.
+- `DirectoryListingParserTest` reads `mapsforge_listing_root.html` and `mapsforge_listing_europe.html` (in `src/test/resources`), saved from the mapsforge server on 2026-11-24, and small hand-written listings for the edge cases (links elsewhere, other files, unsafe or encoded names, sizes and dates that cannot be read).
+- `HttpRemoteMapRepositoryTest` uses OkHttp's `MockWebServer`, a local server, so no test uses the network: request paths, listings, error statuses, a page that is not a listing, an unreachable server, a connection lost while reading, and cancellation (seen through an `EventListener`).
+- `MapDownloaderViewModelTest` uses `FakeRemoteMapRepository` (whose `gate` holds calls to check the loading state) and `FakeMapFileRepository`, and a `SavedStateHandle` to check that the folder survives the process.
+- `MapDownloaderContentTest` runs on Robolectric with a `ComponentActivity`, so it can press the system back button. Folder rows are clickable and merge their text, so their text is found in the unmerged tree.
 - `:core` does not share its test doubles, so `FakeLogger` lives in this module's test source set.

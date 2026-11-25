@@ -13,4 +13,14 @@
     <string name="map_manager_delete_title">¿Borrar %1$s?</string>
     <!-- Shown briefly when a map file could not be deleted. %1$s is the file name. -->
     <string name="map_manager_delete_failed">No se ha podido borrar %1$s</string>
+    <!-- Title of the map downloader screen, which lists the maps on the download site. -->
+    <string name="map_downloader_title">Descargar mapas</string>
+    <!-- Shown in the map downloader when the download site cannot be reached. -->
+    <string name="map_downloader_no_connection">No se puede conectar con la web de mapas. Comprueba la conexión.</string>
+    <!-- Shown in the map downloader when the download site answers with an error. -->
+    <string name="map_downloader_server_error">La web de mapas ha respondido con un error</string>
+    <!-- Shown in the map downloader when the download site's list of maps cannot be read. -->
+    <string name="map_downloader_unreadable_listing">No se puede leer la lista de la web de mapas</string>
+    <!-- Shown in the map downloader when a folder of the download site holds no maps. -->
+    <string name="map_downloader_empty">No hay mapas en esta carpeta</string>
 </resources>

@@ -72,6 +72,11 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     // hiltViewModel(), to get the map's ViewModel from Hilt in a composable.
     implementation(libs.androidx.hilt.lifecycle.viewmodel.compose)
+    // BackHandler, so the system back gesture goes up one folder in the map downloader.
+    implementation(libs.androidx.activity.compose)
+
+    // OkHttp reads the download site's folder listings.
+    implementation(libs.okhttp)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
@@ -80,6 +85,8 @@ dependencies {
     testImplementation(libs.robolectric)
     testImplementation(platform(libs.androidx.compose.bom))
     testImplementation(libs.androidx.compose.ui.test.junit4)
+    // A local web server, so the download site is tested without the network.
+    testImplementation(libs.okhttp.mockwebserver)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
