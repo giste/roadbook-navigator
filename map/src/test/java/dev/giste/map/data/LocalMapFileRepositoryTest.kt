@@ -24,6 +24,7 @@ import dev.giste.map.domain.FileSize
 import dev.giste.map.domain.InstalledMapFile
 import dev.giste.map.domain.InstalledMapFiles
 import java.io.File
+import java.time.Instant
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -79,6 +80,7 @@ class LocalMapFileRepositoryTest {
             folder = folder,
             size = FileSize(size),
             readable = readable,
+            modified = Instant.ofEpochMilli(file.lastModified()),
         )
     }
 
@@ -120,6 +122,16 @@ class LocalMapFileRepositoryTest {
             ),
             repository().list(),
         )
+    }
+
+    @Test
+    fun installedFiles_mapFile_hasItsModificationTime() = runTest {
+        val modified = Instant.parse("2026-09-07T10:15:30Z")
+        addFile("andorra.map").setLastModified(modified.toEpochMilli())
+
+        val files = (repository().list() as InstalledMapFiles.Listed).files
+
+        assertEquals(modified, files.single().modified)
     }
 
     @Test

@@ -26,6 +26,7 @@ import dev.giste.map.domain.InstalledMapFiles
 import dev.giste.map.domain.MapFileRepository
 import java.io.File
 import java.io.IOException
+import java.time.Instant
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
@@ -111,6 +112,7 @@ internal class LocalMapFileRepository @Inject constructor(
                     folder = file.parentFile?.relativeTo(folder)?.invariantSeparatorsPath.orEmpty(),
                     size = FileSize(file.length()),
                     readable = problem == null,
+                    modified = Instant.ofEpochMilli(file.lastModified()),
                 )
             }
             .toList()

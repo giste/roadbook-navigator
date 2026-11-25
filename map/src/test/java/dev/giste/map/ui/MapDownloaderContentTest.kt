@@ -343,6 +343,50 @@ class MapDownloaderContentTest {
         rule.onNode(tagInRow(andorra, MapDownloaderTestTags.INSTALLED)).assertDoesNotExist()
     }
 
+    // --- Updates ---
+
+    /** [listed] with Andorra, which is installed, outdated. */
+    private val andorraOutdated = listed.copy(outdated = setOf("andorra.map"))
+
+    @Test
+    fun mapDownloaderContent_outdatedMap_hasAnUpdateButtonInsteadOfTheInstalledMark() {
+        show(andorraOutdated)
+
+        rule.onNode(tagInRow(andorra, MapDownloadTestTags.UPDATE)).assertIsDisplayed()
+        rule.onNode(tagInRow(andorra, MapDownloaderTestTags.INSTALLED)).assertDoesNotExist()
+        rule.onNode(tagInRow(albania, MapDownloadTestTags.UPDATE)).assertDoesNotExist()
+    }
+
+    @Test
+    fun mapDownloaderContent_updatePressed_callsOnDownloadWithTheMap() {
+        show(andorraOutdated)
+
+        rule.onNode(tagInRow(andorra, MapDownloadTestTags.UPDATE)).performClick()
+
+        assertEquals(listOf(andorra), downloaded)
+    }
+
+    @Test
+    fun mapDownloaderContent_outdatedMapWhoseUpdateFailed_showsWhyAndTryAgain() {
+        val andorraPath = RemoteMapPath(europe, "andorra.map")
+        val failed = MapDownload.Failed(andorraPath, MapDownloadFailure.NOT_ENOUGH_SPACE)
+        show(andorraOutdated.copy(downloads = mapOf("andorra.map" to failed)))
+
+        rule.onNode(textInRow(andorra, "Not enough free space")).assertIsDisplayed()
+        rule.onNode(tagInRow(andorra, MapDownloadTestTags.RETRY_DOWNLOAD)).performClick()
+        rule.onNode(tagInRow(andorra, MapDownloadTestTags.UPDATE)).assertDoesNotExist()
+        assertEquals(listOf(andorra), downloaded)
+    }
+
+    @Test
+    fun mapDownloaderContent_outdatedMapUpdating_showsTheDownload() {
+        val andorraPath = RemoteMapPath(europe, "andorra.map")
+        show(andorraOutdated.copy(downloads = mapOf("andorra.map" to MapDownload.Queued(andorraPath))))
+
+        rule.onNode(tagInRow(andorra, MapDownloadTestTags.QUEUED), useUnmergedTree = true).assertIsDisplayed()
+        rule.onNode(tagInRow(andorra, MapDownloadTestTags.UPDATE)).assertDoesNotExist()
+    }
+
     // --- Stopping a download ---
 
     @Test

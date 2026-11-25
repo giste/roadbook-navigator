@@ -17,6 +17,8 @@
 
 package dev.giste.map.domain
 
+import java.time.Instant
+
 /**
  * The size of a file.
  *
@@ -40,6 +42,8 @@ internal value class FileSize(val bytes: Long) {
  * @property size the size of the file.
  * @property readable whether the renderer can open it. Unreadable files are not drawn, but they
  * are listed, so they can be deleted.
+ * @property modified when the file last changed. For a downloaded map, it is when the map last
+ * changed on the download site (its `Last-Modified`), which is how updates are found.
  */
 internal data class InstalledMapFile(
     val name: String,
@@ -47,6 +51,7 @@ internal data class InstalledMapFile(
     val folder: String,
     val size: FileSize,
     val readable: Boolean,
+    val modified: Instant,
 )
 
 /** Every map file installed on the device, as found by [MapFileRepository]. */

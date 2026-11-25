@@ -29,6 +29,7 @@ import dev.giste.map.MapDownloadServer
 import dev.giste.map.data.ConnectivityNetworkConnection
 import dev.giste.map.data.FreeSpace
 import dev.giste.map.data.HttpMapFileDownloader
+import dev.giste.map.data.HttpMapUpdateRepository
 import dev.giste.map.data.HttpRemoteMapRepository
 import dev.giste.map.data.LocalMapFileRepository
 import dev.giste.map.data.MapFileChecker
@@ -40,6 +41,7 @@ import dev.giste.map.data.VtmMapFileChecker
 import dev.giste.map.data.WorkManagerMapDownloadRepository
 import dev.giste.map.domain.MapDownloadRepository
 import dev.giste.map.domain.MapFileRepository
+import dev.giste.map.domain.MapUpdateRepository
 import dev.giste.map.domain.NetworkConnection
 import dev.giste.map.domain.RemoteMapRepository
 import java.io.File
@@ -72,6 +74,14 @@ internal interface MapModule {
      */
     @Binds
     fun bindRemoteMapRepository(repository: HttpRemoteMapRepository): RemoteMapRepository
+
+    /**
+     * Provides [HttpMapUpdateRepository] wherever a [MapUpdateRepository] is injected.
+     *
+     * It is a singleton of its own, as it keeps the dates it found for every screen.
+     */
+    @Binds
+    fun bindMapUpdateRepository(repository: HttpMapUpdateRepository): MapUpdateRepository
 
     /**
      * Provides [WorkManagerMapDownloadRepository] wherever a [MapDownloadRepository] is injected.

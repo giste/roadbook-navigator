@@ -21,16 +21,19 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.giste.map.domain.InstalledMapFile
 import dev.giste.map.domain.InstalledMapFiles
 import dev.giste.map.domain.MapDownload
 import dev.giste.map.domain.MapDownloadRepository
 import dev.giste.map.domain.MapFileRepository
+import dev.giste.map.domain.MapUpdateRepository
 import dev.giste.map.domain.NetworkConnection
 import dev.giste.map.domain.RemoteFolderPath
 import dev.giste.map.domain.RemoteListing
 import dev.giste.map.domain.RemoteMapEntry
 import dev.giste.map.domain.RemoteMapPath
 import dev.giste.map.domain.RemoteMapRepository
+import dev.giste.map.domain.isOutdated
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -51,7 +54,9 @@ import kotlinx.coroutines.launch
  *
  * The folder being shown is kept in [savedStateHandle], so it survives the process being stopped.
  * Each folder is read when it is shown, and again on [retry]. While it is shown, the installed
- * maps and the downloads are followed, so a map's row changes as it downloads and installs.
+ * maps, their updates and the downloads are followed, so a map's row changes as it downloads and
+ * installs. Updates are found by the map manager's check (see [MapUpdateRepository]); downloading an
+ * update is the same as downloading the map.
  *
  * Downloads wait for Wi-Fi. When a map is downloaded off Wi-Fi, the state first asks whether to
  * use mobile data ([MapDownloaderUiState.Listed.mobileDataQuestion]); the question is kept in
@@ -61,6 +66,7 @@ import kotlinx.coroutines.launch
  * @param remoteRepository the maps on the download site.
  * @param installedRepository the maps on the device, to mark the installed ones.
  * @param downloadRepository downloads the maps.
+ * @param updateRepository when the maps last changed on the site, to mark the outdated ones.
  * @param network tells whether the device is on Wi-Fi.
  */
 @HiltViewModel
@@ -69,6 +75,7 @@ internal class MapDownloaderViewModel @Inject constructor(
     private val remoteRepository: RemoteMapRepository,
     private val installedRepository: MapFileRepository,
     private val downloadRepository: MapDownloadRepository,
+    private val updateRepository: MapUpdateRepository,
     private val network: NetworkConnection,
 ) : ViewModel() {
 
@@ -119,7 +126,7 @@ internal class MapDownloaderViewModel @Inject constructor(
 
     /**
      * Downloads [entry], a map in the folder being shown, after the maps already queued. Also
-     * starts again a download that failed. On Wi-Fi it is queued at once; otherwise the state asks
+     * starts again a download that failed, and downloads the update of an installed map. On Wi-Fi it is queued at once; otherwise the state asks
      * first whether to use mobile data.
      *
      * @param entry the map to download.
@@ -181,12 +188,15 @@ internal class MapDownloaderViewModel @Inject constructor(
                 val listed = combine(
                     installedFiles,
                     downloadRepository.downloads,
+                    updateRepository.siteVersions,
                     mobileDataQuestion,
-                ) { files, downloads, question ->
+                ) { files, downloads, siteVersions, question ->
+                    val inFolder = files.filesIn(path).filter { it.name in mapNames }
                     MapDownloaderUiState.Listed(
                         folder = path,
                         entries = listing.entries,
-                        installed = files.namesIn(path) intersect mapNames,
+                        installed = inFolder.mapTo(mutableSetOf()) { it.name },
+                        outdated = inFolder.filter { it.isOutdated(siteVersions) }.mapTo(mutableSetOf()) { it.name },
                         downloads = downloads.inFolder(path).filterKeys { it in mapNames },
                         mobileDataQuestion = question.takeIf { it.isNotEmpty() }?.let(RemoteMapPath::parse),
                     )
@@ -197,14 +207,14 @@ internal class MapDownloaderViewModel @Inject constructor(
     }
 
     /**
-     * The names of the map files installed in the device folder that matches [path]. If the map
-     * folder cannot be read, none are marked: the list itself is still useful.
+     * The map files installed in the device folder that matches [path]. If the map folder cannot
+     * be read, none are marked: the list itself is still useful.
      */
-    private fun InstalledMapFiles.namesIn(path: RemoteFolderPath): Set<String> {
+    private fun InstalledMapFiles.filesIn(path: RemoteFolderPath): List<InstalledMapFile> {
         val folderName = path.toString()
         return when (this) {
-            InstalledMapFiles.FolderUnreadable -> emptySet()
-            is InstalledMapFiles.Listed -> files.filter { it.folder == folderName }.mapTo(mutableSetOf()) { it.name }
+            InstalledMapFiles.FolderUnreadable -> emptyList()
+            is InstalledMapFiles.Listed -> files.filter { it.folder == folderName }
         }
     }
 

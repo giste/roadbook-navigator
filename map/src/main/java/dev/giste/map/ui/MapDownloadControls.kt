@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import dev.giste.core.ui.theme.GisteTheme
@@ -62,6 +63,9 @@ internal object MapDownloadTestTags {
 
     /** The stop mark inside the progress, an icon. */
     const val STOP_MARK: String = "map_download_stop_mark"
+
+    /** The button that downloads the update of an installed map, which shows an icon instead of text. */
+    const val UPDATE: String = "map_download_update"
 
     /** The button that downloads again a map that failed, which shows an icon instead of text. */
     const val RETRY_DOWNLOAD: String = "map_download_retry_download"
@@ -88,10 +92,6 @@ internal object MapDownloadTestTags {
     const val DISMISS_MOBILE_DATA: String = "map_download_dismiss_mobile_data"
 }
 
-/** Whether this download is waiting or running, so it can still be stopped. */
-internal val MapDownload?.isActive: Boolean
-    get() = this is MapDownload.Queued || this is MapDownload.Running
-
 /**
  * A waiting or running [download], in a button as large as a touch target that asks to stop it.
  * It shows a waiting mark while the download is queued, or its progress while it runs (see
@@ -110,6 +110,26 @@ internal fun ActiveDownloadButton(download: MapDownload, onCancelRequest: () -> 
             .testTag(MapDownloadTestTags.CANCEL_DOWNLOAD),
     ) {
         DownloadMark(download)
+    }
+}
+
+/**
+ * A button that downloads the update of an installed map, in the primary color, as large as a
+ * touch target.
+ *
+ * @param onClick called when the button is pressed.
+ * @param modifier applied to the button.
+ */
+@Composable
+internal fun UpdateMapButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    IconButton(
+        onClick = onClick,
+        modifier = modifier
+            .size(GisteTheme.dimensions.minTouchTarget)
+            .testTag(MapDownloadTestTags.UPDATE),
+        colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+    ) {
+        Icon(painter = painterResource(R.drawable.map_ic_update), contentDescription = null)
     }
 }
 
@@ -213,21 +233,31 @@ internal fun CancelDownloadDialog(name: String, onConfirm: () -> Unit, onDismiss
 }
 
 /**
- * Asks whether to download the map [name] now with mobile data, or to wait for Wi-Fi, as the
+ * Asks whether to download the maps [names] now with mobile data, or to wait for Wi-Fi, as the
  * device is not on Wi-Fi. The buttons are icons: mobile data (filled, as it downloads now), Wi-Fi
- * (outlined) and close, which downloads nothing. The text says what each choice does.
+ * (outlined) and close, which downloads nothing. The text says what each choice does: with one
+ * map it names it, with several (the updates of every outdated map) it says how many.
  *
- * @param name the map's file name.
+ * @param names the maps' file names, never empty.
  * @param onAnswer called with `true` to download now with mobile data, `false` to wait for Wi-Fi.
  * @param onDismiss called when the rider closes the dialog, taps outside or presses back.
  */
 @Composable
-internal fun MobileDataDialog(name: String, onAnswer: (useMobileData: Boolean) -> Unit, onDismiss: () -> Unit) {
+internal fun MobileDataDialog(
+    names: List<String>,
+    onAnswer: (useMobileData: Boolean) -> Unit,
+    onDismiss: () -> Unit,
+) {
     val dimensions = GisteTheme.dimensions
+    val message = if (names.size == 1) {
+        stringResource(R.string.map_download_mobile_data_message, names.single())
+    } else {
+        pluralStringResource(R.plurals.map_download_mobile_data_message_several, names.size, names.size)
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.map_download_mobile_data_title)) },
-        text = { Text(stringResource(R.string.map_download_mobile_data_message, name)) },
+        text = { Text(message) },
         confirmButton = {
             Row(horizontalArrangement = Arrangement.spacedBy(dimensions.spacingSmall)) {
                 OutlinedButton(
@@ -283,7 +313,16 @@ internal fun FileSize.format(): String = Formatter.formatShortFileSize(LocalCont
 @Composable
 private fun MobileDataDialogPreview() {
     GisteTheme {
-        MobileDataDialog(name = "andorra.map", onAnswer = {}, onDismiss = {})
+        MobileDataDialog(names = listOf("andorra.map"), onAnswer = {}, onDismiss = {})
+    }
+}
+
+@Preview(name = "Mobile data question for several maps, light", uiMode = Configuration.UI_MODE_NIGHT_NO)
+@Preview(name = "Mobile data question for several maps, dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun MobileDataDialogSeveralPreview() {
+    GisteTheme {
+        MobileDataDialog(names = listOf("andorra.map", "spain.map"), onAnswer = {}, onDismiss = {})
     }
 }
 

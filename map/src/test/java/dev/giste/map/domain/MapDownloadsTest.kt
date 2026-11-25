@@ -18,13 +18,16 @@
 package dev.giste.map.domain
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MapDownloadsTest {
 
     private val europe = RemoteFolderPath.ROOT.child("europe")
     private val italy = europe.child("italy")
+    private val map = RemoteMapPath(europe, "andorra.map")
 
     // --- RemoteMapPath ---
 
@@ -83,5 +86,19 @@ class MapDownloadsTest {
     @Test
     fun fraction_moreThanTheTotal_isAtMostOne() {
         assertEquals(1f, running(120, 100).fraction)
+    }
+
+    // --- isActive ---
+
+    @Test
+    fun isActive_queuedOrRunning_isTrue() {
+        assertTrue(MapDownload.Queued(map).isActive)
+        assertTrue(MapDownload.Running(map, FileSize(1), null).isActive)
+    }
+
+    @Test
+    fun isActive_failedOrNone_isFalse() {
+        assertFalse(MapDownload.Failed(map, MapDownloadFailure.SERVER_ERROR).isActive)
+        assertFalse((null as MapDownload?).isActive)
     }
 }

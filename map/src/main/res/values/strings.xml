@@ -35,6 +35,11 @@
     <string name="map_download_mobile_data_title">Not on Wi-Fi</string>
     <!-- Text of the mobile data dialog. %1$s is the map's file name. Its buttons are icons: mobile data, Wi-Fi and close. -->
     <string name="map_download_mobile_data_message">Download %1$s now with mobile data, or wait for Wi-Fi? Mobile data then applies to the maps already waiting too.</string>
+    <!-- Text of the mobile data dialog when several map updates are to be downloaded. %1$d is how many. Its buttons are icons: mobile data, Wi-Fi and close. -->
+    <plurals name="map_download_mobile_data_message_several">
+        <item quantity="one">Download the update of %1$d map now with mobile data, or wait for Wi-Fi? Mobile data then applies to the maps already waiting too.</item>
+        <item quantity="other">Download the updates of %1$d maps now with mobile data, or wait for Wi-Fi? Mobile data then applies to the maps already waiting too.</item>
+    </plurals>
     <!-- Title of the dialog that confirms stopping a map download. %1$s is the map's file name. -->
     <string name="map_download_cancel_title">Stop downloading %1$s?</string>
     <!-- Shown under a map in the map downloader when the download site does not send it. -->

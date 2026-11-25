@@ -65,6 +65,12 @@ import dev.giste.core.ui.theme.GisteTheme
 import dev.giste.map.R
 import dev.giste.map.domain.FileSize
 import dev.giste.map.domain.InstalledMapFile
+import dev.giste.map.domain.MapDownload
+import dev.giste.map.domain.MapDownloadFailure
+import dev.giste.map.domain.RemoteFolderPath
+import dev.giste.map.domain.RemoteMapPath
+import dev.giste.map.domain.isActive
+import java.time.Instant
 
 /** Test tags of the map manager, for the elements whose identity is not in their text. */
 internal object MapManagerTestTags {
@@ -86,6 +92,9 @@ internal object MapManagerTestTags {
 
     /** The mark of a file that cannot be read, an icon. */
     const val UNREADABLE: String = "map_manager_unreadable"
+
+    /** The top bar's button that updates every outdated map, which shows an icon instead of text. */
+    const val UPDATE_ALL: String = "map_manager_update_all"
 
     /** The confirmation dialog's delete button, which shows an icon instead of text. */
     const val CONFIRM_DELETE: String = "map_manager_confirm_delete"
@@ -112,7 +121,14 @@ internal object MapManagerTestTags {
  * - [MapManagerUiState.Listed] without files: the same message as the map viewer without maps.
  * - [MapManagerUiState.Listed] with files: one row per file, with its name, the sub-folder that
  *   holds it (when it is not the map folder itself), its size and a delete button. A file that
- *   cannot be read has a warning mark before its name.
+ *   cannot be read has a warning mark before its name. Before the delete button, an outdated file
+ *   has an update button; while its update waits or runs, the waiting mark or the progress, which
+ *   asks whether to stop it; if its update failed, a button to try again, with the reason under
+ *   its name. That slot is only there when some file needs it, so rows line up either way.
+ *
+ * When two or more files can be updated, the top bar has a button that updates all of them. When
+ * [MapManagerUiState.Listed.mobileDataQuestion] is set, a dialog asks whether to download those
+ * updates now with mobile data or to wait for Wi-Fi, or to download nothing.
  *
  * Actions are icons, so they need no translation and take the same space in every language.
  * Deleting cannot be undone, so the delete button opens a dialog that asks first; which file it
@@ -125,6 +141,13 @@ internal object MapManagerTestTags {
  * @param onDownloadMaps called when the add button is pressed, or `null` for no add button.
  * @param onDelete called with a file once the rider has confirmed deleting it.
  * @param onDeleteErrorShown called once the deletion failure has been shown.
+ * @param onUpdate called with a file when its update button, or its button to try again, is
+ * pressed.
+ * @param onUpdateAll called when the button that updates every outdated map is pressed.
+ * @param onCancelUpdate called with a file once the rider has confirmed stopping its update.
+ * @param onMobileData called with the answer to the mobile data question: `true` to download now
+ * with mobile data, `false` to wait for Wi-Fi.
+ * @param onDismissMobileData called when the mobile data question is dismissed without an answer.
  * @param modifier applied to the root layout.
  */
 @Composable
@@ -134,6 +157,11 @@ internal fun MapManagerContent(
     onDownloadMaps: (() -> Unit)?,
     onDelete: (InstalledMapFile) -> Unit,
     onDeleteErrorShown: () -> Unit,
+    onUpdate: (InstalledMapFile) -> Unit,
+    onUpdateAll: () -> Unit,
+    onCancelUpdate: (InstalledMapFile) -> Unit,
+    onMobileData: (useMobileData: Boolean) -> Unit,
+    onDismissMobileData: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -148,6 +176,9 @@ internal fun MapManagerContent(
     }
     // The path of the file whose deletion is being confirmed, if any. A path, so it can be saved.
     var confirming by rememberSaveable { mutableStateOf<String?>(null) }
+    // The path of the file whose update stop is being confirmed, if any.
+    var confirmingCancel by rememberSaveable { mutableStateOf<String?>(null) }
+    val listed = state as? MapManagerUiState.Listed
 
     Scaffold(
         modifier = modifier,
@@ -162,6 +193,21 @@ internal fun MapManagerContent(
                             .testTag(MapManagerTestTags.BACK),
                     ) {
                         Icon(painter = painterResource(R.drawable.map_ic_arrow_back), contentDescription = null)
+                    }
+                },
+                actions = {
+                    if ((listed?.updatable?.size ?: 0) >= MIN_FILES_TO_UPDATE_ALL) {
+                        IconButton(
+                            onClick = onUpdateAll,
+                            modifier = Modifier
+                                .size(GisteTheme.dimensions.minTouchTarget)
+                                .testTag(MapManagerTestTags.UPDATE_ALL),
+                            colors = IconButtonDefaults.iconButtonColors(
+                                contentColor = MaterialTheme.colorScheme.primary,
+                            ),
+                        ) {
+                            Icon(painter = painterResource(R.drawable.map_ic_update), contentDescription = null)
+                        }
                     }
                 },
             )
@@ -193,6 +239,8 @@ internal fun MapManagerContent(
                     MapFileList(
                         files = state.files,
                         onDelete = { confirming = it.path },
+                        onUpdate = onUpdate,
+                        onCancelRequest = { confirmingCancel = it.path },
                         modifier = bodyModifier,
                         clearOfAddButton = onDownloadMaps != null,
                     )
@@ -201,7 +249,7 @@ internal fun MapManagerContent(
     }
 
     // Only while the file is still listed: once it is gone, there is nothing to confirm.
-    val toDelete = (state as? MapManagerUiState.Listed)?.files?.find { it.path == confirming }
+    val toDelete = listed?.files?.find { it.file.path == confirming }?.file
     if (toDelete != null) {
         DeleteMapDialog(
             file = toDelete,
@@ -212,21 +260,44 @@ internal fun MapManagerContent(
             onDismiss = { confirming = null },
         )
     }
+    // Only while the update still downloads: once it has finished or stopped, there is nothing to stop.
+    val toCancel = listed?.files?.find { it.file.path == confirmingCancel && it.download.isActive }?.file
+    if (toCancel != null) {
+        CancelDownloadDialog(
+            name = toCancel.name,
+            onConfirm = {
+                confirmingCancel = null
+                onCancelUpdate(toCancel)
+            },
+            onDismiss = { confirmingCancel = null },
+        )
+    }
+    listed?.mobileDataQuestion?.takeIf { it.isNotEmpty() }?.let { maps ->
+        MobileDataDialog(names = maps.map { it.name }, onAnswer = onMobileData, onDismiss = onDismissMobileData)
+    }
 }
+
+/** How many files must be updatable for the top bar to offer updating them all. */
+private const val MIN_FILES_TO_UPDATE_ALL = 2
 
 /**
  * The installed map files, one row each, with a divider between rows.
  *
  * @param files the files, never empty.
  * @param onDelete called with a file when its delete button is pressed.
+ * @param onUpdate called with a file when its update button, or its button to try again, is
+ * pressed.
+ * @param onCancelRequest called with a file when its update's waiting mark or progress is pressed.
  * @param modifier applied to the list.
  * @param clearOfAddButton whether the add button floats over the list's bottom end. If so, the
  * list ends with room for it, so the last row, and its delete button, can scroll out from under it.
  */
 @Composable
 private fun MapFileList(
-    files: List<InstalledMapFile>,
+    files: List<ManagedMapFile>,
     onDelete: (InstalledMapFile) -> Unit,
+    onUpdate: (InstalledMapFile) -> Unit,
+    onCancelRequest: (InstalledMapFile) -> Unit,
     modifier: Modifier = Modifier,
     clearOfAddButton: Boolean = false,
 ) {
@@ -237,23 +308,44 @@ private fun MapFileList(
         modifier = modifier.testTag(MapManagerTestTags.LIST),
         contentPadding = PaddingValues(bottom = bottomPadding),
     ) {
-        items(files, key = { it.path }) { file ->
-            MapFileRow(file = file, onDelete = { onDelete(file) })
+        // Only while some file has something to show there, so rows keep their room for the name.
+        val withUpdateSlot = files.any { it.outdated || it.download.isActive }
+        items(files, key = { it.file.path }) { managed ->
+            MapFileRow(
+                managed = managed,
+                withUpdateSlot = withUpdateSlot,
+                onDelete = { onDelete(managed.file) },
+                onUpdate = { onUpdate(managed.file) },
+                onCancelRequest = { onCancelRequest(managed.file) },
+            )
             HorizontalDivider()
         }
     }
 }
 
 /**
- * One map file: a warning mark if it cannot be read, its name and sub-folder, its size and its
- * delete button.
+ * One map file: a warning mark if it cannot be read, its name and sub-folder (and why its update
+ * failed, if it did), its size, its update slot (see [UpdateSlot]) and its delete button.
  *
- * @param file the file.
+ * @param managed the file and its update.
+ * @param withUpdateSlot whether the row has an update slot, empty if the file needs none.
  * @param onDelete called when its delete button is pressed.
+ * @param onUpdate called when its update button, or the button to try again, is pressed.
+ * @param onCancelRequest called when its update's waiting mark or progress is pressed.
  * @param modifier applied to the row.
  */
 @Composable
-private fun MapFileRow(file: InstalledMapFile, onDelete: () -> Unit, modifier: Modifier = Modifier) {
+private fun MapFileRow(
+    managed: ManagedMapFile,
+    withUpdateSlot: Boolean,
+    onDelete: () -> Unit,
+    onUpdate: () -> Unit,
+    onCancelRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val file = managed.file
+    // A failed download only matters while the map is still outdated: it is its update's.
+    val failure = (managed.download as? MapDownload.Failed)?.reason?.takeIf { managed.outdated }
     val dimensions = GisteTheme.dimensions
     Row(
         modifier = modifier
@@ -281,8 +373,23 @@ private fun MapFileRow(file: InstalledMapFile, onDelete: () -> Unit, modifier: M
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            failure?.let { reason ->
+                Text(
+                    text = reason.toMessage(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
         }
         Text(text = file.size.format(), style = MaterialTheme.typography.bodyMedium)
+        if (withUpdateSlot) {
+            UpdateSlot(
+                managed = managed,
+                failed = failure != null,
+                onUpdate = onUpdate,
+                onCancelRequest = onCancelRequest,
+            )
+        }
         IconButton(
             onClick = onDelete,
             modifier = Modifier
@@ -291,6 +398,37 @@ private fun MapFileRow(file: InstalledMapFile, onDelete: () -> Unit, modifier: M
             colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.error),
         ) {
             Icon(painter = painterResource(R.drawable.map_ic_delete), contentDescription = null)
+        }
+    }
+}
+
+/**
+ * The update of a file, in the space of a button, so rows line up whatever it shows:
+ *
+ * - the waiting mark or the progress while its update is queued or running, in a button that asks
+ *   to stop it,
+ * - else a button to try again, in the error color, if its update [failed],
+ * - else a button to update it, if it is outdated,
+ * - else nothing.
+ *
+ * @param managed the file and its update.
+ * @param failed whether its update failed, and the failure is to be shown.
+ * @param onUpdate called when the update button, or the button to try again, is pressed.
+ * @param onCancelRequest called when the waiting mark or the progress is pressed.
+ */
+@Composable
+private fun UpdateSlot(
+    managed: ManagedMapFile,
+    failed: Boolean,
+    onUpdate: () -> Unit,
+    onCancelRequest: () -> Unit,
+) {
+    Box(modifier = Modifier.size(GisteTheme.dimensions.minTouchTarget), contentAlignment = Alignment.Center) {
+        val download = managed.download
+        when {
+            download != null && download.isActive -> ActiveDownloadButton(download, onCancelRequest)
+            failed -> RetryDownloadButton(onClick = onUpdate)
+            managed.outdated -> UpdateMapButton(onClick = onUpdate)
         }
     }
 }
@@ -357,12 +495,39 @@ private fun ManagerMessage(text: String, modifier: Modifier = Modifier) {
 
 // --- Previews ---
 
+/** When the preview files last changed. */
+private val PREVIEW_MODIFIED: Instant = Instant.parse("2026-09-01T00:00:00Z")
+
 /** Preview sample files: two readable maps, one in a sub-folder, and a damaged one. */
 private val PREVIEW_FILES = listOf(
-    InstalledMapFile("andorra.map", "/maps/andorra.map", "", FileSize(6_291_456), readable = true),
-    InstalledMapFile("damaged.map", "/maps/damaged.map", "", FileSize(1_024), readable = false),
-    InstalledMapFile("spain.map", "/maps/europe/spain.map", "europe", FileSize(851_443_712), readable = true),
+    InstalledMapFile("andorra.map", "/maps/andorra.map", "", FileSize(6_291_456), true, PREVIEW_MODIFIED),
+    InstalledMapFile("damaged.map", "/maps/damaged.map", "", FileSize(1_024), false, PREVIEW_MODIFIED),
+    InstalledMapFile("spain.map", "/maps/europe/spain.map", "europe", FileSize(851_443_712), true, PREVIEW_MODIFIED),
 )
+
+/** Preview sample updates: one outdated map, one updating and one whose update failed. */
+private val PREVIEW_UPDATES = listOf(
+    InstalledMapFile("andorra.map", "/maps/andorra.map", "", FileSize(6_291_456), true, PREVIEW_MODIFIED),
+    InstalledMapFile("france.map", "/maps/europe/france.map", "europe", FileSize(4_000_000_000), true, PREVIEW_MODIFIED),
+    InstalledMapFile("italy.map", "/maps/europe/italy.map", "europe", FileSize(2_000_000_000), true, PREVIEW_MODIFIED),
+    InstalledMapFile("spain.map", "/maps/europe/spain.map", "europe", FileSize(851_443_712), true, PREVIEW_MODIFIED),
+).let { (andorra, france, italy, spain) ->
+    val europe = RemoteFolderPath.ROOT.child("europe")
+    listOf(
+        ManagedMapFile(andorra),
+        ManagedMapFile(
+            france,
+            outdated = true,
+            download = MapDownload.Running(RemoteMapPath(europe, "france.map"), FileSize(1_500_000_000), FileSize(4_000_000_000)),
+        ),
+        ManagedMapFile(
+            italy,
+            outdated = true,
+            download = MapDownload.Failed(RemoteMapPath(europe, "italy.map"), MapDownloadFailure.NOT_ENOUGH_SPACE),
+        ),
+        ManagedMapFile(spain, outdated = true),
+    )
+}
 
 /** The manager in [state] in the app theme. */
 @Composable
@@ -374,6 +539,11 @@ private fun MapManagerPreview(state: MapManagerUiState) {
             onDownloadMaps = {},
             onDelete = {},
             onDeleteErrorShown = {},
+            onUpdate = {},
+            onUpdateAll = {},
+            onCancelUpdate = {},
+            onMobileData = {},
+            onDismissMobileData = {},
         )
     }
 }
@@ -403,7 +573,14 @@ private fun MapManagerNoMapsPreview() {
 @Preview(name = "Listed, dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun MapManagerListedPreview() {
-    MapManagerPreview(MapManagerUiState.Listed(PREVIEW_FILES))
+    MapManagerPreview(MapManagerUiState.Listed(PREVIEW_FILES.map(::ManagedMapFile)))
+}
+
+@Preview(name = "Updates, light", uiMode = Configuration.UI_MODE_NIGHT_NO)
+@Preview(name = "Updates, dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun MapManagerUpdatesPreview() {
+    MapManagerPreview(MapManagerUiState.Listed(PREVIEW_UPDATES))
 }
 
 @Preview(name = "Delete dialog, light", uiMode = Configuration.UI_MODE_NIGHT_NO)
