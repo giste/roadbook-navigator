@@ -18,7 +18,6 @@
 package dev.giste.map.ui
 
 import android.content.res.Configuration
-import android.text.format.Formatter
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -56,7 +55,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -356,10 +354,6 @@ private fun ManagerMessage(text: String, modifier: Modifier = Modifier) {
         )
     }
 }
-
-/** This size as short text in the current locale, e.g. "812 MB". */
-@Composable
-private fun FileSize.format(): String = Formatter.formatShortFileSize(LocalContext.current, bytes)
 
 // --- Previews ---
 

@@ -35,7 +35,8 @@ dev/giste/map/
 ├── ui/             MapViewModel, MapUiState, MapViewerContent (+ MapViewerTestTags and previews),
 │                   VtmMap, MapCamera, MapManagerViewModel, MapManagerUiState,
 │                   MapManagerContent (+ MapManagerTestTags and previews), MapDownloaderViewModel,
-│                   MapDownloaderUiState, MapDownloaderContent (+ MapDownloaderTestTags and previews)
+│                   MapDownloaderUiState, MapDownloaderContent (+ MapDownloaderTestTags and previews),
+│                   MapDownloadControls (+ MapDownloadTestTags and the dialog previews)
 └── di/             MapModule
 ```
 

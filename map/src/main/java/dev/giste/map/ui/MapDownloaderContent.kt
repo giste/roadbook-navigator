@@ -18,7 +18,6 @@
 package dev.giste.map.ui
 
 import android.content.res.Configuration
-import android.text.format.Formatter
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -33,17 +32,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -56,7 +50,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -92,39 +85,6 @@ internal object MapDownloaderTestTags {
 
     /** The button that downloads a map, which shows an icon instead of text. */
     const val DOWNLOAD: String = "map_downloader_download"
-
-    /** The mark of a map waiting to be downloaded, an icon. */
-    const val QUEUED: String = "map_downloader_queued"
-
-    /** The progress of a map being downloaded, a progress indicator. */
-    const val PROGRESS: String = "map_downloader_progress"
-
-    /** The stop mark inside the progress, an icon. */
-    const val STOP_MARK: String = "map_downloader_stop_mark"
-
-    /** The button that downloads again a map that failed, which shows an icon instead of text. */
-    const val RETRY_DOWNLOAD: String = "map_downloader_retry_download"
-
-    /**
-     * The button around a waiting mark or a progress, which asks to stop the download. It shows
-     * the mark or the progress instead of text.
-     */
-    const val CANCEL_DOWNLOAD: String = "map_downloader_cancel_download"
-
-    /** The stop dialog's button that stops the download, which shows an icon instead of text. */
-    const val CONFIRM_CANCEL: String = "map_downloader_confirm_cancel"
-
-    /** The stop dialog's button that keeps downloading, which shows an icon instead of text. */
-    const val KEEP_DOWNLOADING: String = "map_downloader_keep_downloading"
-
-    /** The mobile data dialog's button that downloads now, which shows an icon instead of text. */
-    const val USE_MOBILE_DATA: String = "map_downloader_use_mobile_data"
-
-    /** The mobile data dialog's button that waits for Wi-Fi, which shows an icon instead of text. */
-    const val WAIT_FOR_WIFI: String = "map_downloader_wait_for_wifi"
-
-    /** The mobile data dialog's button that downloads nothing, which shows an icon instead of text. */
-    const val DISMISS_MOBILE_DATA: String = "map_downloader_dismiss_mobile_data"
 
     /**
      * The row of one entry, which holds its marks.
@@ -238,7 +198,7 @@ internal fun MapDownloaderContent(
     // Only while the map still downloads: once it has finished or stopped, there is nothing to stop.
     val toCancel = listed?.entries?.filterIsInstance<RemoteMapEntry.MapFile>()?.find { file ->
         val download = listed.downloads[file.name]
-        file.name == confirmingCancel && (download is MapDownload.Queued || download is MapDownload.Running)
+        file.name == confirmingCancel && download.isActive
     }
     if (toCancel != null) {
         CancelDownloadDialog(
@@ -415,25 +375,14 @@ private fun MapFileAction(
     val size = GisteTheme.dimensions.minTouchTarget
     Box(modifier = Modifier.size(size), contentAlignment = Alignment.Center) {
         when {
-            download is MapDownload.Queued || download is MapDownload.Running -> IconButton(
-                onClick = onCancelRequest,
-                modifier = Modifier.size(size).testTag(MapDownloaderTestTags.CANCEL_DOWNLOAD),
-            ) {
-                DownloadMark(download)
-            }
+            download != null && download.isActive -> ActiveDownloadButton(download, onCancelRequest)
             installed -> Icon(
                 painter = painterResource(R.drawable.map_ic_installed),
                 contentDescription = null,
                 modifier = Modifier.testTag(MapDownloaderTestTags.INSTALLED),
                 tint = MaterialTheme.colorScheme.primary,
             )
-            failed -> IconButton(
-                onClick = onDownload,
-                modifier = Modifier.size(size).testTag(MapDownloaderTestTags.RETRY_DOWNLOAD),
-                colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.error),
-            ) {
-                Icon(painter = painterResource(R.drawable.map_ic_refresh), contentDescription = null)
-            }
+            failed -> RetryDownloadButton(onClick = onDownload)
             else -> IconButton(
                 onClick = onDownload,
                 modifier = Modifier.size(size).testTag(MapDownloaderTestTags.DOWNLOAD),
@@ -443,134 +392,6 @@ private fun MapFileAction(
             }
         }
     }
-}
-
-/**
- * How [download] goes: a waiting mark while it is queued, or its progress while it runs (a spinner
- * while its size is unknown) with a stop mark inside, which says that pressing it stops the
- * download. The waiting mark has none: why the map waits (another download, or Wi-Fi) matters
- * more there, and pressing it asks the same.
- *
- * @param download a queued or running download.
- */
-@Composable
-private fun DownloadMark(download: MapDownload) {
-    if (download is MapDownload.Running) {
-        Box(contentAlignment = Alignment.Center) {
-            val progressModifier = Modifier.testTag(MapDownloaderTestTags.PROGRESS)
-            val fraction = download.fraction
-            if (fraction != null) {
-                CircularProgressIndicator(progress = { fraction }, modifier = progressModifier)
-            } else {
-                CircularProgressIndicator(modifier = progressModifier)
-            }
-            Icon(
-                painter = painterResource(R.drawable.map_ic_close),
-                contentDescription = null,
-                // Material's default icon size, which fits inside the ring.
-                modifier = Modifier.testTag(MapDownloaderTestTags.STOP_MARK),
-                tint = MaterialTheme.colorScheme.primary,
-            )
-        }
-    } else {
-        Icon(
-            painter = painterResource(R.drawable.map_ic_queued),
-            contentDescription = null,
-            modifier = Modifier.testTag(MapDownloaderTestTags.QUEUED),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-/**
- * Asks the rider to confirm stopping the download of the map [name]: the name in the title, and
- * icon buttons to stop it, which throws away what was downloaded, or to keep downloading. The stop
- * button is filled in the error color, so it stands apart from the outlined one.
- *
- * @param name the map's file name.
- * @param onConfirm called when the rider confirms.
- * @param onDismiss called when the rider keeps downloading, taps outside or presses back.
- */
-@Composable
-private fun CancelDownloadDialog(name: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    val minTouchTarget = GisteTheme.dimensions.minTouchTarget
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.map_download_cancel_title, name)) },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                modifier = Modifier
-                    .heightIn(min = minTouchTarget)
-                    .testTag(MapDownloaderTestTags.CONFIRM_CANCEL),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error,
-                    contentColor = MaterialTheme.colorScheme.onError,
-                ),
-            ) {
-                Icon(painter = painterResource(R.drawable.map_ic_delete), contentDescription = null)
-            }
-        },
-        dismissButton = {
-            OutlinedButton(
-                onClick = onDismiss,
-                modifier = Modifier
-                    .heightIn(min = minTouchTarget)
-                    .testTag(MapDownloaderTestTags.KEEP_DOWNLOADING),
-            ) {
-                Icon(painter = painterResource(R.drawable.map_ic_close), contentDescription = null)
-            }
-        },
-    )
-}
-
-/**
- * Asks whether to download the map [name] now with mobile data, or to wait for Wi-Fi, as the
- * device is not on Wi-Fi. The buttons are icons: mobile data (filled, as it downloads now), Wi-Fi
- * (outlined) and close, which downloads nothing. The text says what each choice does.
- *
- * @param name the map's file name.
- * @param onAnswer called with `true` to download now with mobile data, `false` to wait for Wi-Fi.
- * @param onDismiss called when the rider closes the dialog, taps outside or presses back.
- */
-@Composable
-private fun MobileDataDialog(name: String, onAnswer: (useMobileData: Boolean) -> Unit, onDismiss: () -> Unit) {
-    val dimensions = GisteTheme.dimensions
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.map_download_mobile_data_title)) },
-        text = { Text(stringResource(R.string.map_download_mobile_data_message, name)) },
-        confirmButton = {
-            Row(horizontalArrangement = Arrangement.spacedBy(dimensions.spacingSmall)) {
-                OutlinedButton(
-                    onClick = { onAnswer(false) },
-                    modifier = Modifier
-                        .heightIn(min = dimensions.minTouchTarget)
-                        .testTag(MapDownloaderTestTags.WAIT_FOR_WIFI),
-                ) {
-                    Icon(painter = painterResource(R.drawable.map_ic_wifi), contentDescription = null)
-                }
-                Button(
-                    onClick = { onAnswer(true) },
-                    modifier = Modifier
-                        .heightIn(min = dimensions.minTouchTarget)
-                        .testTag(MapDownloaderTestTags.USE_MOBILE_DATA),
-                ) {
-                    Icon(painter = painterResource(R.drawable.map_ic_mobile_data), contentDescription = null)
-                }
-            }
-        },
-        dismissButton = {
-            IconButton(
-                onClick = onDismiss,
-                modifier = Modifier
-                    .size(dimensions.minTouchTarget)
-                    .testTag(MapDownloaderTestTags.DISMISS_MOBILE_DATA),
-            ) {
-                Icon(painter = painterResource(R.drawable.map_ic_close), contentDescription = null)
-            }
-        },
-    )
 }
 
 /**
@@ -632,21 +453,6 @@ private fun RemoteListingFailure.toMessage(): String = stringResource(
         RemoteListingFailure.UNREADABLE_LISTING -> R.string.map_downloader_unreadable_listing
     },
 )
-
-/** The message that explains this download failure. */
-@Composable
-private fun MapDownloadFailure.toMessage(): String = stringResource(
-    when (this) {
-        MapDownloadFailure.SERVER_ERROR -> R.string.map_download_failed_server
-        MapDownloadFailure.NOT_ENOUGH_SPACE -> R.string.map_download_failed_space
-        MapDownloadFailure.UNREADABLE_MAP -> R.string.map_download_failed_unreadable
-        MapDownloadFailure.STORAGE_ERROR -> R.string.map_download_failed_storage
-    },
-)
-
-/** This size as short text in the current locale, e.g. "2.5 MB". */
-@Composable
-private fun FileSize.format(): String = Formatter.formatShortFileSize(LocalContext.current, bytes)
 
 /** This day as text in the current locale, e.g. "Sep 7, 2026". */
 @Composable
@@ -724,22 +530,4 @@ private fun MapDownloaderListedPreview() {
     MapDownloaderPreview(
         MapDownloaderUiState.Listed(PREVIEW_FOLDER, PREVIEW_ENTRIES, setOf("andorra.map"), PREVIEW_DOWNLOADS),
     )
-}
-
-@Preview(name = "Mobile data question, light", uiMode = Configuration.UI_MODE_NIGHT_NO)
-@Preview(name = "Mobile data question, dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun MobileDataDialogPreview() {
-    GisteTheme {
-        MobileDataDialog(name = "andorra.map", onAnswer = {}, onDismiss = {})
-    }
-}
-
-@Preview(name = "Stop download dialog, light", uiMode = Configuration.UI_MODE_NIGHT_NO)
-@Preview(name = "Stop download dialog, dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun CancelDownloadDialogPreview() {
-    GisteTheme {
-        CancelDownloadDialog(name = "austria.map", onConfirm = {}, onDismiss = {})
-    }
 }
