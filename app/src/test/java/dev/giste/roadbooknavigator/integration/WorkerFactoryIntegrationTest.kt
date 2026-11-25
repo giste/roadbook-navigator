@@ -70,6 +70,6 @@ class WorkerFactoryIntegrationTest {
 
     private companion object {
         /** `:map`'s download worker, which is internal to `:map`, so it is named here. */
-        const val MAP_DOWNLOAD_WORKER = "dev.giste.map.data.MapDownloadWorker"
+        const val MAP_DOWNLOAD_WORKER = "dev.giste.map.data.download.MapDownloadWorker"
     }
 }

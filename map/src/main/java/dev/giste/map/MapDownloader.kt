@@ -23,9 +23,9 @@ import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.giste.map.domain.RemoteMapEntry
-import dev.giste.map.ui.MapDownloaderContent
-import dev.giste.map.ui.MapDownloaderUiState
-import dev.giste.map.ui.MapDownloaderViewModel
+import dev.giste.map.ui.downloader.MapDownloaderContent
+import dev.giste.map.ui.downloader.MapDownloaderUiState
+import dev.giste.map.ui.downloader.MapDownloaderViewModel
 import dev.giste.map.ui.rememberDownloadWithNotificationPermission
 
 /**
