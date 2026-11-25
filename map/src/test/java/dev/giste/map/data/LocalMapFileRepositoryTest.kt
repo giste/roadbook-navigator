@@ -51,8 +51,11 @@ class LocalMapFileRepositoryTest {
 
     private val mapFolder: File get() = File(temporaryFolder.root, "map_files")
 
+    /** The changes the repository follows and reports, shared by every repository of a test. */
+    private val changes = MapFolderChanges()
+
     private fun TestScope.repository(folder: File = mapFolder, testChecker: MapFileChecker = checker) =
-        LocalMapFileRepository(folder, testChecker, StandardTestDispatcher(testScheduler), logger)
+        LocalMapFileRepository(folder, testChecker, changes, StandardTestDispatcher(testScheduler), logger)
 
     /** Writes a file of [size] bytes at [relativePath] in the map folder. */
     private fun addFile(relativePath: String, size: Int = 10): File =
@@ -79,12 +82,12 @@ class LocalMapFileRepositoryTest {
         )
     }
 
-    /** Collects the installed files once and returns them. */
+    /** Collects the installed files, returns the first list and stops collecting. */
     private suspend fun LocalMapFileRepository.list(): InstalledMapFiles {
         var result: InstalledMapFiles? = null
         installedFiles.test {
             result = awaitItem()
-            awaitComplete()
+            cancelAndIgnoreRemainingEvents()
         }
         return checkNotNull(result)
     }
@@ -214,6 +217,60 @@ class LocalMapFileRepositoryTest {
         assertEquals(InstalledMapFiles.Listed(listOf(installed("spain.map"))), repository.list())
     }
 
+    @Test
+    fun installedFiles_folderChanged_looksAgainAndEmits() = runTest {
+        repository().installedFiles.test {
+            assertEquals(InstalledMapFiles.Listed(emptyList()), awaitItem())
+            addFile("spain.map")
+
+            changes.notifyChanged()
+
+            assertEquals(InstalledMapFiles.Listed(listOf(installed("spain.map"))), awaitItem())
+        }
+    }
+
+    @Test
+    fun installedFiles_noChange_doesNotLookAgain() = runTest {
+        repository().installedFiles.test {
+            awaitItem()
+            addFile("spain.map")
+
+            // Files copied by other means are only seen on the next change or collection.
+            testScheduler.advanceUntilIdle()
+            expectNoEvents()
+        }
+    }
+
+    @Test
+    fun installedFiles_folderUnreadableThenChanged_goesOn() = runTest {
+        mapFolder.parentFile?.mkdirs()
+        mapFolder.writeText("a file where the folder should be")
+
+        repository().installedFiles.test {
+            assertEquals(InstalledMapFiles.FolderUnreadable, awaitItem())
+            mapFolder.delete()
+
+            changes.notifyChanged()
+
+            assertEquals(InstalledMapFiles.Listed(emptyList()), awaitItem())
+        }
+    }
+
+    @Test
+    fun installedFiles_deletionWhileCollecting_emitsTheFilesLeft() = runTest {
+        addFile("spain.map")
+        addFile("andorra.map")
+        val repository = repository()
+
+        repository.installedFiles.test {
+            awaitItem()
+
+            repository.delete(installed("spain.map"))
+
+            assertEquals(InstalledMapFiles.Listed(listOf(installed("andorra.map"))), awaitItem())
+        }
+    }
+
     // --- delete ---
 
     @Test
@@ -293,6 +350,27 @@ class LocalMapFileRepositoryTest {
             // Lets TemporaryFolder delete it.
             mapFolder.setWritable(true)
         }
+    }
+
+    @Test
+    fun delete_deleted_notifiesTheChange() = runTest {
+        addFile("spain.map")
+        val before = changes.changes.value
+
+        repository().delete(installed("spain.map"))
+
+        assertEquals(before + 1, changes.changes.value)
+    }
+
+    @Test
+    fun delete_failed_notifiesTheChangeAnyway() = runTest {
+        val notes = addFile("notes.txt")
+        val before = changes.changes.value
+
+        repository().delete(installed(notes.name))
+
+        // The folder may have changed in other ways, so the listings look again.
+        assertEquals(before + 1, changes.changes.value)
     }
 
     @Test

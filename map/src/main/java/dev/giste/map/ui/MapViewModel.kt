@@ -46,9 +46,10 @@ import kotlinx.coroutines.flow.stateIn
 /**
  * The state of the map viewer.
  *
- * It looks for the installed maps once per subscription. Only when there are maps to draw does it
- * collect the settings and the location, so a viewer without maps does not keep the location
- * running for nothing.
+ * It follows the installed maps, so maps downloaded or deleted while it is shown are drawn or
+ * dropped at once (with a new map view, as the renderer takes its files once). Only when there are
+ * maps to draw does it collect the settings and the location, so a viewer without maps does not
+ * keep the location running for nothing.
  *
  * @param mapFileRepository the installed maps.
  * @param settingsSource the zoom level and tilt.
@@ -80,7 +81,7 @@ internal class MapViewModel @Inject constructor(
     /**
      * The state of the viewer. It starts as [MapUiState.Loading], and is shared while the viewer
      * is shown and for [STOP_TIMEOUT_MILLIS] after, so a configuration change does not look for
-     * the maps again.
+     * the maps again. It changes as the installed maps change.
      */
     // flatMapLatest is still experimental in kotlinx.coroutines.
     @OptIn(ExperimentalCoroutinesApi::class)

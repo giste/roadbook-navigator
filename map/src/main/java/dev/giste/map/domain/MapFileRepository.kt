@@ -25,9 +25,9 @@ internal interface MapFileRepository {
     /**
      * Every installed map file, readable or not.
      *
-     * A cold flow: each collection looks for the files once, emits the result and completes, so
-     * collect it again to see changes. It never throws: a folder that cannot be read is
-     * [InstalledMapFiles.FolderUnreadable].
+     * A cold flow: each collection looks for the files at once and emits them, then looks again
+     * and emits after every change made by `:map` (a deletion or a download), and never completes.
+     * It never throws: a folder that cannot be read is [InstalledMapFiles.FolderUnreadable].
      */
     val installedFiles: Flow<InstalledMapFiles>
 

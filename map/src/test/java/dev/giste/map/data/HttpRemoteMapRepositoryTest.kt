@@ -80,8 +80,10 @@ class HttpRemoteMapRepositoryTest {
     }
 
     /** A repository for the maps folder `/maps/v5/` of the local server. */
-    private fun repository(): HttpRemoteMapRepository =
-        HttpRemoteMapRepository(client, Optional.of(MapDownloadServer(server.url("/maps/v5/").toString())), logger)
+    private fun repository(): HttpRemoteMapRepository {
+        val site = MapSite(Optional.of(MapDownloadServer(server.url("/maps/v5/").toString())))
+        return HttpRemoteMapRepository(client, site, logger)
+    }
 
     private fun ok(body: String = listing) = MockResponse.Builder().code(200).body(body).build()
 

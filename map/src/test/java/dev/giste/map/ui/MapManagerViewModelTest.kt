@@ -73,19 +73,32 @@ class MapManagerViewModelTest {
     }
 
     @Test
-    fun delete_deleted_deletesTheFileAndListsTheFilesAgain() = runTest {
+    fun delete_deleted_deletesTheFile() = runTest {
         val viewModel = viewModel()
 
         viewModel.uiState.test {
             skipItems(2)
-            repository.result = InstalledMapFiles.Listed(listOf(spain))
 
             viewModel.delete(damaged)
+            testScheduler.advanceUntilIdle()
+
+            // The list changes when the repository finds the files again, not before.
+            expectNoEvents()
+        }
+        assertEquals(listOf(damaged), repository.deleted)
+    }
+
+    @Test
+    fun uiState_filesChange_followsThem() = runTest {
+        viewModel().uiState.test {
+            skipItems(2)
+
+            // E.g. after a deletion, or a download from the map downloader.
+            repository.result = InstalledMapFiles.Listed(listOf(spain))
 
             assertEquals(MapManagerUiState.Listed(listOf(spain)), awaitItem())
         }
-        assertEquals(listOf(damaged), repository.deleted)
-        assertEquals(2, repository.collections)
+        assertEquals(1, repository.collections)
     }
 
     @Test
@@ -99,10 +112,8 @@ class MapManagerViewModelTest {
             viewModel.delete(spain)
 
             assertEquals(MapManagerUiState.Listed(listOf(damaged, spain), deleteFailed = spain), awaitItem())
-            // The new search finds the same files, so nothing else changes.
             expectNoEvents()
         }
-        assertEquals(2, repository.collections)
     }
 
     @Test

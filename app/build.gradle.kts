@@ -69,6 +69,10 @@ dependencies {
     implementation(libs.androidx.hilt.lifecycle.viewmodel.compose)
     // Moves between the dashboard and the settings screen, with type-safe routes.
     implementation(libs.androidx.navigation.compose)
+    // WorkManager runs :map's downloads. The app configures it with Hilt's worker factory, so the
+    // workers of every module are injected.
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
@@ -80,6 +84,8 @@ dependencies {
     // Runs the app's real Hilt graph in the integration tests, on Robolectric.
     testImplementation(libs.hilt.android.testing)
     kspTest(libs.hilt.compiler)
+    // A WorkManager for the integration tests, which run on Hilt's test application.
+    testImplementation(libs.androidx.work.testing)
 
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

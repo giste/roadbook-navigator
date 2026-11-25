@@ -75,8 +75,13 @@ dependencies {
     // BackHandler, so the system back gesture goes up one folder in the map downloader.
     implementation(libs.androidx.activity.compose)
 
-    // OkHttp reads the download site's folder listings.
+    // OkHttp reads the download site's folder listings and downloads the maps.
     implementation(libs.okhttp)
+    // WorkManager runs the downloads in the background, one at a time, and resumes them after
+    // the process stops. hilt-work lets the download worker be injected by Hilt.
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
@@ -87,6 +92,8 @@ dependencies {
     testImplementation(libs.androidx.compose.ui.test.junit4)
     // A local web server, so the download site is tested without the network.
     testImplementation(libs.okhttp.mockwebserver)
+    // A WorkManager for tests, and a builder that runs one worker directly.
+    testImplementation(libs.androidx.work.testing)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

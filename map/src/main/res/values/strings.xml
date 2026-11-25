@@ -23,6 +23,20 @@
     <string name="map_downloader_unreadable_listing">The map site\'s list cannot be read</string>
     <!-- Shown in the map downloader when a folder of the download site holds no maps. -->
     <string name="map_downloader_empty">No maps in this folder</string>
+    <!-- Name of the notification channel of map downloads, shown in the system settings. -->
+    <string name="map_download_channel_name">Map downloads</string>
+    <!-- Title of the notification shown while a map downloads. %1$s is the map's file name. -->
+    <string name="map_download_notification_title">Downloading %1$s</string>
+    <!-- Text of the download notification. %1$s is the size downloaded, %2$s the map's size, e.g. "120 MB of 812 MB". -->
+    <string name="map_download_notification_progress">%1$s of %2$s</string>
+    <!-- Shown under a map in the map downloader when the download site does not send it. -->
+    <string name="map_download_failed_server">The map site did not send it</string>
+    <!-- Shown under a map in the map downloader when the device has not enough space for it. -->
+    <string name="map_download_failed_space">Not enough free space</string>
+    <!-- Shown under a map in the map downloader when the downloaded map cannot be read. -->
+    <string name="map_download_failed_unreadable">The downloaded map cannot be read</string>
+    <!-- Shown under a map in the map downloader when it cannot be saved on the device. -->
+    <string name="map_download_failed_storage">The map cannot be saved</string>
     <!--
       Credit for the map data, required by its license (ODbL). Shown in a corner of the map. Legally
       fixed text: the OpenStreetMap Foundation's attribution guidelines name "© OpenStreetMap" as

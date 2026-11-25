@@ -22,10 +22,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.giste.map.domain.InstalledMapFiles
+import dev.giste.map.domain.MapDownload
+import dev.giste.map.domain.MapDownloadRepository
 import dev.giste.map.domain.MapFileRepository
 import dev.giste.map.domain.RemoteFolderPath
 import dev.giste.map.domain.RemoteListing
 import dev.giste.map.domain.RemoteMapEntry
+import dev.giste.map.domain.RemoteMapPath
 import dev.giste.map.domain.RemoteMapRepository
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -34,29 +37,32 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 /**
- * The state of the map downloader: one folder of the download site at a time, and which of its
- * maps are already installed.
+ * The state of the map downloader: one folder of the download site at a time, which of its maps
+ * are already installed, and their downloads.
  *
  * The folder being shown is kept in [savedStateHandle], so it survives the process being stopped.
- * Each folder is read when it is shown, and again on [retry].
+ * Each folder is read when it is shown, and again on [retry]. While it is shown, the installed
+ * maps and the downloads are followed, so a map's row changes as it downloads and installs.
  *
  * @param savedStateHandle keeps the folder being shown.
  * @param remoteRepository the maps on the download site.
  * @param installedRepository the maps on the device, to mark the installed ones.
+ * @param downloadRepository downloads the maps.
  */
 @HiltViewModel
 internal class MapDownloaderViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val remoteRepository: RemoteMapRepository,
     private val installedRepository: MapFileRepository,
+    private val downloadRepository: MapDownloadRepository,
 ) : ViewModel() {
 
     /** The folder being shown. */
@@ -101,35 +107,58 @@ internal class MapDownloaderViewModel @Inject constructor(
         reloads.update { it + 1 }
     }
 
-    /** Reads [path], marking its maps already installed in the same folder on the device. */
+    /**
+     * Downloads [entry], a map in the folder being shown, after the maps already queued. Also
+     * starts again a download that failed.
+     *
+     * @param entry the map to download.
+     */
+    fun download(entry: RemoteMapEntry.MapFile) {
+        val map = RemoteMapPath(RemoteFolderPath.parse(folder.value), entry.name)
+        viewModelScope.launch { downloadRepository.start(map) }
+    }
+
+    /**
+     * Reads [path], then follows which of its maps are installed in the same folder on the
+     * device, and their downloads.
+     */
     private fun read(path: RemoteFolderPath): Flow<MapDownloaderUiState> = flow {
         emit(MapDownloaderUiState.Loading(path))
-        val state = when (val listing = remoteRepository.list(path)) {
-            is RemoteListing.Failed -> MapDownloaderUiState.Failed(path, listing.reason)
+        when (val listing = remoteRepository.list(path)) {
+            is RemoteListing.Failed -> emit(MapDownloaderUiState.Failed(path, listing.reason))
             is RemoteListing.Listed -> {
-                val mapNames = listing.entries.filterIsInstance<RemoteMapEntry.MapFile>().map { it.name }
-                MapDownloaderUiState.Listed(path, listing.entries, installedNames(path) intersect mapNames.toSet())
+                val mapNames = listing.entries
+                    .filterIsInstance<RemoteMapEntry.MapFile>()
+                    .mapTo(mutableSetOf()) { it.name }
+                val installedFiles = installedRepository.installedFiles
+                val listed = combine(installedFiles, downloadRepository.downloads) { files, downloads ->
+                    MapDownloaderUiState.Listed(
+                        folder = path,
+                        entries = listing.entries,
+                        installed = files.namesIn(path) intersect mapNames,
+                        downloads = downloads.inFolder(path).filterKeys { it in mapNames },
+                    )
+                }
+                emitAll(listed)
             }
         }
-        emit(state)
     }
 
     /**
      * The names of the map files installed in the device folder that matches [path]. If the map
      * folder cannot be read, none are marked: the list itself is still useful.
      */
-    private suspend fun installedNames(path: RemoteFolderPath): Set<String> {
+    private fun InstalledMapFiles.namesIn(path: RemoteFolderPath): Set<String> {
         val folderName = path.toString()
-        return installedRepository.installedFiles
-            .map { files ->
-                when (files) {
-                    InstalledMapFiles.FolderUnreadable -> emptySet()
-                    is InstalledMapFiles.Listed ->
-                        files.files.filter { it.folder == folderName }.mapTo(mutableSetOf()) { it.name }
-                }
-            }
-            .first()
+        return when (this) {
+            InstalledMapFiles.FolderUnreadable -> emptySet()
+            is InstalledMapFiles.Listed -> files.filter { it.folder == folderName }.mapTo(mutableSetOf()) { it.name }
+        }
     }
+
+    /** The downloads of the maps in [path], by file name. */
+    private fun List<MapDownload>.inFolder(path: RemoteFolderPath): Map<String, MapDownload> =
+        filter { it.map.folder == path }.associateBy { it.map.name }
 
     private companion object {
         /** The key of the folder being shown in the saved state. */

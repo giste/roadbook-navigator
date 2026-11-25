@@ -29,9 +29,8 @@ import java.io.IOException
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
 /**
@@ -50,17 +49,13 @@ import kotlinx.coroutines.withContext
 internal class LocalMapFileRepository @Inject constructor(
     @param:MapFolder private val folder: File,
     private val checker: MapFileChecker,
+    private val folderChanges: MapFolderChanges,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     private val logger: Logger,
 ) : MapFileRepository {
 
-    override val installedFiles: Flow<InstalledMapFiles> = flow { emit(findFiles()) }
-        .catch { error ->
-            // Only file-system failures are expected here. Anything else is a bug and propagates.
-            if (!error.isFileSystemFailure()) throw error
-            logger.e(error, "Cannot read the map folder")
-            emit(InstalledMapFiles.FolderUnreadable)
-        }
+    override val installedFiles: Flow<InstalledMapFiles> = folderChanges.changes
+        .map { findFilesSafely() }
         .flowOn(ioDispatcher)
 
     override suspend fun delete(file: InstalledMapFile): DeleteMapResult = withContext(ioDispatcher) {
@@ -72,7 +67,23 @@ internal class LocalMapFileRepository @Inject constructor(
             if (!error.isFileSystemFailure()) throw error
             logger.e(error, "Cannot delete the map file %s", file.name)
             DeleteMapResult.Failed
+        } finally {
+            // Also after a failure: the folder may have changed in other ways.
+            folderChanges.notifyChanged()
         }
+    }
+
+    /**
+     * Looks for the map files, reporting a failure of the file system as an unreadable folder.
+     * Caught here rather than with `catch` on the flow, so the flow goes on after a failure.
+     */
+    private fun findFilesSafely(): InstalledMapFiles = try {
+        findFiles()
+    } catch (error: Exception) {
+        // Only file-system failures are expected here. Anything else is a bug and propagates.
+        if (!error.isFileSystemFailure()) throw error
+        logger.e(error, "Cannot read the map folder")
+        InstalledMapFiles.FolderUnreadable
     }
 
     /** Looks for the map files and checks them. */

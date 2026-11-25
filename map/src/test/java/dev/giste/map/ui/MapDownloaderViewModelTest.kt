@@ -20,13 +20,18 @@ package dev.giste.map.ui
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import dev.giste.map.MainDispatcherRule
+import dev.giste.map.domain.FakeMapDownloadRepository
 import dev.giste.map.domain.FakeMapFileRepository
 import dev.giste.map.domain.FakeRemoteMapRepository
+import dev.giste.map.domain.FileSize
 import dev.giste.map.domain.InstalledMapFiles
+import dev.giste.map.domain.MapDownload
+import dev.giste.map.domain.MapDownloadFailure
 import dev.giste.map.domain.RemoteFolderPath
 import dev.giste.map.domain.RemoteListing
 import dev.giste.map.domain.RemoteListingFailure
 import dev.giste.map.domain.RemoteMapEntry
+import dev.giste.map.domain.RemoteMapPath
 import dev.giste.map.domain.testInstalledFile
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.runTest
@@ -63,8 +68,13 @@ class MapDownloaderViewModelTest {
         ),
     )
 
+    private val downloads = FakeMapDownloadRepository()
+
     private fun viewModel(savedState: SavedStateHandle = SavedStateHandle()) =
-        MapDownloaderViewModel(savedState, remote, installed)
+        MapDownloaderViewModel(savedState, remote, installed, downloads)
+
+    /** A view model showing `europe`. */
+    private fun inEurope() = viewModel(SavedStateHandle(mapOf("folder" to "europe")))
 
     @Test
     fun uiState_beforeTheFolderIsRead_isLoadingTheRoot() {
@@ -116,6 +126,91 @@ class MapDownloaderViewModelTest {
             skipItems(1)
             assertEquals(MapDownloaderUiState.Listed(europe, listOf(italyFolder, andorra, spain)), awaitItem())
         }
+    }
+
+    @Test
+    fun uiState_mapInstalledWhileShown_isMarked() = runTest {
+        installed.result = InstalledMapFiles.Listed(emptyList())
+
+        inEurope().uiState.test {
+            skipItems(2)
+
+            // E.g. its download finished.
+            installed.result = InstalledMapFiles.Listed(
+                listOf(testInstalledFile("spain.map").copy(path = "/maps/europe/spain.map", folder = "europe")),
+            )
+
+            assertEquals(
+                MapDownloaderUiState.Listed(europe, listOf(italyFolder, andorra, spain), setOf("spain.map")),
+                awaitItem(),
+            )
+        }
+    }
+
+    @Test
+    fun uiState_downloadsOfTheFolder_areShownByName() = runTest {
+        val running = MapDownload.Running(RemoteMapPath(europe, "spain.map"), FileSize(10), FileSize(100))
+        val failed = MapDownload.Failed(RemoteMapPath(europe, "andorra.map"), MapDownloadFailure.NOT_ENOUGH_SPACE)
+        downloads.current.value = listOf(running, failed)
+
+        inEurope().uiState.test {
+            skipItems(1)
+            assertEquals(
+                MapDownloaderUiState.Listed(
+                    europe,
+                    listOf(italyFolder, andorra, spain),
+                    setOf("andorra.map"),
+                    mapOf("spain.map" to running, "andorra.map" to failed),
+                ),
+                awaitItem(),
+            )
+        }
+    }
+
+    @Test
+    fun uiState_downloadsOfOtherFoldersOrMaps_areLeftOut() = runTest {
+        downloads.current.value = listOf(
+            // Same name, other folder.
+            MapDownload.Queued(RemoteMapPath(root, "spain.map")),
+            // Same folder, a map the folder does not list.
+            MapDownload.Queued(RemoteMapPath(europe, "gone.map")),
+        )
+
+        inEurope().uiState.test {
+            skipItems(1)
+            assertEquals(
+                MapDownloaderUiState.Listed(europe, listOf(italyFolder, andorra, spain), setOf("andorra.map")),
+                awaitItem(),
+            )
+        }
+    }
+
+    @Test
+    fun uiState_downloadChangesWhileShown_followsIt() = runTest {
+        val map = RemoteMapPath(europe, "spain.map")
+        downloads.current.value = listOf(MapDownload.Queued(map))
+
+        inEurope().uiState.test {
+            skipItems(2)
+
+            val running = MapDownload.Running(map, FileSize(50), FileSize(100))
+            downloads.current.value = listOf(running)
+
+            assertEquals(mapOf("spain.map" to running), (awaitItem() as MapDownloaderUiState.Listed).downloads)
+        }
+    }
+
+    @Test
+    fun download_map_startsItInTheFolderShown() = runTest {
+        val viewModel = inEurope()
+
+        viewModel.uiState.test {
+            skipItems(2)
+
+            viewModel.download(spain)
+            testScheduler.advanceUntilIdle()
+        }
+        assertEquals(listOf(RemoteMapPath(europe, "spain.map")), downloads.started)
     }
 
     @Test

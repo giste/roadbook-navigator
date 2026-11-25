@@ -18,20 +18,16 @@
 package dev.giste.map.data
 
 import dev.giste.core.logging.Logger
-import dev.giste.map.MapDownloadServer
 import dev.giste.map.domain.RemoteFolderPath
 import dev.giste.map.domain.RemoteListing
 import dev.giste.map.domain.RemoteListingFailure
 import dev.giste.map.domain.RemoteMapRepository
 import java.io.IOException
-import java.util.Optional
 import javax.inject.Inject
 import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
 import okhttp3.Callback
-import okhttp3.HttpUrl
-import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -44,20 +40,17 @@ import okhttp3.Response
  * [RemoteListing.Failed].
  *
  * @param client the HTTP client.
- * @param server the server an app provides, if any; otherwise [MapDownloadServer]'s default.
+ * @param site the addresses of the download site's folders.
  * @param logger logs failures.
  */
 internal class HttpRemoteMapRepository @Inject constructor(
     @param:MapHttpClient private val client: OkHttpClient,
-    server: Optional<MapDownloadServer>,
+    private val site: MapSite,
     private val logger: Logger,
 ) : RemoteMapRepository {
 
-    /** The address of the maps folder. [MapDownloadServer] has checked it is a valid one. */
-    private val mapsUrl: HttpUrl = server.orElseGet { MapDownloadServer() }.url.toHttpUrl()
-
     override suspend fun list(folder: RemoteFolderPath): RemoteListing {
-        val call = client.newCall(Request.Builder().url(folder.toUrl()).build())
+        val call = client.newCall(Request.Builder().url(site.url(folder)).build())
         return suspendCancellableCoroutine { continuation ->
             continuation.invokeOnCancellation { call.cancel() }
             call.enqueue(
@@ -74,16 +67,6 @@ internal class HttpRemoteMapRepository @Inject constructor(
                 },
             )
         }
-    }
-
-    /** The address of [this] folder: the maps folder, then its names, with a trailing `/`. */
-    private fun RemoteFolderPath.toUrl(): HttpUrl {
-        if (isRoot) return mapsUrl
-        val builder = mapsUrl.newBuilder()
-        // The maps folder ends in "/", so its last path segment is empty: the first name takes
-        // its place, and the final empty segment adds the trailing "/" back.
-        segments.forEach { builder.addPathSegment(it) }
-        return builder.addPathSegment("").build()
     }
 
     /** What this answer says about the folder. Reading its body may fail like the request. */

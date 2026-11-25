@@ -1,7 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- The map downloader reads the list of maps from the download site. -->
+    <!-- The map downloader reads the list of maps from the download site and downloads them. -->
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--
+    Map downloads run as a WorkManager foreground service with a notification, so a download of
+    several minutes is not stopped. Downloading a file the user asked for is a data sync.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
+    <!--
+    Shows the download notification on Android 13 and later. Optional: a download runs without it.
+    -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application>
+        <!-- WorkManager's foreground service, declared with the type the downloads use. -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
+    </application>
 
 </manifest>

@@ -31,8 +31,8 @@ import dev.giste.map.ui.MapManagerViewModel
  *
  * Files the map cannot read are listed too, with a warning mark, so they can be deleted. Deleting
  * asks first, and the screen tells the user if a file could not be deleted. The list is looked for
- * each time the screen is shown and after each deletion; a [MapViewer] shown afterwards draws what
- * is left.
+ * each time the screen is shown, and again after each deletion and each finished download from
+ * [MapDownloader]; a [MapViewer] follows the same changes.
  *
  * Open it from [MapViewer]'s manage button, e.g. as a navigation destination of its own.
  *

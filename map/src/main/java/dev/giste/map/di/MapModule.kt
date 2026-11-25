@@ -26,12 +26,18 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dev.giste.map.MapDownloadServer
+import dev.giste.map.data.FreeSpace
+import dev.giste.map.data.HttpMapFileDownloader
 import dev.giste.map.data.HttpRemoteMapRepository
 import dev.giste.map.data.LocalMapFileRepository
 import dev.giste.map.data.MapFileChecker
+import dev.giste.map.data.MapFileDownloader
 import dev.giste.map.data.MapFolder
 import dev.giste.map.data.MapHttpClient
+import dev.giste.map.data.StorageManagerFreeSpace
 import dev.giste.map.data.VtmMapFileChecker
+import dev.giste.map.data.WorkManagerMapDownloadRepository
+import dev.giste.map.domain.MapDownloadRepository
 import dev.giste.map.domain.MapFileRepository
 import dev.giste.map.domain.RemoteMapRepository
 import java.io.File
@@ -47,7 +53,8 @@ internal interface MapModule {
     /**
      * Provides [LocalMapFileRepository] wherever a [MapFileRepository] is injected.
      *
-     * It holds no state (each collection reads the folder), so it is not scoped.
+     * It holds no state (each collection reads the folder, and the changes it follows are a
+     * singleton of their own), so it is not scoped.
      */
     @Binds
     fun bindMapFileRepository(repository: LocalMapFileRepository): MapFileRepository
@@ -63,6 +70,25 @@ internal interface MapModule {
      */
     @Binds
     fun bindRemoteMapRepository(repository: HttpRemoteMapRepository): RemoteMapRepository
+
+    /**
+     * Provides [WorkManagerMapDownloadRepository] wherever a [MapDownloadRepository] is injected.
+     * It is a singleton of its own.
+     */
+    @Binds
+    fun bindMapDownloadRepository(repository: WorkManagerMapDownloadRepository): MapDownloadRepository
+
+    /**
+     * Provides [HttpMapFileDownloader] wherever a [MapFileDownloader] is injected.
+     *
+     * It holds no state (each download reads the folder and the site), so it is not scoped.
+     */
+    @Binds
+    fun bindMapFileDownloader(downloader: HttpMapFileDownloader): MapFileDownloader
+
+    /** Provides [StorageManagerFreeSpace] wherever a [FreeSpace] is injected. */
+    @Binds
+    fun bindFreeSpace(freeSpace: StorageManagerFreeSpace): FreeSpace
 
     /**
      * Lets an app provide its own [MapDownloadServer]. Without one, `:map` uses the default
@@ -90,10 +116,11 @@ internal interface MapModule {
             File(context.noBackupFilesDir, LocalMapFileRepository.FOLDER_NAME)
 
         /**
-         * Provides the HTTP client for the download site.
+         * Provides the HTTP client for the download site, for its folder listings and its maps.
          *
          * One client for the whole app, so its connections and threads are shared. The timeouts
-         * are for a silent server, not for a slow download: they apply to each wait for data.
+         * are for a silent server, not for a slow download: they apply to each wait for data, so
+         * a download of several minutes is not cut.
          *
          * @return the client.
          */

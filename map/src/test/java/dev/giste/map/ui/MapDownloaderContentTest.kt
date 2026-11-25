@@ -26,6 +26,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertWidthIsAtLeast
+import androidx.compose.ui.test.hasProgressBarRangeInfo
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -33,12 +34,16 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.unit.dp
 import dev.giste.core.ui.theme.GisteTheme
 import dev.giste.map.domain.FileSize
+import dev.giste.map.domain.MapDownload
+import dev.giste.map.domain.MapDownloadFailure
 import dev.giste.map.domain.RemoteFolderPath
 import dev.giste.map.domain.RemoteListingFailure
 import dev.giste.map.domain.RemoteMapEntry
+import dev.giste.map.domain.RemoteMapPath
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -66,6 +71,7 @@ class MapDownloaderContentTest {
     private var ups = 0
     private var retries = 0
     private val opened = mutableListOf<RemoteMapEntry.Folder>()
+    private val downloaded = mutableListOf<RemoteMapEntry.MapFile>()
 
     /** What the downloader shows. Tests change it to update the screen. */
     private var state: MapDownloaderUiState by mutableStateOf(MapDownloaderUiState.Loading(RemoteFolderPath.ROOT))
@@ -81,10 +87,18 @@ class MapDownloaderContentTest {
                     onOpen = { opened += it },
                     onUp = { ups++ },
                     onRetry = { retries++ },
+                    onDownload = { downloaded += it },
                 )
             }
         }
     }
+
+    /** [listed] with [download] for Albania, which is not installed. */
+    private fun albaniaDownload(download: MapDownload): MapDownloaderUiState.Listed =
+        listed.copy(downloads = mapOf("albania.map" to download))
+
+    /** Albania's path on the site. */
+    private val albaniaPath = RemoteMapPath(europe, "albania.map")
 
     /** Matches a node with [text] in the row of [entry]. */
     private fun textInRow(entry: RemoteMapEntry, text: String): SemanticsMatcher =
@@ -205,6 +219,106 @@ class MapDownloaderContentTest {
     }
 
     @Test
+    fun mapDownloaderContent_mapNotInstalled_hasADownloadButtonAndInstalledHasNone() {
+        show(listed)
+
+        rule.onNode(tagInRow(albania, MapDownloaderTestTags.DOWNLOAD)).assertIsDisplayed()
+        rule.onNode(tagInRow(andorra, MapDownloaderTestTags.DOWNLOAD)).assertDoesNotExist()
+    }
+
+    @Test
+    fun mapDownloaderContent_downloadPressed_callsOnDownloadWithTheMap() {
+        show(listed)
+
+        rule.onNode(tagInRow(albania, MapDownloaderTestTags.DOWNLOAD)).performClick()
+
+        assertEquals(listOf(albania), downloaded)
+    }
+
+    @Test
+    fun mapDownloaderContent_queuedMap_isMarkedWithoutButton() {
+        show(albaniaDownload(MapDownload.Queued(albaniaPath)))
+
+        rule.onNode(tagInRow(albania, MapDownloaderTestTags.QUEUED)).assertIsDisplayed()
+        rule.onNode(tagInRow(albania, MapDownloaderTestTags.DOWNLOAD)).assertDoesNotExist()
+    }
+
+    @Test
+    fun mapDownloaderContent_runningMapOfKnownSize_showsItsProgress() {
+        show(albaniaDownload(MapDownload.Running(albaniaPath, FileSize(25), FileSize(100))))
+
+        rule.onNode(
+            tagInRow(albania, MapDownloaderTestTags.PROGRESS) and
+                hasProgressBarRangeInfo(ProgressBarRangeInfo(0.25f, 0f..1f)),
+        ).assertIsDisplayed()
+        rule.onNode(tagInRow(albania, MapDownloaderTestTags.DOWNLOAD)).assertDoesNotExist()
+    }
+
+    @Test
+    fun mapDownloaderContent_runningMapOfUnknownSize_showsASpinner() {
+        show(albaniaDownload(MapDownload.Running(albaniaPath, FileSize(25), total = null)))
+
+        rule.onNode(
+            tagInRow(albania, MapDownloaderTestTags.PROGRESS) and
+                hasProgressBarRangeInfo(ProgressBarRangeInfo.Indeterminate),
+        ).assertIsDisplayed()
+    }
+
+    @Test
+    fun mapDownloaderContent_failedMap_saysWhyAndRetries() {
+        show(albaniaDownload(MapDownload.Failed(albaniaPath, MapDownloadFailure.NOT_ENOUGH_SPACE)))
+
+        rule.onNode(textInRow(albania, "Not enough free space")).assertIsDisplayed()
+        rule.onNode(tagInRow(albania, MapDownloaderTestTags.RETRY_DOWNLOAD)).performClick()
+
+        assertEquals(listOf(albania), downloaded)
+    }
+
+    @Test
+    fun mapDownloaderContent_failures_showTheirMessages() {
+        val messages = mapOf(
+            MapDownloadFailure.SERVER_ERROR to "The map site did not send it",
+            MapDownloadFailure.NOT_ENOUGH_SPACE to "Not enough free space",
+            MapDownloadFailure.UNREADABLE_MAP to "The downloaded map cannot be read",
+            MapDownloadFailure.STORAGE_ERROR to "The map cannot be saved",
+        )
+        show(listed)
+
+        for ((reason, message) in messages) {
+            state = albaniaDownload(MapDownload.Failed(albaniaPath, reason))
+            rule.onNode(textInRow(albania, message)).assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun mapDownloaderContent_installedMapWithAnOldFailure_isOnlyMarkedInstalled() {
+        val andorraPath = RemoteMapPath(europe, "andorra.map")
+        val oldFailure = MapDownload.Failed(andorraPath, MapDownloadFailure.STORAGE_ERROR)
+        show(listed.copy(downloads = mapOf("andorra.map" to oldFailure)))
+
+        rule.onNode(tagInRow(andorra, MapDownloaderTestTags.INSTALLED)).assertIsDisplayed()
+        rule.onNode(tagInRow(andorra, MapDownloaderTestTags.RETRY_DOWNLOAD)).assertDoesNotExist()
+        rule.onNode(textInRow(andorra, "The map cannot be saved")).assertDoesNotExist()
+    }
+
+    @Test
+    fun mapDownloaderContent_installedMapDownloadingAgain_showsTheDownload() {
+        val andorraPath = RemoteMapPath(europe, "andorra.map")
+        show(listed.copy(downloads = mapOf("andorra.map" to MapDownload.Queued(andorraPath))))
+
+        rule.onNode(tagInRow(andorra, MapDownloaderTestTags.QUEUED)).assertIsDisplayed()
+        rule.onNode(tagInRow(andorra, MapDownloaderTestTags.INSTALLED)).assertDoesNotExist()
+    }
+
+    @Test
+    @Config(qualifiers = "es")
+    fun mapDownloaderContent_spanishFailure_isTranslated() {
+        show(albaniaDownload(MapDownload.Failed(albaniaPath, MapDownloadFailure.NOT_ENOUGH_SPACE)))
+
+        rule.onNode(textInRow(albania, "No hay espacio libre suficiente")).assertIsDisplayed()
+    }
+
+    @Test
     fun mapDownloaderContent_rowsAndButtons_areAtLeastTheMinimumTouchTarget() {
         show(listed)
 
@@ -213,6 +327,14 @@ class MapDownloaderContentTest {
             .assertHeightIsAtLeast(MIN_TOUCH_TARGET)
         rule.onNodeWithTag(MapDownloaderTestTags.entry(italy)).assertHeightIsAtLeast(MIN_TOUCH_TARGET)
         rule.onNodeWithTag(MapDownloaderTestTags.entry(andorra)).assertHeightIsAtLeast(MIN_TOUCH_TARGET)
+        rule.onNode(tagInRow(albania, MapDownloaderTestTags.DOWNLOAD))
+            .assertWidthIsAtLeast(MIN_TOUCH_TARGET)
+            .assertHeightIsAtLeast(MIN_TOUCH_TARGET)
+
+        state = albaniaDownload(MapDownload.Failed(albaniaPath, MapDownloadFailure.SERVER_ERROR))
+        rule.onNode(tagInRow(albania, MapDownloaderTestTags.RETRY_DOWNLOAD))
+            .assertWidthIsAtLeast(MIN_TOUCH_TARGET)
+            .assertHeightIsAtLeast(MIN_TOUCH_TARGET)
 
         state = MapDownloaderUiState.Failed(europe, RemoteListingFailure.NO_CONNECTION)
         rule.onNodeWithTag(MapDownloaderTestTags.RETRY)
