@@ -33,7 +33,8 @@ import dev.giste.map.ui.MapViewerContent
  * (e.g. next to an odometer). It draws the mapsforge `.map` files installed in the app's
  * `map_files` folder (in its no-backup folder), with the zoom level and tilt of
  * [MapSettingsSource]. Without maps, or when none can be read, it shows a message instead. The
- * installed maps are looked for each time it is shown.
+ * installed maps are looked for each time it is shown, and again after each deletion in
+ * [MapManager] and each finished download from [MapDownloader].
  *
  * By default it is read-only: touches pass through it to what is under it, so a glove or a bump
  * cannot move or zoom the map while riding, and it always shows the settings' zoom level and

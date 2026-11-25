@@ -25,21 +25,18 @@ import dev.giste.map.domain.InstalledMapFile
 import dev.giste.map.domain.InstalledMapFiles
 import dev.giste.map.domain.MapFileRepository
 import javax.inject.Inject
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
  * The state of the map manager: the installed map files, and deleting them.
  *
- * It looks for the files once per subscription, and again after each deletion, so the list always
- * shows what is on the device.
+ * It follows the installed files, which the repository looks for again after each deletion or
+ * download, so the list always shows what is on the device.
  *
  * @param repository the installed map files.
  */
@@ -48,21 +45,15 @@ internal class MapManagerViewModel @Inject constructor(
     private val repository: MapFileRepository,
 ) : ViewModel() {
 
-    /** Grows by one each time the files must be looked for again. */
-    private val reloads = MutableStateFlow(0)
-
     /** The file that could not be deleted, until the screen has said so. */
     private val deleteFailed = MutableStateFlow<InstalledMapFile?>(null)
 
     /**
      * The state of the manager. It starts as [MapManagerUiState.Loading], and is shared while the
      * screen is shown and for [STOP_TIMEOUT_MILLIS] after, so a configuration change does not look
-     * for the files again. After a deletion, the previous list stays until the new one is found.
+     * for the files again. After a change, the previous list stays until the new one is found.
      */
-    // flatMapLatest is still experimental in kotlinx.coroutines.
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val uiState: StateFlow<MapManagerUiState> = reloads
-        .flatMapLatest { repository.installedFiles }
+    val uiState: StateFlow<MapManagerUiState> = repository.installedFiles
         .combine(deleteFailed) { files, failed ->
             when (files) {
                 InstalledMapFiles.FolderUnreadable -> MapManagerUiState.FolderUnreadable
@@ -76,8 +67,8 @@ internal class MapManagerViewModel @Inject constructor(
         )
 
     /**
-     * Deletes [file], then looks for the files again. If it cannot be deleted, the state says so
-     * until [dismissDeleteError].
+     * Deletes [file]; the list follows once the repository has looked for the files again. If it
+     * cannot be deleted, the state says so until [dismissDeleteError].
      *
      * @param file the file to delete, from the listed state.
      */
@@ -87,8 +78,6 @@ internal class MapManagerViewModel @Inject constructor(
                 DeleteMapResult.Deleted -> Unit
                 DeleteMapResult.Failed -> deleteFailed.value = file
             }
-            // Also after a failure: the folder may have changed in other ways.
-            reloads.update { it + 1 }
         }
     }
 

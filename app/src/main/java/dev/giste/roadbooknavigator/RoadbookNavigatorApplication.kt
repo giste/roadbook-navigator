@@ -19,6 +19,8 @@ package dev.giste.roadbooknavigator
 
 import android.app.Application
 import android.content.pm.ApplicationInfo
+import androidx.hilt.work.HiltWorkerFactory
+import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
 import dev.giste.core.logging.DebugLogging
 import dev.giste.roadbooknavigator.coordination.RoadbookOdometerCoordinator
@@ -29,9 +31,20 @@ import javax.inject.Inject
  *
  * It turns on logging in debuggable builds only, so release builds never write logs, and starts
  * the coordinators that apply the cross-module rules (AGENTS.md §4.3).
+ *
+ * It also configures WorkManager with Hilt's worker factory, so the modules' workers (such as
+ * `:map`'s downloads) are injected. WorkManager's default start-up is removed in the manifest, so
+ * WorkManager is created on first use with this configuration.
  */
 @HiltAndroidApp
-class RoadbookNavigatorApplication : Application() {
+class RoadbookNavigatorApplication : Application(), Configuration.Provider {
+
+    /** Creates the workers of every module with their dependencies. Injected by Hilt in [onCreate]. */
+    @Inject
+    internal lateinit var workerFactory: HiltWorkerFactory
+
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
 
     /** Applies the roadbook's events to the odometer. Injected by Hilt in [onCreate]. */
     @Inject

@@ -196,6 +196,21 @@ class MapViewModelTest {
     }
 
     @Test
+    fun uiState_mapsChangeWhileShown_followsThem() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.uiState.test {
+            skipItems(2)
+
+            // E.g. the last map was deleted in the map manager.
+            repository.result = InstalledMapFiles.Listed(emptyList())
+
+            assertEquals(MapUiState.NoMaps, awaitItem())
+        }
+        assertEquals(1, repository.collections)
+    }
+
+    @Test
     fun uiState_resubscribedAfterTheTimeout_looksForTheMapsAgain() = runTest {
         val viewModel = viewModel()
         viewModel.uiState.test { skipItems(2) }

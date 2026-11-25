@@ -33,10 +33,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -55,9 +57,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import dev.giste.core.ui.theme.GisteTheme
 import dev.giste.map.R
 import dev.giste.map.domain.FileSize
+import dev.giste.map.domain.MapDownload
+import dev.giste.map.domain.MapDownloadFailure
 import dev.giste.map.domain.RemoteFolderPath
 import dev.giste.map.domain.RemoteListingFailure
 import dev.giste.map.domain.RemoteMapEntry
+import dev.giste.map.domain.RemoteMapPath
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -77,6 +82,18 @@ internal object MapDownloaderTestTags {
     /** The mark of a map that is already installed, an icon. */
     const val INSTALLED: String = "map_downloader_installed"
 
+    /** The button that downloads a map, which shows an icon instead of text. */
+    const val DOWNLOAD: String = "map_downloader_download"
+
+    /** The mark of a map waiting to be downloaded, an icon. */
+    const val QUEUED: String = "map_downloader_queued"
+
+    /** The progress of a map being downloaded, a progress indicator. */
+    const val PROGRESS: String = "map_downloader_progress"
+
+    /** The button that downloads again a map that failed, which shows an icon instead of text. */
+    const val RETRY_DOWNLOAD: String = "map_downloader_retry_download"
+
     /**
      * The row of one entry, which holds its marks.
      *
@@ -94,8 +111,10 @@ internal object MapDownloaderTestTags {
  * - [MapDownloaderUiState.Failed]: why the folder could not be read, and a button to try again.
  * - [MapDownloaderUiState.Listed] without entries: a message.
  * - [MapDownloaderUiState.Listed] with entries: one row per entry. A folder row shows a folder
- *   icon and its name, and opens it when pressed. A map row shows its name, the day it changed,
- *   its approximate size, and a mark if it is already installed.
+ *   icon and its name, and opens it when pressed. A map row shows its name, the day it changed and
+ *   its approximate size, and at its end, in this order of precedence: a waiting mark or the
+ *   progress while it is queued or downloading, a mark if it is installed, a button to try again
+ *   (with the reason under its name) if its download failed, or else a button to download it.
  *
  * In a sub-folder, the back button and the system back gesture go up one folder. In the maps
  * folder itself, the back button calls [onBack], and the system back gesture is the caller's.
@@ -105,6 +124,8 @@ internal object MapDownloaderTestTags {
  * @param onOpen called with a folder when its row is pressed.
  * @param onUp called when the back button or the system back gesture is used in a sub-folder.
  * @param onRetry called when the button to try again is pressed.
+ * @param onDownload called with a map when its download button, or its button to try again after
+ * a failed download, is pressed.
  * @param modifier applied to the root layout.
  */
 @Composable
@@ -114,6 +135,7 @@ internal fun MapDownloaderContent(
     onOpen: (RemoteMapEntry.Folder) -> Unit,
     onUp: () -> Unit,
     onRetry: () -> Unit,
+    onDownload: (RemoteMapEntry.MapFile) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val inSubFolder = !state.folder.isRoot
@@ -156,7 +178,7 @@ internal fun MapDownloaderContent(
                 if (state.entries.isEmpty()) {
                     DownloaderMessage(stringResource(R.string.map_downloader_empty), bodyModifier)
                 } else {
-                    EntryList(state.entries, state.installed, onOpen, bodyModifier)
+                    EntryList(state, onOpen, onDownload, bodyModifier)
                 }
         }
     }
@@ -192,25 +214,30 @@ private fun FailedFolder(reason: RemoteListingFailure, onRetry: () -> Unit, modi
 /**
  * The entries of a folder, one row each, with a divider between rows.
  *
- * @param entries the entries, never empty.
- * @param installed the names of the map files that are already installed.
+ * @param state the folder, with entries.
  * @param onOpen called with a folder when its row is pressed.
+ * @param onDownload called with a map when its download button is pressed.
  * @param modifier applied to the list.
  */
 @Composable
 private fun EntryList(
-    entries: List<RemoteMapEntry>,
-    installed: Set<String>,
+    state: MapDownloaderUiState.Listed,
     onOpen: (RemoteMapEntry.Folder) -> Unit,
+    onDownload: (RemoteMapEntry.MapFile) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(modifier = modifier) {
         // A folder and a map file never share a name (a map file ends in ".map"), so names are
         // unique keys; the type keeps them apart anyway.
-        items(entries, key = { "${it::class.simpleName}/${it.name}" }) { entry ->
+        items(state.entries, key = { "${it::class.simpleName}/${it.name}" }) { entry ->
             when (entry) {
                 is RemoteMapEntry.Folder -> FolderRow(entry, onOpen = { onOpen(entry) })
-                is RemoteMapEntry.MapFile -> MapFileRow(entry, installed = entry.name in installed)
+                is RemoteMapEntry.MapFile -> MapFileRow(
+                    file = entry,
+                    installed = entry.name in state.installed,
+                    download = state.downloads[entry.name],
+                    onDownload = { onDownload(entry) },
+                )
             }
             HorizontalDivider()
         }
@@ -237,15 +264,26 @@ private fun FolderRow(folder: RemoteMapEntry.Folder, onOpen: () -> Unit, modifie
 }
 
 /**
- * A map file: its name and the day it changed, its approximate size, and a mark if it is already
- * installed.
+ * A map file: its name and the day it changed, its approximate size, and at its end what can be
+ * done with it or how its download goes (see [MapFileAction]). If its download failed, the reason
+ * is shown under its name.
  *
  * @param file the map file.
  * @param installed whether it is already installed.
+ * @param download its download, if it is waiting, running or failed.
+ * @param onDownload called when its download button, or the button to try again, is pressed.
  * @param modifier applied to the row.
  */
 @Composable
-private fun MapFileRow(file: RemoteMapEntry.MapFile, installed: Boolean, modifier: Modifier = Modifier) {
+private fun MapFileRow(
+    file: RemoteMapEntry.MapFile,
+    installed: Boolean,
+    download: MapDownload?,
+    onDownload: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    // A failure that an installed map overcame, e.g. by a later download, is no longer news.
+    val failure = (download as? MapDownload.Failed)?.reason?.takeUnless { installed }
     EntryRow(entry = file, modifier = modifier) {
         Column(modifier = Modifier.weight(1f)) {
             Text(text = file.name, style = MaterialTheme.typography.bodyLarge)
@@ -256,17 +294,72 @@ private fun MapFileRow(file: RemoteMapEntry.MapFile, installed: Boolean, modifie
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            failure?.let { reason ->
+                Text(
+                    text = reason.toMessage(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
         }
         file.approximateSize?.let { Text(text = it.format(), style = MaterialTheme.typography.bodyMedium) }
-        // The mark takes the space of a button, so rows line up whether a map is installed or not.
-        Box(modifier = Modifier.size(GisteTheme.dimensions.minTouchTarget), contentAlignment = Alignment.Center) {
-            if (installed) {
-                Icon(
-                    painter = painterResource(R.drawable.map_ic_installed),
-                    contentDescription = null,
-                    modifier = Modifier.testTag(MapDownloaderTestTags.INSTALLED),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
+        MapFileAction(installed = installed, download = download, failed = failure != null, onDownload = onDownload)
+    }
+}
+
+/**
+ * The end of a map row, in the space of a button, so rows line up whatever it shows:
+ *
+ * - a waiting mark while [download] is queued,
+ * - the progress while it runs (a spinner while its size is unknown),
+ * - else a mark if the map is [installed],
+ * - else a button to try again, in the error color, if [failed],
+ * - else a button to download it.
+ *
+ * @param installed whether the map is installed.
+ * @param download its download, if it is waiting, running or failed.
+ * @param failed whether its download failed, and the failure is to be shown.
+ * @param onDownload called when a button is pressed.
+ */
+@Composable
+private fun MapFileAction(installed: Boolean, download: MapDownload?, failed: Boolean, onDownload: () -> Unit) {
+    val size = GisteTheme.dimensions.minTouchTarget
+    Box(modifier = Modifier.size(size), contentAlignment = Alignment.Center) {
+        when {
+            download is MapDownload.Queued -> Icon(
+                painter = painterResource(R.drawable.map_ic_queued),
+                contentDescription = null,
+                modifier = Modifier.testTag(MapDownloaderTestTags.QUEUED),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            download is MapDownload.Running -> {
+                val progressModifier = Modifier.testTag(MapDownloaderTestTags.PROGRESS)
+                val fraction = download.fraction
+                if (fraction != null) {
+                    CircularProgressIndicator(progress = { fraction }, modifier = progressModifier)
+                } else {
+                    CircularProgressIndicator(modifier = progressModifier)
+                }
+            }
+            installed -> Icon(
+                painter = painterResource(R.drawable.map_ic_installed),
+                contentDescription = null,
+                modifier = Modifier.testTag(MapDownloaderTestTags.INSTALLED),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            failed -> IconButton(
+                onClick = onDownload,
+                modifier = Modifier.size(size).testTag(MapDownloaderTestTags.RETRY_DOWNLOAD),
+                colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.error),
+            ) {
+                Icon(painter = painterResource(R.drawable.map_ic_refresh), contentDescription = null)
+            }
+            else -> IconButton(
+                onClick = onDownload,
+                modifier = Modifier.size(size).testTag(MapDownloaderTestTags.DOWNLOAD),
+                colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+            ) {
+                Icon(painter = painterResource(R.drawable.map_ic_download), contentDescription = null)
             }
         }
     }
@@ -332,6 +425,17 @@ private fun RemoteListingFailure.toMessage(): String = stringResource(
     },
 )
 
+/** The message that explains this download failure. */
+@Composable
+private fun MapDownloadFailure.toMessage(): String = stringResource(
+    when (this) {
+        MapDownloadFailure.SERVER_ERROR -> R.string.map_download_failed_server
+        MapDownloadFailure.NOT_ENOUGH_SPACE -> R.string.map_download_failed_space
+        MapDownloadFailure.UNREADABLE_MAP -> R.string.map_download_failed_unreadable
+        MapDownloadFailure.STORAGE_ERROR -> R.string.map_download_failed_storage
+    },
+)
+
 /** This size as short text in the current locale, e.g. "2.5 MB". */
 @Composable
 private fun FileSize.format(): String = Formatter.formatShortFileSize(LocalContext.current, bytes)
@@ -346,21 +450,31 @@ private fun LocalDate.format(): String {
 
 // --- Previews ---
 
-/** A preview folder: a sub-folder, then two maps, one of them installed. */
+/** A preview folder: a sub-folder, then maps for every download state, one of them installed. */
 private val PREVIEW_ENTRIES = listOf(
     RemoteMapEntry.Folder("italy"),
     RemoteMapEntry.MapFile("albania.map", FileSize(45_088_768), LocalDate.of(2026, 8, 21)),
     RemoteMapEntry.MapFile("andorra.map", FileSize(2_516_582), LocalDate.of(2026, 9, 7)),
+    RemoteMapEntry.MapFile("austria.map", FileSize(690_000_000), LocalDate.of(2026, 9, 7)),
+    RemoteMapEntry.MapFile("belgium.map", FileSize(260_000_000), LocalDate.of(2026, 9, 7)),
+    RemoteMapEntry.MapFile("bulgaria.map", FileSize(130_000_000), LocalDate.of(2026, 9, 7)),
 )
 
 /** The folder the previews show. */
 private val PREVIEW_FOLDER = RemoteFolderPath.ROOT.child("europe")
 
+/** Downloads of the preview maps: one running, one waiting and one failed. */
+private val PREVIEW_DOWNLOADS: Map<String, MapDownload> = listOf(
+    MapDownload.Running(RemoteMapPath(PREVIEW_FOLDER, "austria.map"), FileSize(420_000_000), FileSize(690_000_000)),
+    MapDownload.Queued(RemoteMapPath(PREVIEW_FOLDER, "belgium.map")),
+    MapDownload.Failed(RemoteMapPath(PREVIEW_FOLDER, "bulgaria.map"), MapDownloadFailure.NOT_ENOUGH_SPACE),
+).associateBy { it.map.name }
+
 /** The downloader in [state] in the app theme. */
 @Composable
 private fun MapDownloaderPreview(state: MapDownloaderUiState) {
     GisteTheme {
-        MapDownloaderContent(state = state, onBack = {}, onOpen = {}, onUp = {}, onRetry = {})
+        MapDownloaderContent(state = state, onBack = {}, onOpen = {}, onUp = {}, onRetry = {}, onDownload = {})
     }
 }
 
@@ -389,5 +503,7 @@ private fun MapDownloaderEmptyPreview() {
 @Preview(name = "Listed, dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun MapDownloaderListedPreview() {
-    MapDownloaderPreview(MapDownloaderUiState.Listed(PREVIEW_FOLDER, PREVIEW_ENTRIES, setOf("andorra.map")))
+    MapDownloaderPreview(
+        MapDownloaderUiState.Listed(PREVIEW_FOLDER, PREVIEW_ENTRIES, setOf("andorra.map"), PREVIEW_DOWNLOADS),
+    )
 }

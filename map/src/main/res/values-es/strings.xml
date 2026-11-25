@@ -23,4 +23,18 @@
     <string name="map_downloader_unreadable_listing">No se puede leer la lista de la web de mapas</string>
     <!-- Shown in the map downloader when a folder of the download site holds no maps. -->
     <string name="map_downloader_empty">No hay mapas en esta carpeta</string>
+    <!-- Name of the notification channel of map downloads, shown in the system settings. -->
+    <string name="map_download_channel_name">Descargas de mapas</string>
+    <!-- Title of the notification shown while a map downloads. %1$s is the map's file name. -->
+    <string name="map_download_notification_title">Descargando %1$s</string>
+    <!-- Text of the download notification. %1$s is the size downloaded, %2$s the map's size. -->
+    <string name="map_download_notification_progress">%1$s de %2$s</string>
+    <!-- Shown under a map in the map downloader when the download site does not send it. -->
+    <string name="map_download_failed_server">La web de mapas no lo ha enviado</string>
+    <!-- Shown under a map in the map downloader when the device has not enough space for it. -->
+    <string name="map_download_failed_space">No hay espacio libre suficiente</string>
+    <!-- Shown under a map in the map downloader when the downloaded map cannot be read. -->
+    <string name="map_download_failed_unreadable">El mapa descargado no se puede leer</string>
+    <!-- Shown under a map in the map downloader when it cannot be saved on the device. -->
+    <string name="map_download_failed_storage">El mapa no se puede guardar</string>
 </resources>

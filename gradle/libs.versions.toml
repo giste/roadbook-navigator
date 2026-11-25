@@ -54,6 +54,7 @@ vtm = { group = "org.mapsforge", name = "vtm", version.ref = "vtm" }
 vtm-android = { group = "org.mapsforge", name = "vtm-android", version.ref = "vtm" }
 vtm-themes = { group = "org.mapsforge", name = "vtm-themes", version.ref = "vtm" }
 androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }
+androidx-work-testing = { group = "androidx.work", name = "work-testing", version.ref = "work" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 okhttp-mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver3", version.ref = "okhttp" }
 

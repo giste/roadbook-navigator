@@ -18,15 +18,27 @@
 package dev.giste.map.domain
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 
 /**
- * [MapFileRepository] for tests: each collection emits [result] and completes, like the real one,
- * and is counted. Deletions answer [deleteResult] and are recorded; they do not change [result].
+ * [MapFileRepository] for tests: each collection emits [result] at once, and again each time it
+ * changes, like the real one after a deletion or a download. Collections are counted. Deletions
+ * answer [deleteResult] and are recorded; they do not change [result].
  *
- * @param result the installed map files to report.
+ * @param initial the installed map files to report first.
  */
-internal class FakeMapFileRepository(var result: InstalledMapFiles) : MapFileRepository {
+internal class FakeMapFileRepository(initial: InstalledMapFiles) : MapFileRepository {
+
+    private val current = MutableStateFlow(initial)
+
+    /** The installed map files to report. Setting it emits it to the current collectors. */
+    var result: InstalledMapFiles
+        get() = current.value
+        set(value) {
+            current.value = value
+        }
 
     /** How many times [installedFiles] was collected. */
     var collections: Int = 0
@@ -40,7 +52,7 @@ internal class FakeMapFileRepository(var result: InstalledMapFiles) : MapFileRep
 
     override val installedFiles: Flow<InstalledMapFiles> = flow {
         collections++
-        emit(result)
+        emitAll(current)
     }
 
     override suspend fun delete(file: InstalledMapFile): DeleteMapResult {

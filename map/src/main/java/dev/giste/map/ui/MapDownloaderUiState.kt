@@ -17,6 +17,7 @@
 
 package dev.giste.map.ui
 
+import dev.giste.map.domain.MapDownload
 import dev.giste.map.domain.RemoteFolderPath
 import dev.giste.map.domain.RemoteListingFailure
 import dev.giste.map.domain.RemoteMapEntry
@@ -41,11 +42,14 @@ internal sealed interface MapDownloaderUiState {
      * @property entries its folders first, then its map files. Empty if it holds neither.
      * @property installed the names of the map files in [entries] that are already installed in
      * the same folder on the device.
+     * @property downloads the downloads of the map files in [entries] that are waiting, running or
+     * failed, by file name.
      */
     data class Listed(
         override val folder: RemoteFolderPath,
         val entries: List<RemoteMapEntry>,
         val installed: Set<String> = emptySet(),
+        val downloads: Map<String, MapDownload> = emptyMap(),
     ) : MapDownloaderUiState
 
     /**

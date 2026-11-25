@@ -29,13 +29,21 @@ import dev.giste.map.ui.MapDownloaderViewModel
  * The map downloader screen, with its state from Hilt: the maps on the download site
  * ([MapDownloadServer]), one folder at a time, with the maps already installed marked.
  *
+ * Each map that is not installed has a download button. Downloads run in the background, one at
+ * a time and only on Wi-Fi, with a notification, and go on when the screen is left or the app is
+ * closed; a download that stops resumes where it stopped. A map goes to the same folder on the
+ * device as on the site. Each row shows whether its map is waiting, how its download goes, or why
+ * it failed, with a button to try again. Downloaded maps appear in [MapManager] and [MapViewer]
+ * at once.
+ *
  * Pressing a folder opens it. In a sub-folder, the screen's back button and the system back
  * gesture go up one folder. If a folder cannot be read (e.g. there is no connection), the screen
  * says why and offers to try again. The folder being shown survives configuration changes and the
  * process being stopped.
  *
- * Open it from [MapManager]'s add button, e.g. as a navigation destination of its own. It
- * needs the `INTERNET` permission, which `:map` declares.
+ * Open it from [MapManager]'s add button, e.g. as a navigation destination of its own. `:map`
+ * declares the permissions it needs. The app must set up WorkManager with Hilt's worker factory
+ * (see the `:map` README).
  *
  * @param onBack called when the user leaves the screen with its back button in the download site's
  * maps folder. The system back gesture there is the caller's, e.g. its navigation.
@@ -51,6 +59,7 @@ public fun MapDownloader(onBack: () -> Unit, modifier: Modifier = Modifier) {
         onOpen = viewModel::open,
         onUp = viewModel::goUp,
         onRetry = viewModel::retry,
+        onDownload = viewModel::download,
         modifier = modifier,
     )
 }

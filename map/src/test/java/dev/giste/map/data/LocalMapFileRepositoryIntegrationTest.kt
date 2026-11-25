@@ -45,7 +45,13 @@ class LocalMapFileRepositoryIntegrationTest {
         val damaged = File(folder, "damaged.map").apply { writeText("not a map") }
         val future = writeMapFile(File(folder, "future.map"), fileVersion = 99)
         val repository =
-            LocalMapFileRepository(folder, VtmMapFileChecker(), StandardTestDispatcher(testScheduler), logger)
+            LocalMapFileRepository(
+                folder,
+                VtmMapFileChecker(),
+                MapFolderChanges(),
+                StandardTestDispatcher(testScheduler),
+                logger,
+            )
 
         repository.installedFiles.test {
             assertEquals(
@@ -54,7 +60,7 @@ class LocalMapFileRepositoryIntegrationTest {
                 ),
                 awaitItem(),
             )
-            awaitComplete()
+            cancelAndIgnoreRemainingEvents()
         }
         assertEquals(2, logger.warnings.size)
     }
