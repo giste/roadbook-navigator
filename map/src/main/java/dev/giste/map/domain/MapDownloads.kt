@@ -131,10 +131,34 @@ internal interface MapDownloadRepository {
 
     /**
      * Downloads [map] into the map folder, in the folder it has on the site, after the maps
-     * already queued. It only downloads on Wi-Fi. Nothing happens if [map] is already queued or
-     * being downloaded. Main-safe. It never throws, except to cancel.
+     * already queued. Nothing is queued twice: if [map] is already queued or being downloaded,
+     * only the mobile data answer applies. Main-safe. It never throws, except to cancel.
      *
      * @param map the map to download.
+     * @param allowMobileData whether the rider agreed to use mobile data. It applies to the whole
+     * queue: every map already queued may then download on mobile data too. If `false`, [map]
+     * waits for Wi-Fi, and the maps already queued keep what they were allowed.
      */
-    suspend fun start(map: RemoteMapPath)
+    suspend fun start(map: RemoteMapPath, allowMobileData: Boolean)
+
+    /**
+     * Stops the download of [map], whether it is waiting or running, and throws away what was
+     * downloaded of it. The maps queued after it keep their order. Nothing happens if [map] is not
+     * queued. Main-safe. It never throws, except to cancel.
+     *
+     * @param map the map whose download to stop.
+     */
+    suspend fun cancel(map: RemoteMapPath)
+}
+
+/** The device's network connection, to know whether a download would use mobile data. */
+internal fun interface NetworkConnection {
+
+    /**
+     * Whether the device is on a network that does not charge by the amount of data, such as
+     * Wi-Fi. `false` on mobile data, on a hotspot that says it is metered, and with no network.
+     *
+     * @return `true` on an unmetered network.
+     */
+    fun isUnmetered(): Boolean
 }

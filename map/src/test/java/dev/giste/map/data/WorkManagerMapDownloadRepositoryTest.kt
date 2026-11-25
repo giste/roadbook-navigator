@@ -51,7 +51,25 @@ class WorkManagerMapDownloadRepositoryTest {
     private val andorra = RemoteMapPath(europe, "andorra.map")
     private val spain = RemoteMapPath(europe, "spain.map")
 
+    private val logger = FakeLogger()
+
+    /** The maps whose download was thrown away, in call order. */
+    private val discarded = mutableListOf<RemoteMapPath>()
+
+    private val downloader = object : MapFileDownloader {
+        override suspend fun download(
+            map: RemoteMapPath,
+            onProgress: suspend (downloaded: FileSize, total: FileSize?) -> Unit,
+        ): MapFileDownloadResult = error("The test WorkManager runs no work")
+
+        override suspend fun discard(map: RemoteMapPath) {
+            discarded += map
+        }
+    }
+
     private lateinit var repository: WorkManagerMapDownloadRepository
+
+    private val france = RemoteMapPath(europe, "france.map")
 
     @Before
     fun setUp() {
@@ -60,47 +78,194 @@ class WorkManagerMapDownloadRepositoryTest {
             context,
             Configuration.Builder().setExecutor(SynchronousExecutor()).build(),
         )
-        repository = WorkManagerMapDownloadRepository(context, FakeLogger())
+        repository = WorkManagerMapDownloadRepository(context, downloader, logger)
     }
 
     private fun worksOf(map: RemoteMapPath): List<WorkInfo> =
         WorkManager.getInstance(context).getWorkInfosByTag(WorkManagerMapDownloadRepository.tagOf(map)).get()
 
+    /** The waiting or running work of [map]. */
+    private fun pendingWorkOf(map: RemoteMapPath): WorkInfo = worksOf(map).single { !it.state.isFinished }
+
+    /** The network the waiting or running work of [map] needs. */
+    private fun networkOf(map: RemoteMapPath): NetworkType = pendingWorkOf(map).constraints.requiredNetworkType
+
+    /** The waiting or running maps, in their order in the queue. */
+    private fun queue(): List<RemoteMapPath> =
+        WorkManager.getInstance(context).getWorkInfosForUniqueWork(WorkManagerMapDownloadRepository.QUEUE).get()
+            .filter { !it.state.isFinished }
+            .sortedBy { info ->
+                info.tags.first { it.startsWith(WorkManagerMapDownloadRepository.ORDER_TAG_PREFIX) }
+                    .removePrefix(WorkManagerMapDownloadRepository.ORDER_TAG_PREFIX).toInt()
+            }
+            .map { info ->
+                RemoteMapPath.parse(
+                    info.tags.first { it.startsWith(WorkManagerMapDownloadRepository.TAG_PREFIX) }
+                        .removePrefix(WorkManagerMapDownloadRepository.TAG_PREFIX),
+                )
+            }
+
     // --- start ---
 
     @Test
-    fun start_queuesTheMapOnWiFi() = runTest {
-        repository.start(andorra)
+    fun start_withoutMobileData_queuesTheMapOnWiFi() = runTest {
+        repository.start(andorra, allowMobileData = false)
 
-        val work = worksOf(andorra).single()
-        assertEquals(WorkInfo.State.ENQUEUED, work.state)
-        assertEquals(NetworkType.UNMETERED, work.constraints.requiredNetworkType)
+        assertEquals(WorkInfo.State.ENQUEUED, pendingWorkOf(andorra).state)
+        assertEquals(NetworkType.UNMETERED, networkOf(andorra))
+    }
+
+    @Test
+    fun start_withMobileData_queuesTheMapOnAnyNetwork() = runTest {
+        repository.start(andorra, allowMobileData = true)
+
+        assertEquals(NetworkType.CONNECTED, networkOf(andorra))
+    }
+
+    @Test
+    fun start_withMobileData_letsTheMapsAlreadyQueuedUseItToo() = runTest {
+        repository.start(andorra, allowMobileData = false)
+        repository.start(spain, allowMobileData = false)
+
+        repository.start(france, allowMobileData = true)
+
+        assertEquals(NetworkType.CONNECTED, networkOf(andorra))
+        assertEquals(NetworkType.CONNECTED, networkOf(spain))
+    }
+
+    @Test
+    fun start_withoutMobileData_leavesTheMapsAlreadyQueuedAsTheyWere() = runTest {
+        repository.start(andorra, allowMobileData = true)
+
+        repository.start(spain, allowMobileData = false)
+
+        assertEquals(NetworkType.CONNECTED, networkOf(andorra))
+        assertEquals(NetworkType.UNMETERED, networkOf(spain))
     }
 
     @Test
     fun start_sameMapTwice_queuesItOnce() = runTest {
-        repository.start(andorra)
+        repository.start(andorra, allowMobileData = false)
 
-        repository.start(andorra)
+        repository.start(andorra, allowMobileData = false)
 
         assertEquals(1, worksOf(andorra).size)
     }
 
     @Test
-    fun start_twoMaps_runOneAfterTheOther() = runTest {
-        repository.start(andorra)
+    fun start_sameMapAgainWithMobileData_letsItUseMobileData() = runTest {
+        repository.start(andorra, allowMobileData = false)
 
-        repository.start(spain)
+        repository.start(andorra, allowMobileData = true)
 
-        assertEquals(WorkInfo.State.ENQUEUED, worksOf(andorra).single().state)
-        // Blocked until the download before it ends.
-        assertEquals(WorkInfo.State.BLOCKED, worksOf(spain).single().state)
+        assertEquals(1, worksOf(andorra).size)
+        assertEquals(NetworkType.CONNECTED, networkOf(andorra))
     }
 
     @Test
+    fun start_twoMaps_runOneAfterTheOtherInOrder() = runTest {
+        repository.start(andorra, allowMobileData = false)
+
+        repository.start(spain, allowMobileData = false)
+
+        assertEquals(WorkInfo.State.ENQUEUED, pendingWorkOf(andorra).state)
+        // Blocked until the download before it ends.
+        assertEquals(WorkInfo.State.BLOCKED, pendingWorkOf(spain).state)
+        assertEquals(listOf(andorra, spain), queue())
+    }
+
+    // --- cancel ---
+
+    @Test
+    fun cancel_mapInTheMiddle_takesItOutAndKeepsTheOrder() = runTest {
+        repository.start(andorra, allowMobileData = false)
+        repository.start(spain, allowMobileData = false)
+        repository.start(france, allowMobileData = false)
+
+        repository.cancel(spain)
+
+        assertEquals(listOf(andorra, france), queue())
+        assertEquals(WorkInfo.State.ENQUEUED, pendingWorkOf(andorra).state)
+        assertEquals(WorkInfo.State.BLOCKED, pendingWorkOf(france).state)
+    }
+
+    @Test
+    fun cancel_firstMap_letsTheNextOneStart() = runTest {
+        repository.start(andorra, allowMobileData = false)
+        repository.start(spain, allowMobileData = false)
+
+        repository.cancel(andorra)
+
+        assertEquals(listOf(spain), queue())
+        assertEquals(WorkInfo.State.ENQUEUED, pendingWorkOf(spain).state)
+    }
+
+    @Test
+    fun cancel_map_throwsAwayItsDownloadOnly() = runTest {
+        repository.start(andorra, allowMobileData = false)
+        repository.start(spain, allowMobileData = false)
+
+        repository.cancel(spain)
+
+        assertEquals(listOf(spain), discarded)
+    }
+
+    @Test
+    fun cancel_keepsWhatTheOtherMapsWereAllowed() = runTest {
+        repository.start(andorra, allowMobileData = true)
+        repository.start(spain, allowMobileData = false)
+        repository.start(france, allowMobileData = false)
+
+        repository.cancel(andorra)
+
+        assertEquals(NetworkType.UNMETERED, networkOf(spain))
+        assertEquals(NetworkType.UNMETERED, networkOf(france))
+
+        repository.start(RemoteMapPath(europe, "italy.map"), allowMobileData = true)
+        repository.cancel(spain)
+
+        assertEquals(NetworkType.CONNECTED, networkOf(france))
+    }
+
+    @Test
+    fun cancel_thenStart_queuesTheNewMapLast() = runTest {
+        repository.start(andorra, allowMobileData = false)
+        repository.start(spain, allowMobileData = false)
+        repository.cancel(andorra)
+
+        repository.start(france, allowMobileData = false)
+
+        assertEquals(listOf(spain, france), queue())
+    }
+
+    @Test
+    fun cancel_onlyMap_leavesTheQueueEmpty() = runTest {
+        repository.start(andorra, allowMobileData = false)
+
+        repository.cancel(andorra)
+
+        assertTrue(queue().isEmpty())
+        repository.downloads.test {
+            assertEquals(emptyList<MapDownload>(), awaitItem())
+        }
+    }
+
+    @Test
+    fun cancel_mapNotQueued_doesNothing() = runTest {
+        repository.start(andorra, allowMobileData = false)
+
+        repository.cancel(spain)
+
+        assertEquals(listOf(andorra), queue())
+        assertTrue(discarded.isEmpty())
+    }
+
+    // --- downloads ---
+
+    @Test
     fun downloads_queuedMaps_areQueued() = runTest {
-        repository.start(andorra)
-        repository.start(spain)
+        repository.start(andorra, allowMobileData = false)
+        repository.start(spain, allowMobileData = false)
 
         repository.downloads.test {
             assertEquals(

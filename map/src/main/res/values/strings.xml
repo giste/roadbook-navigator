@@ -29,6 +29,14 @@
     <string name="map_download_notification_title">Downloading %1$s</string>
     <!-- Text of the download notification. %1$s is the size downloaded, %2$s the map's size, e.g. "120 MB of 812 MB". -->
     <string name="map_download_notification_progress">%1$s of %2$s</string>
+    <!-- Action of the download notification that stops the download. -->
+    <string name="map_download_notification_cancel">Cancel</string>
+    <!-- Title of the dialog shown before a download that would use mobile data. -->
+    <string name="map_download_mobile_data_title">Not on Wi-Fi</string>
+    <!-- Text of the mobile data dialog. %1$s is the map's file name. Its buttons are icons: mobile data, Wi-Fi and close. -->
+    <string name="map_download_mobile_data_message">Download %1$s now with mobile data, or wait for Wi-Fi? Mobile data then applies to the maps already waiting too.</string>
+    <!-- Title of the dialog that confirms stopping a map download. %1$s is the map's file name. -->
+    <string name="map_download_cancel_title">Stop downloading %1$s?</string>
     <!-- Shown under a map in the map downloader when the download site does not send it. -->
     <string name="map_download_failed_server">The map site did not send it</string>
     <!-- Shown under a map in the map downloader when the device has not enough space for it. -->

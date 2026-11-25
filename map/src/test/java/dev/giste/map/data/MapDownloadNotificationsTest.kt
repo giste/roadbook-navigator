@@ -32,6 +32,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
@@ -91,6 +92,29 @@ class MapDownloadNotificationsTest {
     }
 
     @Test
+    fun foregroundInfo_hasACancelActionForThatMap() {
+        val notification = notifications.foregroundInfo(map, downloaded = null, total = null).notification
+
+        val action = notification.actions.single()
+        assertEquals("Cancel", action.title.toString())
+        val intent = shadowOf(action.actionIntent).savedIntent
+        assertEquals(MapDownloadCancelReceiver::class.java.name, intent.component?.className)
+        assertEquals("europe/andorra.map", intent.getStringExtra(MapDownloadCancelReceiver.EXTRA_MAP))
+    }
+
+    @Test
+    fun foregroundInfo_twoMaps_haveTheirOwnCancelActions() {
+        val other = RemoteMapPath(RemoteFolderPath.ROOT, "world.map")
+
+        val first = notifications.foregroundInfo(map, null, null).notification.actions.single().actionIntent
+        val second = notifications.foregroundInfo(other, null, null).notification.actions.single().actionIntent
+
+        val key = MapDownloadCancelReceiver.EXTRA_MAP
+        assertEquals("europe/andorra.map", shadowOf(first).savedIntent.getStringExtra(key))
+        assertEquals("world.map", shadowOf(second).savedIntent.getStringExtra(key))
+    }
+
+    @Test
     fun foregroundInfo_createsAQuietChannel() {
         notifications.foregroundInfo(map, downloaded = null, total = null)
 
@@ -107,5 +131,6 @@ class MapDownloadNotificationsTest {
 
         assertEquals("Descargando andorra.map", notification.extras.getString(Notification.EXTRA_TITLE))
         assertEquals("25 MB de 100 MB", notification.extras.getCharSequence(Notification.EXTRA_TEXT).toString())
+        assertEquals("Cancelar", notification.actions.single().title.toString())
     }
 }

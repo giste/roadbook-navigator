@@ -471,6 +471,62 @@ class HttpMapFileDownloaderTest {
         assertFalse(target.exists())
     }
 
+    // --- Discarding ---
+
+    @Test
+    fun discard_partLeft_deletesIt() = runTest {
+        leavePart(400)
+
+        downloader().discard(map)
+
+        assertFalse(part.exists())
+    }
+
+    @Test
+    fun discard_installedMap_keepsIt() = runTest {
+        target.parentFile?.mkdirs()
+        target.writeText("an installed map")
+
+        downloader().discard(map)
+
+        assertEquals("an installed map", target.readText())
+    }
+
+    @Test
+    fun discard_nothingDownloaded_doesNothing() = runTest {
+        downloader().discard(map)
+
+        assertTrue(logger.warnings.isEmpty())
+    }
+
+    @Test
+    fun discard_afterCancellingARunningDownload_leavesNoPart() = runTest {
+        val executor = Executors.newSingleThreadExecutor()
+        try {
+            server.enqueue(
+                MockResponse.Builder()
+                    .code(200)
+                    .addHeader("Last-Modified", LAST_MODIFIED)
+                    .body(Buffer().write(content))
+                    .throttleBody(100, 1, TimeUnit.SECONDS)
+                    .build(),
+            )
+            val downloader = downloader(executor.asCoroutineDispatcher())
+            val job = launch { downloader.download() }
+            testScheduler.runCurrent()
+            checkNotNull(server.takeRequest(10, TimeUnit.SECONDS)) { "The download did not start" }
+            job.cancel()
+
+            // Waits for the download to stop writing, as the repository does after a cancel.
+            downloader.discard(map)
+
+            assertFalse(part.exists())
+            assertFalse(target.exists())
+        } finally {
+            executor.shutdownNow()
+        }
+    }
+
     // --- Progress ---
 
     @Test

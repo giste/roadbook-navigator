@@ -5,6 +5,9 @@
     <!-- The map downloader reads the list of maps from the download site and downloads them. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Tells whether the device is on Wi-Fi, to ask before a download uses mobile data. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
     <!--
     Map downloads run as a WorkManager foreground service with a notification, so a download of
     several minutes is not stopped. Downloading a file the user asked for is a data sync.
@@ -23,6 +26,11 @@
             android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync"
             tools:node="merge" />
+
+        <!-- Cancels a map download from its notification. Only the app's own notification uses it. -->
+        <receiver
+            android:name="dev.giste.map.data.MapDownloadCancelReceiver"
+            android:exported="false" />
     </application>
 
 </manifest>

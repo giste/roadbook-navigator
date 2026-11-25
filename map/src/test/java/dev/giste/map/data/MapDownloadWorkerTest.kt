@@ -67,6 +67,8 @@ class MapDownloadWorkerTest {
             reports.forEach { (done, total) -> onProgress(done, total) }
             return result
         }
+
+        override suspend fun discard(map: RemoteMapPath) = Unit
     }
 
     /** The progress data the worker set, in order. */

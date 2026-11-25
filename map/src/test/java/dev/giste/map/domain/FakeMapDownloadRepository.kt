@@ -22,19 +22,26 @@ import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
  * [MapDownloadRepository] for tests: [downloads] emits [current] and each change to it, and
- * [start] only records the maps it is called with.
+ * [start] and [cancel] only record what they are called with.
  */
 internal class FakeMapDownloadRepository : MapDownloadRepository {
 
     /** The downloads to report. Set it to emit new ones. */
     val current: MutableStateFlow<List<MapDownload>> = MutableStateFlow(emptyList())
 
-    /** The maps passed to [start], in call order. */
-    val started: MutableList<RemoteMapPath> = mutableListOf()
+    /** The maps passed to [start] with whether mobile data was allowed, in call order. */
+    val started: MutableList<Pair<RemoteMapPath, Boolean>> = mutableListOf()
+
+    /** The maps passed to [cancel], in call order. */
+    val cancelled: MutableList<RemoteMapPath> = mutableListOf()
 
     override val downloads: Flow<List<MapDownload>> = current
 
-    override suspend fun start(map: RemoteMapPath) {
-        started += map
+    override suspend fun start(map: RemoteMapPath, allowMobileData: Boolean) {
+        started += map to allowMobileData
+    }
+
+    override suspend fun cancel(map: RemoteMapPath) {
+        cancelled += map
     }
 }
