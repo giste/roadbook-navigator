@@ -117,7 +117,7 @@ class NavigationIntegrationTest {
     fun downloadButton_pressedInTheMapManager_opensTheMapDownloader() {
         openMapManager()
 
-        composeRule.onNodeWithTag(MAP_MANAGER_DOWNLOAD_TAG).performClick()
+        composeRule.onNodeWithTag(MAP_MANAGER_ADD_TAG).performClick()
 
         composeRule.awaitText("Download maps")
     }
@@ -125,7 +125,7 @@ class NavigationIntegrationTest {
     @Test
     fun systemBack_inTheMapDownloader_returnsToTheMapManager() {
         openMapManager()
-        composeRule.onNodeWithTag(MAP_MANAGER_DOWNLOAD_TAG).performClick()
+        composeRule.onNodeWithTag(MAP_MANAGER_ADD_TAG).performClick()
         composeRule.awaitText("Download maps")
 
         composeRule.runOnUiThread { composeRule.activity.onBackPressedDispatcher.onBackPressed() }
@@ -196,7 +196,7 @@ class NavigationIntegrationTest {
          */
         const val MAP_MANAGE_TAG = "map_viewer_manage"
 
-        /** The tag of the map manager's download button: `:map`'s `MapManagerTestTags.DOWNLOAD`. */
-        const val MAP_MANAGER_DOWNLOAD_TAG = "map_manager_download"
+        /** The tag of the map manager's add button: `:map`'s `MapManagerTestTags.ADD`. */
+        const val MAP_MANAGER_ADD_TAG = "map_manager_add"
     }
 }

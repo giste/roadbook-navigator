@@ -34,12 +34,17 @@ import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.unit.dp
 import dev.giste.core.ui.theme.GisteTheme
 import dev.giste.map.domain.InstalledMapFile
 import dev.giste.map.domain.testInstalledFile
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -59,6 +64,9 @@ class MapManagerContentTest {
         .copy(path = "/maps/europe/france/corsica.map", folder = "europe/france")
     private val listed = MapManagerUiState.Listed(listOf(damaged, spain))
 
+    /** More files than fit on the screen, so the list scrolls. */
+    private val manyFiles = (1..30).map { testInstalledFile("map$it.map") }
+
     private var backs = 0
     private var downloads = 0
     private val deleted = mutableListOf<InstalledMapFile>()
@@ -68,7 +76,7 @@ class MapManagerContentTest {
     private var state: MapManagerUiState by mutableStateOf(MapManagerUiState.Loading)
 
     /**
-     * Shows the manager in [initial], recording its callbacks. It has a download button unless
+     * Shows the manager in [initial], recording its callbacks. It has an add button unless
      * [downloadable] is `false`.
      */
     private fun show(
@@ -109,19 +117,50 @@ class MapManagerContentTest {
     }
 
     @Test
-    fun mapManagerContent_downloadPressed_callsOnDownloadMaps() {
+    fun mapManagerContent_addPressed_callsOnDownloadMaps() {
         show(listed)
 
-        rule.onNodeWithTag(MapManagerTestTags.DOWNLOAD).performClick()
+        rule.onNodeWithTag(MapManagerTestTags.ADD).performClick()
 
         assertEquals(1, downloads)
     }
 
     @Test
-    fun mapManagerContent_withoutOnDownloadMaps_hasNoDownloadButton() {
+    fun mapManagerContent_everyState_showsTheAddButton() {
+        show(MapManagerUiState.Loading)
+
+        val states = listOf(
+            MapManagerUiState.Loading,
+            MapManagerUiState.FolderUnreadable,
+            MapManagerUiState.Listed(emptyList()),
+            listed,
+        )
+        for (each in states) {
+            state = each
+            rule.onNodeWithTag(MapManagerTestTags.ADD).assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun mapManagerContent_withoutOnDownloadMaps_hasNoAddButton() {
         show(listed, downloadable = false)
 
-        rule.onNodeWithTag(MapManagerTestTags.DOWNLOAD).assertDoesNotExist()
+        rule.onNodeWithTag(MapManagerTestTags.ADD).assertDoesNotExist()
+    }
+
+    @Test
+    fun mapManagerContent_scrolledToTheEnd_lastRowIsClearOfTheAddButton() {
+        show(MapManagerUiState.Listed(manyFiles))
+        rule.onNodeWithTag(MapManagerTestTags.LIST).performScrollToIndex(manyFiles.lastIndex)
+        // Scrolling to the last item only brings it into view; swipe up to reach the list's end.
+        rule.onNodeWithTag(MapManagerTestTags.LIST).performTouchInput { swipeUp() }
+
+        val lastRow = rule.onNodeWithTag(MapManagerTestTags.file(manyFiles.last())).getBoundsInRoot()
+        val addButton = rule.onNodeWithTag(MapManagerTestTags.ADD).getBoundsInRoot()
+        assertTrue(
+            "last row ends at ${lastRow.bottom}, button starts at ${addButton.top}",
+            lastRow.bottom <= addButton.top,
+        )
     }
 
     @Test
@@ -178,7 +217,7 @@ class MapManagerContentTest {
         rule.onNode(inRow(spain, MapManagerTestTags.DELETE))
             .assertWidthIsAtLeast(MIN_TOUCH_TARGET)
             .assertHeightIsAtLeast(MIN_TOUCH_TARGET)
-        rule.onNodeWithTag(MapManagerTestTags.DOWNLOAD)
+        rule.onNodeWithTag(MapManagerTestTags.ADD)
             .assertWidthIsAtLeast(MIN_TOUCH_TARGET)
             .assertHeightIsAtLeast(MIN_TOUCH_TARGET)
     }

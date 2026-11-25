@@ -22,6 +22,8 @@ import android.text.format.Formatter
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,6 +35,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -59,6 +62,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import dev.giste.core.ui.theme.GisteTheme
 import dev.giste.map.R
 import dev.giste.map.domain.FileSize
@@ -70,8 +74,11 @@ internal object MapManagerTestTags {
     /** The back button, which shows an icon instead of text. */
     const val BACK: String = "map_manager_back"
 
-    /** The button that opens the map downloader, which shows an icon instead of text. */
-    const val DOWNLOAD: String = "map_manager_download"
+    /** The floating add button, which opens the map downloader and shows an icon instead of text. */
+    const val ADD: String = "map_manager_add"
+
+    /** The list of installed map files, a container. */
+    const val LIST: String = "map_manager_list"
 
     /** The empty area shown while the maps are looked for. */
     const val LOADING: String = "map_manager_loading"
@@ -98,8 +105,9 @@ internal object MapManagerTestTags {
 }
 
 /**
- * The map manager for [state]: a top bar with a back button (and a download button, if
- * [onDownloadMaps] is given), then the installed map files.
+ * The map manager for [state]: a top bar with a back button, then the installed map files. If
+ * [onDownloadMaps] is given, a floating add button at the bottom end opens the map downloader, in
+ * every state, and the list leaves room under its last row so the button never hides it.
  *
  * - [MapManagerUiState.Loading]: only the top bar, as looking for the maps takes a moment.
  * - [MapManagerUiState.FolderUnreadable]: a message.
@@ -116,8 +124,7 @@ internal object MapManagerTestTags {
  *
  * @param state what to show.
  * @param onBack called when the back button is pressed.
- * @param onDownloadMaps called when the download button is pressed, or `null` for no download
- * button.
+ * @param onDownloadMaps called when the add button is pressed, or `null` for no add button.
  * @param onDelete called with a file once the rider has confirmed deleting it.
  * @param onDeleteErrorShown called once the deletion failure has been shown.
  * @param modifier applied to the root layout.
@@ -159,19 +166,20 @@ internal fun MapManagerContent(
                         Icon(painter = painterResource(R.drawable.map_ic_arrow_back), contentDescription = null)
                     }
                 },
-                actions = {
-                    if (onDownloadMaps != null) {
-                        IconButton(
-                            onClick = onDownloadMaps,
-                            modifier = Modifier
-                                .size(GisteTheme.dimensions.minTouchTarget)
-                                .testTag(MapManagerTestTags.DOWNLOAD),
-                        ) {
-                            Icon(painter = painterResource(R.drawable.map_ic_download), contentDescription = null)
-                        }
-                    }
-                },
             )
+        },
+        floatingActionButton = {
+            if (onDownloadMaps != null) {
+                val minTouchTarget = GisteTheme.dimensions.minTouchTarget
+                FloatingActionButton(
+                    onClick = onDownloadMaps,
+                    modifier = Modifier
+                        .defaultMinSize(minWidth = minTouchTarget, minHeight = minTouchTarget)
+                        .testTag(MapManagerTestTags.ADD),
+                ) {
+                    Icon(painter = painterResource(R.drawable.map_ic_add), contentDescription = null)
+                }
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
@@ -188,6 +196,7 @@ internal fun MapManagerContent(
                         files = state.files,
                         onDelete = { confirming = it.path },
                         modifier = bodyModifier,
+                        clearOfAddButton = onDownloadMaps != null,
                     )
                 }
         }
@@ -213,14 +222,23 @@ internal fun MapManagerContent(
  * @param files the files, never empty.
  * @param onDelete called with a file when its delete button is pressed.
  * @param modifier applied to the list.
+ * @param clearOfAddButton whether the add button floats over the list's bottom end. If so, the
+ * list ends with room for it, so the last row, and its delete button, can scroll out from under it.
  */
 @Composable
 private fun MapFileList(
     files: List<InstalledMapFile>,
     onDelete: (InstalledMapFile) -> Unit,
     modifier: Modifier = Modifier,
+    clearOfAddButton: Boolean = false,
 ) {
-    LazyColumn(modifier = modifier) {
+    val dimensions = GisteTheme.dimensions
+    // The button's height, the scaffold's margin under it and the same again above it.
+    val bottomPadding = if (clearOfAddButton) dimensions.minTouchTarget + dimensions.spacingMedium * 2 else 0.dp
+    LazyColumn(
+        modifier = modifier.testTag(MapManagerTestTags.LIST),
+        contentPadding = PaddingValues(bottom = bottomPadding),
+    ) {
         items(files, key = { it.path }) { file ->
             MapFileRow(file = file, onDelete = { onDelete(file) })
             HorizontalDivider()

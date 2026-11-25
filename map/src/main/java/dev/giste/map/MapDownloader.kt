@@ -34,7 +34,7 @@ import dev.giste.map.ui.MapDownloaderViewModel
  * says why and offers to try again. The folder being shown survives configuration changes and the
  * process being stopped.
  *
- * Open it from [MapManager]'s download button, e.g. as a navigation destination of its own. It
+ * Open it from [MapManager]'s add button, e.g. as a navigation destination of its own. It
  * needs the `INTERNET` permission, which `:map` declares.
  *
  * @param onBack called when the user leaves the screen with its back button in the download site's
