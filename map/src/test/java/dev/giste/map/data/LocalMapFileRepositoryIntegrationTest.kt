@@ -23,6 +23,7 @@ import dev.giste.map.domain.FileSize
 import dev.giste.map.domain.InstalledMapFile
 import dev.giste.map.domain.InstalledMapFiles
 import java.io.File
+import java.time.Instant
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -72,5 +73,6 @@ class LocalMapFileRepositoryIntegrationTest {
         folder = "",
         size = FileSize(file.length()),
         readable = readable,
+        modified = Instant.ofEpochMilli(file.lastModified()),
     )
 }

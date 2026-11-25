@@ -41,7 +41,12 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.unit.dp
 import dev.giste.core.ui.theme.GisteTheme
+import dev.giste.map.domain.FileSize
 import dev.giste.map.domain.InstalledMapFile
+import dev.giste.map.domain.MapDownload
+import dev.giste.map.domain.MapDownloadFailure
+import dev.giste.map.domain.RemoteFolderPath
+import dev.giste.map.domain.RemoteMapPath
 import dev.giste.map.domain.testInstalledFile
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -62,7 +67,7 @@ class MapManagerContentTest {
     private val damaged = testInstalledFile("damaged.map", readable = false, size = 1_024)
     private val corsica = testInstalledFile("corsica.map")
         .copy(path = "/maps/europe/france/corsica.map", folder = "europe/france")
-    private val listed = MapManagerUiState.Listed(listOf(damaged, spain))
+    private val listed = MapManagerUiState.Listed(managed(damaged, spain))
 
     /** More files than fit on the screen, so the list scrolls. */
     private val manyFiles = (1..30).map { testInstalledFile("map$it.map") }
@@ -71,6 +76,11 @@ class MapManagerContentTest {
     private var downloads = 0
     private val deleted = mutableListOf<InstalledMapFile>()
     private var errorsShown = 0
+    private val updated = mutableListOf<InstalledMapFile>()
+    private var updatesAll = 0
+    private val updatesCancelled = mutableListOf<InstalledMapFile>()
+    private val mobileDataAnswers = mutableListOf<Boolean>()
+    private var mobileDataDismissals = 0
 
     /** What the manager shows. Tests change it to update the screen. */
     private var state: MapManagerUiState by mutableStateOf(MapManagerUiState.Loading)
@@ -93,11 +103,37 @@ class MapManagerContentTest {
                     onDownloadMaps = if (downloadable) ({ downloads++ }) else null,
                     onDelete = { deleted += it },
                     onDeleteErrorShown = { errorsShown++ },
+                    onUpdate = { updated += it },
+                    onUpdateAll = { updatesAll++ },
+                    onCancelUpdate = { updatesCancelled += it },
+                    onMobileData = { mobileDataAnswers += it },
+                    onDismissMobileData = { mobileDataDismissals++ },
                 )
             }
         }
         if (restorationTester == null) rule.setContent(content) else restorationTester.setContent(content)
     }
+
+    /** [files] with nothing known about their updates. */
+    private fun managed(vararg files: InstalledMapFile) = files.map(::ManagedMapFile)
+
+    private val spainPath = RemoteMapPath(RemoteFolderPath.ROOT, "spain.map")
+    private val damagedPath = RemoteMapPath(RemoteFolderPath.ROOT, "damaged.map")
+
+    /** Spain outdated; the damaged file up to date. */
+    private val spainOutdated = MapManagerUiState.Listed(
+        listOf(ManagedMapFile(damaged), ManagedMapFile(spain, outdated = true)),
+    )
+
+    /** Both files outdated. */
+    private val bothOutdated = MapManagerUiState.Listed(
+        listOf(ManagedMapFile(damaged, outdated = true), ManagedMapFile(spain, outdated = true)),
+    )
+
+    /** [spainOutdated] with Spain's update in [download]. */
+    private fun spainUpdate(download: MapDownload) = MapManagerUiState.Listed(
+        listOf(ManagedMapFile(damaged), ManagedMapFile(spain, outdated = true, download = download)),
+    )
 
     /** Matches a node tagged [tag] in the row of [file]. */
     private fun inRow(file: InstalledMapFile, tag: String): SemanticsMatcher =
@@ -150,7 +186,7 @@ class MapManagerContentTest {
 
     @Test
     fun mapManagerContent_scrolledToTheEnd_lastRowIsClearOfTheAddButton() {
-        show(MapManagerUiState.Listed(manyFiles))
+        show(MapManagerUiState.Listed(manyFiles.map(::ManagedMapFile)))
         rule.onNodeWithTag(MapManagerTestTags.LIST).performScrollToIndex(manyFiles.lastIndex)
         // Scrolling to the last item only brings it into view; swipe up to reach the list's end.
         rule.onNodeWithTag(MapManagerTestTags.LIST).performTouchInput { swipeUp() }
@@ -193,7 +229,7 @@ class MapManagerContentTest {
 
     @Test
     fun mapManagerContent_fileInASubFolder_showsTheFolder() {
-        show(MapManagerUiState.Listed(listOf(corsica, spain)))
+        show(MapManagerUiState.Listed(managed(corsica, spain)))
 
         rule.onNode(hasText("europe/france") and hasAnyAncestor(hasTestTag(MapManagerTestTags.file(corsica))))
             .assertIsDisplayed()
@@ -279,7 +315,7 @@ class MapManagerContentTest {
         show(listed)
         rule.onNode(inRow(spain, MapManagerTestTags.DELETE)).performClick()
 
-        state = MapManagerUiState.Listed(listOf(damaged))
+        state = MapManagerUiState.Listed(managed(damaged))
         rule.waitForIdle()
 
         rule.onNode(isDialog()).assertDoesNotExist()
@@ -304,6 +340,185 @@ class MapManagerContentTest {
 
         rule.onNodeWithText("Mapas").assertIsDisplayed()
         rule.onNode(hasText("¿Borrar spain.map?") and hasAnyAncestor(isDialog())).assertIsDisplayed()
+    }
+
+    // --- Updates ---
+
+    @Test
+    fun mapManagerContent_nothingOutdated_hasNoUpdateButtons() {
+        show(listed)
+
+        rule.onNodeWithTag(MapDownloadTestTags.UPDATE).assertDoesNotExist()
+        rule.onNodeWithTag(MapManagerTestTags.UPDATE_ALL).assertDoesNotExist()
+    }
+
+    @Test
+    fun mapManagerContent_outdatedFile_hasAnUpdateButtonAndOthersNone() {
+        show(spainOutdated)
+
+        rule.onNode(inRow(spain, MapDownloadTestTags.UPDATE)).assertIsDisplayed()
+        rule.onNode(inRow(damaged, MapDownloadTestTags.UPDATE)).assertDoesNotExist()
+    }
+
+    @Test
+    fun mapManagerContent_updatePressed_callsOnUpdateWithTheFile() {
+        show(spainOutdated)
+
+        rule.onNode(inRow(spain, MapDownloadTestTags.UPDATE)).performClick()
+
+        assertEquals(listOf(spain), updated)
+    }
+
+    @Test
+    fun mapManagerContent_oneUpdatableFile_hasNoUpdateAllButton() {
+        show(spainOutdated)
+
+        rule.onNodeWithTag(MapManagerTestTags.UPDATE_ALL).assertDoesNotExist()
+    }
+
+    @Test
+    fun mapManagerContent_twoUpdatableFiles_hasAnUpdateAllButton() {
+        show(bothOutdated)
+
+        rule.onNodeWithTag(MapManagerTestTags.UPDATE_ALL).performClick()
+
+        assertEquals(1, updatesAll)
+    }
+
+    @Test
+    fun mapManagerContent_twoOutdatedOneUpdating_hasNoUpdateAllButton() {
+        show(
+            MapManagerUiState.Listed(
+                listOf(
+                    ManagedMapFile(damaged, outdated = true),
+                    ManagedMapFile(spain, outdated = true, download = MapDownload.Queued(spainPath)),
+                ),
+            ),
+        )
+
+        rule.onNodeWithTag(MapManagerTestTags.UPDATE_ALL).assertDoesNotExist()
+    }
+
+    @Test
+    fun mapManagerContent_updateButtons_areAtLeastTheMinimumTouchTarget() {
+        show(bothOutdated)
+
+        listOf(rule.onNode(inRow(spain, MapDownloadTestTags.UPDATE)), rule.onNodeWithTag(MapManagerTestTags.UPDATE_ALL))
+            .forEach { it.assertWidthIsAtLeast(MIN_TOUCH_TARGET).assertHeightIsAtLeast(MIN_TOUCH_TARGET) }
+    }
+
+    @Test
+    fun mapManagerContent_updateQueued_showsTheWaitingMarkInsteadOfTheButton() {
+        show(spainUpdate(MapDownload.Queued(spainPath)))
+
+        rule.onNode(inRow(spain, MapDownloadTestTags.QUEUED), useUnmergedTree = true).assertIsDisplayed()
+        rule.onNode(inRow(spain, MapDownloadTestTags.UPDATE)).assertDoesNotExist()
+    }
+
+    @Test
+    fun mapManagerContent_updateRunning_showsItsProgress() {
+        show(spainUpdate(MapDownload.Running(spainPath, FileSize(50), FileSize(100))))
+
+        rule.onNode(inRow(spain, MapDownloadTestTags.PROGRESS), useUnmergedTree = true).assertIsDisplayed()
+        rule.onNode(inRow(spain, MapDownloadTestTags.STOP_MARK), useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun mapManagerContent_updateFailed_showsWhyAndTriesAgain() {
+        show(spainUpdate(MapDownload.Failed(spainPath, MapDownloadFailure.NOT_ENOUGH_SPACE)))
+
+        rule.onNode(hasText("Not enough free space") and hasAnyAncestor(hasTestTag(MapManagerTestTags.file(spain))))
+            .assertIsDisplayed()
+        rule.onNode(inRow(spain, MapDownloadTestTags.RETRY_DOWNLOAD)).performClick()
+
+        assertEquals(listOf(spain), updated)
+    }
+
+    @Test
+    fun mapManagerContent_failureOfAnUpToDateFile_isNotShown() {
+        val oldFailure = MapDownload.Failed(damagedPath, MapDownloadFailure.NOT_ENOUGH_SPACE)
+        show(MapManagerUiState.Listed(listOf(ManagedMapFile(damaged, download = oldFailure), ManagedMapFile(spain))))
+
+        rule.onNodeWithText("Not enough free space").assertDoesNotExist()
+        rule.onNodeWithTag(MapDownloadTestTags.RETRY_DOWNLOAD).assertDoesNotExist()
+    }
+
+    @Test
+    fun mapManagerContent_updatingPressed_asksAndStopsOnConfirm() {
+        show(spainUpdate(MapDownload.Running(spainPath, FileSize(50), FileSize(100))))
+        rule.onNode(inRow(spain, MapDownloadTestTags.CANCEL_DOWNLOAD)).performClick()
+
+        rule.onNode(hasText("Stop downloading spain.map?") and hasAnyAncestor(isDialog())).assertIsDisplayed()
+        assertEquals(emptyList<InstalledMapFile>(), updatesCancelled)
+
+        rule.onNodeWithTag(MapDownloadTestTags.CONFIRM_CANCEL).performClick()
+
+        assertEquals(listOf(spain), updatesCancelled)
+        rule.onNode(isDialog()).assertDoesNotExist()
+    }
+
+    @Test
+    fun mapManagerContent_stopDismissed_keepsUpdating() {
+        show(spainUpdate(MapDownload.Queued(spainPath)))
+        rule.onNode(inRow(spain, MapDownloadTestTags.CANCEL_DOWNLOAD)).performClick()
+
+        rule.onNodeWithTag(MapDownloadTestTags.KEEP_DOWNLOADING).performClick()
+
+        assertEquals(emptyList<InstalledMapFile>(), updatesCancelled)
+        rule.onNode(isDialog()).assertDoesNotExist()
+    }
+
+    @Test
+    fun mapManagerContent_updateFinishedWhileAskingToStop_closesTheDialog() {
+        show(spainUpdate(MapDownload.Queued(spainPath)))
+        rule.onNode(inRow(spain, MapDownloadTestTags.CANCEL_DOWNLOAD)).performClick()
+
+        state = MapManagerUiState.Listed(managed(damaged, spain))
+        rule.waitForIdle()
+
+        rule.onNode(isDialog()).assertDoesNotExist()
+    }
+
+    @Test
+    fun mapManagerContent_mobileDataQuestionForOne_namesTheMap() {
+        show(spainOutdated.copy(mobileDataQuestion = listOf(spainPath)))
+
+        rule.onNode(
+            hasText("Download spain.map now with mobile data, or wait for Wi-Fi?", substring = true) and
+                hasAnyAncestor(isDialog()),
+        ).assertIsDisplayed()
+    }
+
+    @Test
+    fun mapManagerContent_mobileDataQuestionForSeveral_saysHowMany() {
+        show(bothOutdated.copy(mobileDataQuestion = listOf(damagedPath, spainPath)))
+
+        rule.onNode(
+            hasText("Download the updates of 2 maps now with mobile data, or wait for Wi-Fi?", substring = true) and
+                hasAnyAncestor(isDialog()),
+        ).assertIsDisplayed()
+    }
+
+    @Test
+    fun mapManagerContent_mobileDataAnswers_areReported() {
+        show(spainOutdated.copy(mobileDataQuestion = listOf(spainPath)))
+
+        rule.onNodeWithTag(MapDownloadTestTags.USE_MOBILE_DATA).performClick()
+        rule.onNodeWithTag(MapDownloadTestTags.WAIT_FOR_WIFI).performClick()
+        rule.onNodeWithTag(MapDownloadTestTags.DISMISS_MOBILE_DATA).performClick()
+
+        assertEquals(listOf(true, false), mobileDataAnswers)
+        assertEquals(1, mobileDataDismissals)
+    }
+
+    @Test
+    @Config(qualifiers = "es")
+    fun mapManagerContent_spanishMobileDataQuestionForSeveral_isTranslated() {
+        show(bothOutdated.copy(mobileDataQuestion = listOf(damagedPath, spainPath)))
+
+        rule.onNode(
+            hasText("¿Descargar ahora las actualizaciones de 2 mapas", substring = true) and hasAnyAncestor(isDialog()),
+        ).assertIsDisplayed()
     }
 
     private companion object {

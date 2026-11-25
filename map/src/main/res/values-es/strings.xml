@@ -35,6 +35,12 @@
     <string name="map_download_mobile_data_title">Sin wifi</string>
     <!-- Text of the mobile data dialog. %1$s is the map's file name. -->
     <string name="map_download_mobile_data_message">¿Descargar %1$s ahora con datos móviles o esperar al wifi? Los datos móviles también se usarán para los mapas que ya están esperando.</string>
+    <!-- Text of the mobile data dialog for several map updates. %1$d is how many. -->
+    <plurals name="map_download_mobile_data_message_several">
+        <item quantity="one">¿Descargar ahora la actualización de %1$d mapa con datos móviles o esperar al wifi? Los datos móviles también se usarán para los mapas que ya están esperando.</item>
+        <item quantity="many">¿Descargar ahora las actualizaciones de %1$d mapas con datos móviles o esperar al wifi? Los datos móviles también se usarán para los mapas que ya están esperando.</item>
+        <item quantity="other">¿Descargar ahora las actualizaciones de %1$d mapas con datos móviles o esperar al wifi? Los datos móviles también se usarán para los mapas que ya están esperando.</item>
+    </plurals>
     <!-- Title of the dialog that confirms stopping a map download. %1$s is the map's file name. -->
     <string name="map_download_cancel_title">¿Dejar de descargar %1$s?</string>
     <!-- Shown under a map in the map downloader when the download site does not send it. -->

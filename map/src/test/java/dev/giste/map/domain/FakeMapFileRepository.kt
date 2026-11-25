@@ -17,6 +17,7 @@
 
 package dev.giste.map.domain
 
+import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emitAll
@@ -65,20 +66,28 @@ internal class FakeMapFileRepository(initial: InstalledMapFiles) : MapFileReposi
 internal fun testMapFile(name: String = "spain.map"): MapFile = MapFile(name = name, path = "/maps/$name")
 
 /**
- * An installed map file for tests, at `/maps/<name>` like [testMapFile], in the map folder itself.
+ * An installed map file for tests, at `/maps/<name>` like [testMapFile] (or `/maps/<folder>/<name>`).
  *
  * @param name the file name.
  * @param readable whether the renderer can open it.
  * @param size its size in bytes.
+ * @param folder the sub-folder that holds it, e.g. `europe`; its path then includes it.
+ * @param modified when it last changed.
  */
 internal fun testInstalledFile(
     name: String = "spain.map",
     readable: Boolean = true,
     size: Long = 1_000,
+    folder: String = "",
+    modified: Instant = TEST_MODIFIED,
 ): InstalledMapFile = InstalledMapFile(
     name = name,
-    path = "/maps/$name",
-    folder = "",
+    path = if (folder.isEmpty()) "/maps/$name" else "/maps/$folder/$name",
+    folder = folder,
     size = FileSize(size),
     readable = readable,
+    modified = modified,
 )
+
+/** When the files of [testInstalledFile] last changed, unless a test says otherwise. */
+internal val TEST_MODIFIED: Instant = Instant.parse("2026-09-01T00:00:00Z")

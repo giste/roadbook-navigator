@@ -43,6 +43,8 @@ internal sealed interface MapDownloaderUiState {
      * @property entries its folders first, then its map files. Empty if it holds neither.
      * @property installed the names of the map files in [entries] that are already installed in
      * the same folder on the device.
+ * @property outdated the names of the installed map files in [installed] that have an update on
+ * the site, as the last check found.
      * @property downloads the downloads of the map files in [entries] that are waiting, running or
      * failed, by file name.
      * @property mobileDataQuestion the map to download whose rider must first say whether to use
@@ -52,6 +54,7 @@ internal sealed interface MapDownloaderUiState {
         override val folder: RemoteFolderPath,
         val entries: List<RemoteMapEntry>,
         val installed: Set<String> = emptySet(),
+        val outdated: Set<String> = emptySet(),
         val downloads: Map<String, MapDownload> = emptyMap(),
         val mobileDataQuestion: RemoteMapPath? = null,
     ) : MapDownloaderUiState

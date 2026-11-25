@@ -99,6 +99,13 @@ internal sealed interface MapDownload {
 }
 
 /**
+ * Whether this download is waiting or running, so it can still be stopped; `false` for a failed
+ * download and for none.
+ */
+internal val MapDownload?.isActive: Boolean
+    get() = this is MapDownload.Queued || this is MapDownload.Running
+
+/**
  * Why a map download stopped for good. Failures that may go away by themselves, such as a lost
  * connection or a busy server, are not here: those downloads wait and try again.
  */

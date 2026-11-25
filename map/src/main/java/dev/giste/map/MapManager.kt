@@ -23,14 +23,24 @@ import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.giste.map.ui.MapManagerContent
+import dev.giste.map.ui.MapManagerUiState
 import dev.giste.map.ui.MapManagerViewModel
+import dev.giste.map.ui.rememberDownloadWithNotificationPermission
 
 /**
  * The map manager screen, with its state from Hilt: the offline map files installed in the app's
  * `map_files` folder (in its no-backup folder), with their size, and a way to delete them.
  *
  * Files the map cannot read are listed too, with a warning mark, so they can be deleted. Deleting
- * asks first, and the screen tells the user if a file could not be deleted. The list is looked for
+ * asks first, and the screen tells the user if a file could not be deleted.
+ *
+ * Each time the screen is opened, it asks the download site ([MapDownloadServer]) whether the
+ * installed maps have updates: a map that changed on the site after the file's own date gets an
+ * update button, and when two or more do, the top bar has a button that updates them all. Updates
+ * are downloads like those of [MapDownloader], with the same queue, notification, Wi-Fi rule
+ * (off Wi-Fi it first asks whether to use mobile data), notification permission request and stop
+ * button; the installed map stays in use until its update is complete and readable, then replaces
+ * it. If the site cannot be reached, no update is shown. [MapDownloader] marks the same updates. The list is looked for
  * each time the screen is shown, and again after each deletion and each finished download from
  * [MapDownloader]; a [MapViewer] follows the same changes.
  *
@@ -50,12 +60,29 @@ public fun MapManager(
 ) {
     val viewModel: MapManagerViewModel = hiltViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val update = rememberDownloadWithNotificationPermission { key ->
+        if (key == UPDATE_ALL_KEY) {
+            viewModel.updateAll()
+        } else {
+            val file = (viewModel.uiState.value as? MapManagerUiState.Listed)?.files
+                ?.find { it.file.path == key }?.file
+            if (file != null) viewModel.update(file)
+        }
+    }
     MapManagerContent(
         state = state,
         onBack = onBack,
         onDownloadMaps = onDownloadMaps,
         onDelete = viewModel::delete,
         onDeleteErrorShown = viewModel::dismissDeleteError,
+        onUpdate = { file -> update(file.path) },
+        onUpdateAll = { update(UPDATE_ALL_KEY) },
+        onCancelUpdate = viewModel::cancel,
+        onMobileData = viewModel::answerMobileData,
+        onDismissMobileData = viewModel::dismissMobileData,
         modifier = modifier,
     )
 }
+
+/** The download key that stands for updating every outdated map; file keys are absolute paths. */
+private const val UPDATE_ALL_KEY = ""

@@ -17,29 +17,24 @@
 
 package dev.giste.map
 
-import android.Manifest
-import android.content.pm.PackageManager
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.giste.map.domain.RemoteMapEntry
 import dev.giste.map.ui.MapDownloaderContent
 import dev.giste.map.ui.MapDownloaderUiState
 import dev.giste.map.ui.MapDownloaderViewModel
+import dev.giste.map.ui.rememberDownloadWithNotificationPermission
 
 /**
  * The map downloader screen, with its state from Hilt: the maps on the download site
  * ([MapDownloadServer]), one folder at a time, with the maps already installed marked.
  *
- * Each map that is not installed has a download button. Downloads run in the background, one at
+ * Each map that is not installed has a download button, and each installed map that has an update
+ * on the site has an update button. Updates are the ones the last [MapManager] check found (it
+ * checks each time it is shown); the installed map stays in use until its update is complete. Downloads run in the background, one at
  * a time, with a notification, and go on when the screen is left or the app is closed; a download
  * that stops resumes where it stopped. They wait for Wi-Fi: off Wi-Fi, a dialog asks whether to
  * download now with mobile data (which then applies to every map waiting) or to wait. A map goes
@@ -69,14 +64,8 @@ import dev.giste.map.ui.MapDownloaderViewModel
 public fun MapDownloader(onBack: () -> Unit, modifier: Modifier = Modifier) {
     val viewModel: MapDownloaderViewModel = hiltViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    // The map waiting for the notification permission answer, by name, so it survives recreation.
-    var awaitingPermission by rememberSaveable { mutableStateOf<String?>(null) }
-    val askNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
-        // Download whatever the answer: the notification is optional.
-        val name = awaitingPermission
-        awaitingPermission = null
-        val file = (state as? MapDownloaderUiState.Listed)?.entries
+    val download = rememberDownloadWithNotificationPermission { name ->
+        val file = (viewModel.uiState.value as? MapDownloaderUiState.Listed)?.entries
             ?.filterIsInstance<RemoteMapEntry.MapFile>()?.find { it.name == name }
         if (file != null) viewModel.download(file)
     }
@@ -86,16 +75,7 @@ public fun MapDownloader(onBack: () -> Unit, modifier: Modifier = Modifier) {
         onOpen = viewModel::open,
         onUp = viewModel::goUp,
         onRetry = viewModel::retry,
-        onDownload = { file ->
-            val canNotify = context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
-                PackageManager.PERMISSION_GRANTED
-            if (canNotify) {
-                viewModel.download(file)
-            } else {
-                awaitingPermission = file.name
-                askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-        },
+        onDownload = { file -> download(file.name) },
         onCancel = viewModel::cancel,
         onMobileData = viewModel::answerMobileData,
         onDismissMobileData = viewModel::dismissMobileData,

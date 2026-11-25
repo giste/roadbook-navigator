@@ -22,6 +22,7 @@ import app.cash.turbine.test
 import dev.giste.map.MainDispatcherRule
 import dev.giste.map.domain.FakeMapDownloadRepository
 import dev.giste.map.domain.FakeMapFileRepository
+import dev.giste.map.domain.FakeMapUpdateRepository
 import dev.giste.map.domain.FakeRemoteMapRepository
 import dev.giste.map.domain.FileSize
 import dev.giste.map.domain.InstalledMapFiles
@@ -32,6 +33,7 @@ import dev.giste.map.domain.RemoteListing
 import dev.giste.map.domain.RemoteListingFailure
 import dev.giste.map.domain.RemoteMapEntry
 import dev.giste.map.domain.RemoteMapPath
+import dev.giste.map.domain.TEST_MODIFIED
 import dev.giste.map.domain.testInstalledFile
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.runTest
@@ -72,11 +74,13 @@ class MapDownloaderViewModelTest {
 
     private val downloads = FakeMapDownloadRepository()
 
+    private val updates = FakeMapUpdateRepository()
+
     /** Whether the device is on Wi-Fi. */
     private var onWiFi = true
 
     private fun viewModel(savedState: SavedStateHandle = SavedStateHandle()) =
-        MapDownloaderViewModel(savedState, remote, installed, downloads) { onWiFi }
+        MapDownloaderViewModel(savedState, remote, installed, downloads, updates) { onWiFi }
 
     /** A view model showing `europe`, with [extra] saved state. */
     private fun inEurope(vararg extra: Pair<String, Any>) =
@@ -169,6 +173,69 @@ class MapDownloaderViewModelTest {
     }
 
     @Test
+    fun uiState_installedMapWithANewerSiteDate_isOutdated() = runTest {
+        updates.current.value = mapOf(RemoteMapPath(europe, "andorra.map") to TEST_MODIFIED.plusSeconds(60))
+
+        inEurope().uiState.test {
+            skipItems(1)
+            val listed = awaitItem() as MapDownloaderUiState.Listed
+            assertEquals(setOf("andorra.map"), listed.installed)
+            assertEquals(setOf("andorra.map"), listed.outdated)
+        }
+    }
+
+    @Test
+    fun uiState_installedMapWithTheSiteDate_isNotOutdated() = runTest {
+        updates.current.value = mapOf(RemoteMapPath(europe, "andorra.map") to TEST_MODIFIED)
+
+        inEurope().uiState.test {
+            skipItems(1)
+            assertEquals(emptySet<String>(), (awaitItem() as MapDownloaderUiState.Listed).outdated)
+        }
+    }
+
+    @Test
+    fun uiState_siteDateOfAMapInstalledElsewhere_marksNothing() = runTest {
+        // Spain is installed in the map folder itself, not in europe.
+        updates.current.value = mapOf(RemoteMapPath(europe, "spain.map") to TEST_MODIFIED.plusSeconds(60))
+
+        inEurope().uiState.test {
+            skipItems(1)
+            assertEquals(emptySet<String>(), (awaitItem() as MapDownloaderUiState.Listed).outdated)
+        }
+    }
+
+    @Test
+    fun uiState_updateInstalledWhileShown_isNoLongerOutdated() = runTest {
+        val newer = TEST_MODIFIED.plusSeconds(60)
+        updates.current.value = mapOf(RemoteMapPath(europe, "andorra.map") to newer)
+
+        inEurope().uiState.test {
+            skipItems(2)
+
+            // The update installed takes the site's date.
+            installed.result = InstalledMapFiles.Listed(
+                listOf(testInstalledFile("andorra.map", folder = "europe", modified = newer)),
+            )
+
+            val listed = awaitItem() as MapDownloaderUiState.Listed
+            assertEquals(setOf("andorra.map"), listed.installed)
+            assertEquals(emptySet<String>(), listed.outdated)
+        }
+    }
+
+    @Test
+    fun uiState_siteDatesFoundWhileShown_markTheOutdatedMaps() = runTest {
+        inEurope().uiState.test {
+            skipItems(2)
+
+            updates.current.value = mapOf(RemoteMapPath(europe, "andorra.map") to TEST_MODIFIED.plusSeconds(60))
+
+            assertEquals(setOf("andorra.map"), (awaitItem() as MapDownloaderUiState.Listed).outdated)
+        }
+    }
+
+    @Test
     fun uiState_downloadsOfTheFolder_areShownByName() = runTest {
         val running = MapDownload.Running(RemoteMapPath(europe, "spain.map"), FileSize(10), FileSize(100))
         val failed = MapDownload.Failed(RemoteMapPath(europe, "andorra.map"), MapDownloadFailure.NOT_ENOUGH_SPACE)
@@ -181,7 +248,7 @@ class MapDownloaderViewModelTest {
                     europe,
                     listOf(italyFolder, andorra, spain),
                     setOf("andorra.map"),
-                    mapOf("spain.map" to running, "andorra.map" to failed),
+                    downloads = mapOf("spain.map" to running, "andorra.map" to failed),
                 ),
                 awaitItem(),
             )

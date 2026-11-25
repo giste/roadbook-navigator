@@ -251,7 +251,7 @@ class MapDownloaderContentTest {
     fun mapDownloaderContent_queuedMap_isMarkedWithoutButton() {
         show(albaniaDownload(MapDownload.Queued(albaniaPath)))
 
-        rule.onNode(tagInRow(albania, MapDownloaderTestTags.QUEUED), useUnmergedTree = true).assertIsDisplayed()
+        rule.onNode(tagInRow(albania, MapDownloadTestTags.QUEUED), useUnmergedTree = true).assertIsDisplayed()
         rule.onNode(tagInRow(albania, MapDownloaderTestTags.DOWNLOAD)).assertDoesNotExist()
     }
 
@@ -260,7 +260,7 @@ class MapDownloaderContentTest {
         show(albaniaDownload(MapDownload.Running(albaniaPath, FileSize(25), FileSize(100))))
 
         rule.onNode(
-            tagInRow(albania, MapDownloaderTestTags.PROGRESS) and
+            tagInRow(albania, MapDownloadTestTags.PROGRESS) and
                 hasProgressBarRangeInfo(ProgressBarRangeInfo(0.25f, 0f..1f)),
             useUnmergedTree = true,
         ).assertIsDisplayed()
@@ -273,7 +273,7 @@ class MapDownloaderContentTest {
         for (total in listOf(FileSize(100), null)) {
             state = albaniaDownload(MapDownload.Running(albaniaPath, FileSize(25), total))
 
-            rule.onNode(tagInRow(albania, MapDownloaderTestTags.STOP_MARK), useUnmergedTree = true)
+            rule.onNode(tagInRow(albania, MapDownloadTestTags.STOP_MARK), useUnmergedTree = true)
                 .assertIsDisplayed()
         }
     }
@@ -282,7 +282,7 @@ class MapDownloaderContentTest {
     fun mapDownloaderContent_queuedMap_hasNoStopMark() {
         show(albaniaDownload(MapDownload.Queued(albaniaPath)))
 
-        rule.onNode(tagInRow(albania, MapDownloaderTestTags.STOP_MARK), useUnmergedTree = true)
+        rule.onNode(tagInRow(albania, MapDownloadTestTags.STOP_MARK), useUnmergedTree = true)
             .assertDoesNotExist()
     }
 
@@ -291,7 +291,7 @@ class MapDownloaderContentTest {
         show(albaniaDownload(MapDownload.Running(albaniaPath, FileSize(25), total = null)))
 
         rule.onNode(
-            tagInRow(albania, MapDownloaderTestTags.PROGRESS) and
+            tagInRow(albania, MapDownloadTestTags.PROGRESS) and
                 hasProgressBarRangeInfo(ProgressBarRangeInfo.Indeterminate),
             useUnmergedTree = true,
         ).assertIsDisplayed()
@@ -302,7 +302,7 @@ class MapDownloaderContentTest {
         show(albaniaDownload(MapDownload.Failed(albaniaPath, MapDownloadFailure.NOT_ENOUGH_SPACE)))
 
         rule.onNode(textInRow(albania, "Not enough free space")).assertIsDisplayed()
-        rule.onNode(tagInRow(albania, MapDownloaderTestTags.RETRY_DOWNLOAD)).performClick()
+        rule.onNode(tagInRow(albania, MapDownloadTestTags.RETRY_DOWNLOAD)).performClick()
 
         assertEquals(listOf(albania), downloaded)
     }
@@ -330,7 +330,7 @@ class MapDownloaderContentTest {
         show(listed.copy(downloads = mapOf("andorra.map" to oldFailure)))
 
         rule.onNode(tagInRow(andorra, MapDownloaderTestTags.INSTALLED)).assertIsDisplayed()
-        rule.onNode(tagInRow(andorra, MapDownloaderTestTags.RETRY_DOWNLOAD)).assertDoesNotExist()
+        rule.onNode(tagInRow(andorra, MapDownloadTestTags.RETRY_DOWNLOAD)).assertDoesNotExist()
         rule.onNode(textInRow(andorra, "The map cannot be saved")).assertDoesNotExist()
     }
 
@@ -339,8 +339,52 @@ class MapDownloaderContentTest {
         val andorraPath = RemoteMapPath(europe, "andorra.map")
         show(listed.copy(downloads = mapOf("andorra.map" to MapDownload.Queued(andorraPath))))
 
-        rule.onNode(tagInRow(andorra, MapDownloaderTestTags.QUEUED), useUnmergedTree = true).assertIsDisplayed()
+        rule.onNode(tagInRow(andorra, MapDownloadTestTags.QUEUED), useUnmergedTree = true).assertIsDisplayed()
         rule.onNode(tagInRow(andorra, MapDownloaderTestTags.INSTALLED)).assertDoesNotExist()
+    }
+
+    // --- Updates ---
+
+    /** [listed] with Andorra, which is installed, outdated. */
+    private val andorraOutdated = listed.copy(outdated = setOf("andorra.map"))
+
+    @Test
+    fun mapDownloaderContent_outdatedMap_hasAnUpdateButtonInsteadOfTheInstalledMark() {
+        show(andorraOutdated)
+
+        rule.onNode(tagInRow(andorra, MapDownloadTestTags.UPDATE)).assertIsDisplayed()
+        rule.onNode(tagInRow(andorra, MapDownloaderTestTags.INSTALLED)).assertDoesNotExist()
+        rule.onNode(tagInRow(albania, MapDownloadTestTags.UPDATE)).assertDoesNotExist()
+    }
+
+    @Test
+    fun mapDownloaderContent_updatePressed_callsOnDownloadWithTheMap() {
+        show(andorraOutdated)
+
+        rule.onNode(tagInRow(andorra, MapDownloadTestTags.UPDATE)).performClick()
+
+        assertEquals(listOf(andorra), downloaded)
+    }
+
+    @Test
+    fun mapDownloaderContent_outdatedMapWhoseUpdateFailed_showsWhyAndTryAgain() {
+        val andorraPath = RemoteMapPath(europe, "andorra.map")
+        val failed = MapDownload.Failed(andorraPath, MapDownloadFailure.NOT_ENOUGH_SPACE)
+        show(andorraOutdated.copy(downloads = mapOf("andorra.map" to failed)))
+
+        rule.onNode(textInRow(andorra, "Not enough free space")).assertIsDisplayed()
+        rule.onNode(tagInRow(andorra, MapDownloadTestTags.RETRY_DOWNLOAD)).performClick()
+        rule.onNode(tagInRow(andorra, MapDownloadTestTags.UPDATE)).assertDoesNotExist()
+        assertEquals(listOf(andorra), downloaded)
+    }
+
+    @Test
+    fun mapDownloaderContent_outdatedMapUpdating_showsTheDownload() {
+        val andorraPath = RemoteMapPath(europe, "andorra.map")
+        show(andorraOutdated.copy(downloads = mapOf("andorra.map" to MapDownload.Queued(andorraPath))))
+
+        rule.onNode(tagInRow(andorra, MapDownloadTestTags.QUEUED), useUnmergedTree = true).assertIsDisplayed()
+        rule.onNode(tagInRow(andorra, MapDownloadTestTags.UPDATE)).assertDoesNotExist()
     }
 
     // --- Stopping a download ---
@@ -349,7 +393,7 @@ class MapDownloaderContentTest {
     fun mapDownloaderContent_queuedMapPressed_asksWhetherToStopWithoutStopping() {
         show(albaniaDownload(MapDownload.Queued(albaniaPath)))
 
-        rule.onNode(tagInRow(albania, MapDownloaderTestTags.CANCEL_DOWNLOAD)).performClick()
+        rule.onNode(tagInRow(albania, MapDownloadTestTags.CANCEL_DOWNLOAD)).performClick()
 
         rule.onNode(hasText("Stop downloading albania.map?") and hasAnyAncestor(isDialog())).assertIsDisplayed()
         assertTrue(cancelled.isEmpty())
@@ -359,7 +403,7 @@ class MapDownloaderContentTest {
     fun mapDownloaderContent_runningMapPressed_asksWhetherToStop() {
         show(albaniaDownload(MapDownload.Running(albaniaPath, FileSize(25), FileSize(100))))
 
-        rule.onNode(tagInRow(albania, MapDownloaderTestTags.CANCEL_DOWNLOAD)).performClick()
+        rule.onNode(tagInRow(albania, MapDownloadTestTags.CANCEL_DOWNLOAD)).performClick()
 
         rule.onNode(hasText("Stop downloading albania.map?") and hasAnyAncestor(isDialog())).assertIsDisplayed()
     }
@@ -367,9 +411,9 @@ class MapDownloaderContentTest {
     @Test
     fun mapDownloaderContent_stopConfirmed_cancelsThatMapAndCloses() {
         show(albaniaDownload(MapDownload.Queued(albaniaPath)))
-        rule.onNode(tagInRow(albania, MapDownloaderTestTags.CANCEL_DOWNLOAD)).performClick()
+        rule.onNode(tagInRow(albania, MapDownloadTestTags.CANCEL_DOWNLOAD)).performClick()
 
-        rule.onNodeWithTag(MapDownloaderTestTags.CONFIRM_CANCEL).performClick()
+        rule.onNodeWithTag(MapDownloadTestTags.CONFIRM_CANCEL).performClick()
 
         assertEquals(listOf(albania), cancelled)
         rule.onNode(isDialog()).assertDoesNotExist()
@@ -378,9 +422,9 @@ class MapDownloaderContentTest {
     @Test
     fun mapDownloaderContent_keepDownloading_closesWithoutCancelling() {
         show(albaniaDownload(MapDownload.Queued(albaniaPath)))
-        rule.onNode(tagInRow(albania, MapDownloaderTestTags.CANCEL_DOWNLOAD)).performClick()
+        rule.onNode(tagInRow(albania, MapDownloadTestTags.CANCEL_DOWNLOAD)).performClick()
 
-        rule.onNodeWithTag(MapDownloaderTestTags.KEEP_DOWNLOADING).performClick()
+        rule.onNodeWithTag(MapDownloadTestTags.KEEP_DOWNLOADING).performClick()
 
         assertTrue(cancelled.isEmpty())
         rule.onNode(isDialog()).assertDoesNotExist()
@@ -389,7 +433,7 @@ class MapDownloaderContentTest {
     @Test
     fun mapDownloaderContent_downloadEndsWhileConfirming_closesTheDialog() {
         show(albaniaDownload(MapDownload.Running(albaniaPath, FileSize(99), FileSize(100))))
-        rule.onNode(tagInRow(albania, MapDownloaderTestTags.CANCEL_DOWNLOAD)).performClick()
+        rule.onNode(tagInRow(albania, MapDownloadTestTags.CANCEL_DOWNLOAD)).performClick()
 
         state = listed.copy(installed = setOf("andorra.map", "albania.map"))
         rule.waitForIdle()
@@ -416,7 +460,7 @@ class MapDownloaderContentTest {
                 )
             }
         }
-        rule.onNode(tagInRow(albania, MapDownloaderTestTags.CANCEL_DOWNLOAD)).performClick()
+        rule.onNode(tagInRow(albania, MapDownloadTestTags.CANCEL_DOWNLOAD)).performClick()
 
         restorationTester.emulateSavedInstanceStateRestore()
 
@@ -449,7 +493,7 @@ class MapDownloaderContentTest {
     fun mapDownloaderContent_useMobileData_answersYes() {
         show(mobileDataQuestion)
 
-        rule.onNodeWithTag(MapDownloaderTestTags.USE_MOBILE_DATA).performClick()
+        rule.onNodeWithTag(MapDownloadTestTags.USE_MOBILE_DATA).performClick()
 
         assertEquals(listOf(true), mobileDataAnswers)
     }
@@ -458,7 +502,7 @@ class MapDownloaderContentTest {
     fun mapDownloaderContent_waitForWiFi_answersNo() {
         show(mobileDataQuestion)
 
-        rule.onNodeWithTag(MapDownloaderTestTags.WAIT_FOR_WIFI).performClick()
+        rule.onNodeWithTag(MapDownloadTestTags.WAIT_FOR_WIFI).performClick()
 
         assertEquals(listOf(false), mobileDataAnswers)
     }
@@ -467,7 +511,7 @@ class MapDownloaderContentTest {
     fun mapDownloaderContent_closeMobileData_dismissesWithoutAnswer() {
         show(mobileDataQuestion)
 
-        rule.onNodeWithTag(MapDownloaderTestTags.DISMISS_MOBILE_DATA).performClick()
+        rule.onNodeWithTag(MapDownloadTestTags.DISMISS_MOBILE_DATA).performClick()
 
         assertEquals(1, mobileDataDismissals)
         assertTrue(mobileDataAnswers.isEmpty())
@@ -478,21 +522,21 @@ class MapDownloaderContentTest {
         show(mobileDataQuestion)
 
         for (tag in listOf(
-            MapDownloaderTestTags.USE_MOBILE_DATA,
-            MapDownloaderTestTags.WAIT_FOR_WIFI,
-            MapDownloaderTestTags.DISMISS_MOBILE_DATA,
+            MapDownloadTestTags.USE_MOBILE_DATA,
+            MapDownloadTestTags.WAIT_FOR_WIFI,
+            MapDownloadTestTags.DISMISS_MOBILE_DATA,
         )) {
             rule.onNodeWithTag(tag).assertHeightIsAtLeast(MIN_TOUCH_TARGET)
         }
-        rule.onNodeWithTag(MapDownloaderTestTags.DISMISS_MOBILE_DATA).assertWidthIsAtLeast(MIN_TOUCH_TARGET)
+        rule.onNodeWithTag(MapDownloadTestTags.DISMISS_MOBILE_DATA).assertWidthIsAtLeast(MIN_TOUCH_TARGET)
 
         state = albaniaDownload(MapDownload.Queued(albaniaPath))
-        rule.onNode(tagInRow(albania, MapDownloaderTestTags.CANCEL_DOWNLOAD))
+        rule.onNode(tagInRow(albania, MapDownloadTestTags.CANCEL_DOWNLOAD))
             .assertWidthIsAtLeast(MIN_TOUCH_TARGET)
             .assertHeightIsAtLeast(MIN_TOUCH_TARGET)
             .performClick()
-        rule.onNodeWithTag(MapDownloaderTestTags.CONFIRM_CANCEL).assertHeightIsAtLeast(MIN_TOUCH_TARGET)
-        rule.onNodeWithTag(MapDownloaderTestTags.KEEP_DOWNLOADING).assertHeightIsAtLeast(MIN_TOUCH_TARGET)
+        rule.onNodeWithTag(MapDownloadTestTags.CONFIRM_CANCEL).assertHeightIsAtLeast(MIN_TOUCH_TARGET)
+        rule.onNodeWithTag(MapDownloadTestTags.KEEP_DOWNLOADING).assertHeightIsAtLeast(MIN_TOUCH_TARGET)
     }
 
     @Test
@@ -501,9 +545,9 @@ class MapDownloaderContentTest {
         show(mobileDataQuestion)
 
         rule.onNode(hasText("Sin wifi") and hasAnyAncestor(isDialog())).assertIsDisplayed()
-        rule.onNodeWithTag(MapDownloaderTestTags.DISMISS_MOBILE_DATA).performClick()
+        rule.onNodeWithTag(MapDownloadTestTags.DISMISS_MOBILE_DATA).performClick()
         state = albaniaDownload(MapDownload.Queued(albaniaPath))
-        rule.onNode(tagInRow(albania, MapDownloaderTestTags.CANCEL_DOWNLOAD)).performClick()
+        rule.onNode(tagInRow(albania, MapDownloadTestTags.CANCEL_DOWNLOAD)).performClick()
 
         rule.onNode(hasText("¿Dejar de descargar albania.map?") and hasAnyAncestor(isDialog())).assertIsDisplayed()
     }
@@ -530,7 +574,7 @@ class MapDownloaderContentTest {
             .assertHeightIsAtLeast(MIN_TOUCH_TARGET)
 
         state = albaniaDownload(MapDownload.Failed(albaniaPath, MapDownloadFailure.SERVER_ERROR))
-        rule.onNode(tagInRow(albania, MapDownloaderTestTags.RETRY_DOWNLOAD))
+        rule.onNode(tagInRow(albania, MapDownloadTestTags.RETRY_DOWNLOAD))
             .assertWidthIsAtLeast(MIN_TOUCH_TARGET)
             .assertHeightIsAtLeast(MIN_TOUCH_TARGET)
 
