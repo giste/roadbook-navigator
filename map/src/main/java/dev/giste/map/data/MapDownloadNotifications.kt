@@ -22,7 +22,9 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.graphics.drawable.Icon
 import android.text.format.Formatter
 import androidx.work.ForegroundInfo
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -35,8 +37,9 @@ import javax.inject.Inject
  * The notification shown while a map is downloaded, which keeps the download running as a
  * foreground service.
  *
- * It shows the map's name and how much of it is downloaded, and opens the app when tapped. It goes
- * in its own low-importance channel, so it makes no sound. On Android 13 and later it is only seen
+ * It shows the map's name and how much of it is downloaded, opens the app when tapped, and has a
+ * cancel action ([MapDownloadCancelReceiver]). It goes in its own low-importance channel, so it
+ * makes no sound. On Android 13 and later it is only seen
  * once the user allows notifications; the download runs either way.
  *
  * @param context the application context.
@@ -62,6 +65,7 @@ internal class MapDownloadNotifications @Inject constructor(
             .setOngoing(true)
             .setOnlyAlertOnce(true)
         openAppIntent()?.let(builder::setContentIntent)
+        builder.addAction(cancelAction(map))
         if (downloaded != null && total != null && total.bytes > 0) {
             val percent = (downloaded.bytes * PERCENT / total.bytes).toInt().coerceIn(0, PERCENT)
             builder.setProgress(PERCENT, percent, false)
@@ -91,6 +95,27 @@ internal class MapDownloadNotifications @Inject constructor(
     private fun openAppIntent(): PendingIntent? {
         val intent = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return null
         return PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+    }
+
+    /**
+     * The action that cancels the download of [map], through [MapDownloadCancelReceiver]. Each map
+     * has its own request code, so an action never cancels another map. Immutable, as nothing
+     * needs to change it.
+     */
+    private fun cancelAction(map: RemoteMapPath): Notification.Action {
+        val intent = Intent(context, MapDownloadCancelReceiver::class.java)
+            .putExtra(MapDownloadCancelReceiver.EXTRA_MAP, map.toString())
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            map.toString().hashCode(),
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        return Notification.Action.Builder(
+            Icon.createWithResource(context, R.drawable.map_ic_close),
+            context.getString(R.string.map_download_notification_cancel),
+            pendingIntent,
+        ).build()
     }
 
     /** This size as short text in the current locale, e.g. "120 MB". */

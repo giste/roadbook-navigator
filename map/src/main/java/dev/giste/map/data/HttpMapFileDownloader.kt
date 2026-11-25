@@ -32,10 +32,13 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.job
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -78,6 +81,15 @@ internal interface MapFileDownloader {
         map: RemoteMapPath,
         onProgress: suspend (downloaded: FileSize, total: FileSize?) -> Unit,
     ): MapFileDownloadResult
+
+    /**
+     * Throws away what was downloaded of [map], so a later download starts from scratch. If [map]
+     * is being downloaded, it waits until that download has stopped (cancel it first). Main-safe.
+     * It never throws, except to cancel.
+     *
+     * @param map the map whose download was cancelled.
+     */
+    suspend fun discard(map: RemoteMapPath)
 }
 
 /**
@@ -95,6 +107,10 @@ internal interface MapFileDownloader {
  * sends the whole new map instead of the rest, so two versions are never mixed. A site that sends
  * no `Last-Modified` cannot be resumed safely, so its `.part` file is deleted when a try stops.
  *
+ * One map is written at a time, under a lock: a download that is stopping (e.g. cancelled) still
+ * closes its `.part` file while the next one, or [discard], may already have started. So it is a
+ * singleton.
+ *
  * @param client the HTTP client.
  * @param site the addresses of the maps.
  * @param folder the map folder.
@@ -105,6 +121,7 @@ internal interface MapFileDownloader {
  * download can be written as it is read.
  * @param logger logs what happened to each try.
  */
+@Singleton
 internal class HttpMapFileDownloader @Inject constructor(
     @param:MapHttpClient private val client: OkHttpClient,
     private val site: MapSite,
@@ -116,13 +133,31 @@ internal class HttpMapFileDownloader @Inject constructor(
     private val logger: Logger,
 ) : MapFileDownloader {
 
+    /** Held while a map's files are written or deleted. */
+    private val writing = Mutex()
+
     override suspend fun download(
         map: RemoteMapPath,
         onProgress: suspend (downloaded: FileSize, total: FileSize?) -> Unit,
-    ): MapFileDownloadResult = withContext(ioDispatcher) {
+    ): MapFileDownloadResult = writing.withLock { withContext(ioDispatcher) { tryDownload(map, onProgress) } }
+
+    override suspend fun discard(map: RemoteMapPath) {
+        writing.withLock {
+            withContext(ioDispatcher) {
+                val part = partOf(File(folder, map.toString()))
+                if (part.exists() && !part.delete()) logger.w("Cannot delete the download of the map %s", map)
+            }
+        }
+    }
+
+    /** One try at downloading [map]; see [download]. */
+    private suspend fun tryDownload(
+        map: RemoteMapPath,
+        onProgress: suspend (downloaded: FileSize, total: FileSize?) -> Unit,
+    ): MapFileDownloadResult {
         val target = File(folder, map.toString())
-        val part = File(target.path + PART_SUFFIX)
-        try {
+        val part = partOf(target)
+        return try {
             storage { prepareFolder(target) }
             fetch(map, target, part, onProgress)
         } catch (failure: StorageFailure) {
@@ -136,6 +171,9 @@ internal class HttpMapFileDownloader @Inject constructor(
             MapFileDownloadResult.TryAgain
         }
     }
+
+    /** The file [target] is written to while it downloads. */
+    private fun partOf(target: File): File = File(target.path + PART_SUFFIX)
 
     /**
      * Creates the folder of [target]. Names from the site are safe, but [target] is checked again

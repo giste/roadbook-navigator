@@ -36,6 +36,8 @@ import dev.giste.map.domain.testInstalledFile
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -70,11 +72,30 @@ class MapDownloaderViewModelTest {
 
     private val downloads = FakeMapDownloadRepository()
 
-    private fun viewModel(savedState: SavedStateHandle = SavedStateHandle()) =
-        MapDownloaderViewModel(savedState, remote, installed, downloads)
+    /** Whether the device is on Wi-Fi. */
+    private var onWiFi = true
 
-    /** A view model showing `europe`. */
-    private fun inEurope() = viewModel(SavedStateHandle(mapOf("folder" to "europe")))
+    private fun viewModel(savedState: SavedStateHandle = SavedStateHandle()) =
+        MapDownloaderViewModel(savedState, remote, installed, downloads) { onWiFi }
+
+    /** A view model showing `europe`, with [extra] saved state. */
+    private fun inEurope(vararg extra: Pair<String, Any>) =
+        viewModel(SavedStateHandle(mapOf("folder" to "europe", *extra)))
+
+    private val spainPath = RemoteMapPath(europe, "spain.map")
+
+    /** The state once `europe` is listed, after [action]. */
+    private suspend fun MapDownloaderViewModel.listedAfter(
+        action: MapDownloaderViewModel.() -> Unit,
+    ): MapDownloaderUiState.Listed {
+        var state: MapDownloaderUiState.Listed? = null
+        uiState.test {
+            skipItems(2)
+            action()
+            state = awaitItem() as MapDownloaderUiState.Listed
+        }
+        return checkNotNull(state)
+    }
 
     @Test
     fun uiState_beforeTheFolderIsRead_isLoadingTheRoot() {
@@ -201,7 +222,7 @@ class MapDownloaderViewModelTest {
     }
 
     @Test
-    fun download_map_startsItInTheFolderShown() = runTest {
+    fun download_onWiFi_startsItInTheFolderShownWithoutMobileData() = runTest {
         val viewModel = inEurope()
 
         viewModel.uiState.test {
@@ -209,8 +230,89 @@ class MapDownloaderViewModelTest {
 
             viewModel.download(spain)
             testScheduler.advanceUntilIdle()
+
+            expectNoEvents()
         }
-        assertEquals(listOf(RemoteMapPath(europe, "spain.map")), downloads.started)
+        assertEquals(listOf(spainPath to false), downloads.started)
+    }
+
+    @Test
+    fun download_offWiFi_asksFirstWithoutStarting() = runTest {
+        onWiFi = false
+        val viewModel = inEurope()
+
+        val state = viewModel.listedAfter { download(spain) }
+
+        assertEquals(spainPath, state.mobileDataQuestion)
+        assertTrue(downloads.started.isEmpty())
+    }
+
+    @Test
+    fun answerMobileData_yes_startsItWithMobileDataAndClosesTheQuestion() = runTest {
+        val viewModel = inEurope("mobile_data_question" to spainPath.toString())
+
+        val state = viewModel.listedAfter { answerMobileData(useMobileData = true) }
+        testScheduler.advanceUntilIdle()
+
+        assertNull(state.mobileDataQuestion)
+        assertEquals(listOf(spainPath to true), downloads.started)
+    }
+
+    @Test
+    fun answerMobileData_no_startsItWaitingForWiFi() = runTest {
+        val viewModel = inEurope("mobile_data_question" to spainPath.toString())
+
+        viewModel.listedAfter { answerMobileData(useMobileData = false) }
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(listOf(spainPath to false), downloads.started)
+    }
+
+    @Test
+    fun answerMobileData_withoutQuestion_doesNothing() = runTest {
+        val viewModel = inEurope()
+
+        viewModel.uiState.test {
+            skipItems(2)
+            viewModel.answerMobileData(useMobileData = true)
+            testScheduler.advanceUntilIdle()
+            expectNoEvents()
+        }
+        assertTrue(downloads.started.isEmpty())
+    }
+
+    @Test
+    fun dismissMobileData_closesTheQuestionWithoutStarting() = runTest {
+        val viewModel = inEurope("mobile_data_question" to spainPath.toString())
+
+        val state = viewModel.listedAfter { dismissMobileData() }
+        testScheduler.advanceUntilIdle()
+
+        assertNull(state.mobileDataQuestion)
+        assertTrue(downloads.started.isEmpty())
+    }
+
+    @Test
+    fun mobileDataQuestion_isSavedSoItSurvivesTheProcess() = runTest {
+        onWiFi = false
+        val savedState = SavedStateHandle(mapOf("folder" to "europe"))
+        val viewModel = viewModel(savedState)
+
+        viewModel.listedAfter { download(spain) }
+
+        assertEquals(spainPath.toString(), savedState.get<String>("mobile_data_question"))
+    }
+
+    @Test
+    fun cancel_map_cancelsItInTheFolderShown() = runTest {
+        val viewModel = inEurope()
+
+        viewModel.uiState.test {
+            skipItems(2)
+            viewModel.cancel(spain)
+            testScheduler.advanceUntilIdle()
+        }
+        assertEquals(listOf(spainPath), downloads.cancelled)
     }
 
     @Test

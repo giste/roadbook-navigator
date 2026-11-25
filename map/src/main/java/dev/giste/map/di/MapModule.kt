@@ -26,6 +26,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dev.giste.map.MapDownloadServer
+import dev.giste.map.data.ConnectivityNetworkConnection
 import dev.giste.map.data.FreeSpace
 import dev.giste.map.data.HttpMapFileDownloader
 import dev.giste.map.data.HttpRemoteMapRepository
@@ -39,6 +40,7 @@ import dev.giste.map.data.VtmMapFileChecker
 import dev.giste.map.data.WorkManagerMapDownloadRepository
 import dev.giste.map.domain.MapDownloadRepository
 import dev.giste.map.domain.MapFileRepository
+import dev.giste.map.domain.NetworkConnection
 import dev.giste.map.domain.RemoteMapRepository
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -81,10 +83,14 @@ internal interface MapModule {
     /**
      * Provides [HttpMapFileDownloader] wherever a [MapFileDownloader] is injected.
      *
-     * It holds no state (each download reads the folder and the site), so it is not scoped.
+     * It is a singleton of its own, as it writes one map at a time under a lock.
      */
     @Binds
     fun bindMapFileDownloader(downloader: HttpMapFileDownloader): MapFileDownloader
+
+    /** Provides [ConnectivityNetworkConnection] wherever a [NetworkConnection] is injected. */
+    @Binds
+    fun bindNetworkConnection(connection: ConnectivityNetworkConnection): NetworkConnection
 
     /** Provides [StorageManagerFreeSpace] wherever a [FreeSpace] is injected. */
     @Binds

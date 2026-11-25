@@ -25,6 +25,7 @@ import dev.giste.map.domain.InstalledMapFiles
 import dev.giste.map.domain.MapDownload
 import dev.giste.map.domain.MapDownloadRepository
 import dev.giste.map.domain.MapFileRepository
+import dev.giste.map.domain.NetworkConnection
 import dev.giste.map.domain.RemoteFolderPath
 import dev.giste.map.domain.RemoteListing
 import dev.giste.map.domain.RemoteMapEntry
@@ -52,10 +53,15 @@ import kotlinx.coroutines.launch
  * Each folder is read when it is shown, and again on [retry]. While it is shown, the installed
  * maps and the downloads are followed, so a map's row changes as it downloads and installs.
  *
+ * Downloads wait for Wi-Fi. When a map is downloaded off Wi-Fi, the state first asks whether to
+ * use mobile data ([MapDownloaderUiState.Listed.mobileDataQuestion]); the question is kept in
+ * [savedStateHandle] too.
+ *
  * @param savedStateHandle keeps the folder being shown.
  * @param remoteRepository the maps on the download site.
  * @param installedRepository the maps on the device, to mark the installed ones.
  * @param downloadRepository downloads the maps.
+ * @param network tells whether the device is on Wi-Fi.
  */
 @HiltViewModel
 internal class MapDownloaderViewModel @Inject constructor(
@@ -63,10 +69,14 @@ internal class MapDownloaderViewModel @Inject constructor(
     private val remoteRepository: RemoteMapRepository,
     private val installedRepository: MapFileRepository,
     private val downloadRepository: MapDownloadRepository,
+    private val network: NetworkConnection,
 ) : ViewModel() {
 
     /** The folder being shown. */
     private val folder: StateFlow<String> = savedStateHandle.getStateFlow(KEY_FOLDER, "")
+
+    /** The map waiting for the mobile data answer, as [RemoteMapPath.toString] writes it, or "". */
+    private val mobileDataQuestion: StateFlow<String> = savedStateHandle.getStateFlow(KEY_MOBILE_DATA_QUESTION, "")
 
     /** Grows by one each time the folder must be read again. */
     private val reloads = MutableStateFlow(0)
@@ -109,14 +119,51 @@ internal class MapDownloaderViewModel @Inject constructor(
 
     /**
      * Downloads [entry], a map in the folder being shown, after the maps already queued. Also
-     * starts again a download that failed.
+     * starts again a download that failed. On Wi-Fi it is queued at once; otherwise the state asks
+     * first whether to use mobile data.
      *
      * @param entry the map to download.
      */
     fun download(entry: RemoteMapEntry.MapFile) {
-        val map = RemoteMapPath(RemoteFolderPath.parse(folder.value), entry.name)
-        viewModelScope.launch { downloadRepository.start(map) }
+        val map = pathOf(entry)
+        if (network.isUnmetered()) {
+            viewModelScope.launch { downloadRepository.start(map, allowMobileData = false) }
+        } else {
+            savedStateHandle[KEY_MOBILE_DATA_QUESTION] = map.toString()
+        }
     }
+
+    /**
+     * Answers the mobile data question: queues its map, with mobile data for the whole queue if
+     * [useMobileData], or waiting for Wi-Fi otherwise. Nothing happens without a question.
+     *
+     * @param useMobileData whether to download now with mobile data.
+     */
+    fun answerMobileData(useMobileData: Boolean) {
+        val map = mobileDataQuestion.value.takeIf { it.isNotEmpty() }?.let(RemoteMapPath::parse) ?: return
+        savedStateHandle[KEY_MOBILE_DATA_QUESTION] = ""
+        viewModelScope.launch { downloadRepository.start(map, allowMobileData = useMobileData) }
+    }
+
+    /** Drops the mobile data question without downloading. */
+    fun dismissMobileData() {
+        savedStateHandle[KEY_MOBILE_DATA_QUESTION] = ""
+    }
+
+    /**
+     * Stops the download of [entry], a map in the folder being shown, and throws away what was
+     * downloaded of it.
+     *
+     * @param entry the map whose download to stop.
+     */
+    fun cancel(entry: RemoteMapEntry.MapFile) {
+        val map = pathOf(entry)
+        viewModelScope.launch { downloadRepository.cancel(map) }
+    }
+
+    /** The path of [entry], a map in the folder being shown. */
+    private fun pathOf(entry: RemoteMapEntry.MapFile): RemoteMapPath =
+        RemoteMapPath(RemoteFolderPath.parse(folder.value), entry.name)
 
     /**
      * Reads [path], then follows which of its maps are installed in the same folder on the
@@ -131,12 +178,17 @@ internal class MapDownloaderViewModel @Inject constructor(
                     .filterIsInstance<RemoteMapEntry.MapFile>()
                     .mapTo(mutableSetOf()) { it.name }
                 val installedFiles = installedRepository.installedFiles
-                val listed = combine(installedFiles, downloadRepository.downloads) { files, downloads ->
+                val listed = combine(
+                    installedFiles,
+                    downloadRepository.downloads,
+                    mobileDataQuestion,
+                ) { files, downloads, question ->
                     MapDownloaderUiState.Listed(
                         folder = path,
                         entries = listing.entries,
                         installed = files.namesIn(path) intersect mapNames,
                         downloads = downloads.inFolder(path).filterKeys { it in mapNames },
+                        mobileDataQuestion = question.takeIf { it.isNotEmpty() }?.let(RemoteMapPath::parse),
                     )
                 }
                 emitAll(listed)
@@ -163,6 +215,9 @@ internal class MapDownloaderViewModel @Inject constructor(
     private companion object {
         /** The key of the folder being shown in the saved state. */
         const val KEY_FOLDER: String = "folder"
+
+        /** The key of the map waiting for the mobile data answer in the saved state. */
+        const val KEY_MOBILE_DATA_QUESTION: String = "mobile_data_question"
 
         /** Keeps the state across short gaps, such as a configuration change. */
         const val STOP_TIMEOUT_MILLIS: Long = 5_000

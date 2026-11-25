@@ -21,6 +21,7 @@ import dev.giste.map.domain.MapDownload
 import dev.giste.map.domain.RemoteFolderPath
 import dev.giste.map.domain.RemoteListingFailure
 import dev.giste.map.domain.RemoteMapEntry
+import dev.giste.map.domain.RemoteMapPath
 
 /** Everything the map downloader shows. It holds typed data only: the screen turns it into text. */
 internal sealed interface MapDownloaderUiState {
@@ -44,12 +45,15 @@ internal sealed interface MapDownloaderUiState {
      * the same folder on the device.
      * @property downloads the downloads of the map files in [entries] that are waiting, running or
      * failed, by file name.
+     * @property mobileDataQuestion the map to download whose rider must first say whether to use
+     * mobile data, as the device is not on Wi-Fi; `null` when there is no such question.
      */
     data class Listed(
         override val folder: RemoteFolderPath,
         val entries: List<RemoteMapEntry>,
         val installed: Set<String> = emptySet(),
         val downloads: Map<String, MapDownload> = emptyMap(),
+        val mobileDataQuestion: RemoteMapPath? = null,
     ) : MapDownloaderUiState
 
     /**

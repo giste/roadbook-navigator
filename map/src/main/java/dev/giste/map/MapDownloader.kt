@@ -17,12 +17,22 @@
 
 package dev.giste.map
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.giste.map.domain.RemoteMapEntry
 import dev.giste.map.ui.MapDownloaderContent
+import dev.giste.map.ui.MapDownloaderUiState
 import dev.giste.map.ui.MapDownloaderViewModel
 
 /**
@@ -30,11 +40,17 @@ import dev.giste.map.ui.MapDownloaderViewModel
  * ([MapDownloadServer]), one folder at a time, with the maps already installed marked.
  *
  * Each map that is not installed has a download button. Downloads run in the background, one at
- * a time and only on Wi-Fi, with a notification, and go on when the screen is left or the app is
- * closed; a download that stops resumes where it stopped. A map goes to the same folder on the
- * device as on the site. Each row shows whether its map is waiting, how its download goes, or why
- * it failed, with a button to try again. Downloaded maps appear in [MapManager] and [MapViewer]
- * at once.
+ * a time, with a notification, and go on when the screen is left or the app is closed; a download
+ * that stops resumes where it stopped. They wait for Wi-Fi: off Wi-Fi, a dialog asks whether to
+ * download now with mobile data (which then applies to every map waiting) or to wait. A map goes
+ * to the same folder on the device as on the site. Each row shows whether its map is waiting, how
+ * its download goes, or why it failed, with a button to try again. Pressing a waiting or running
+ * download asks whether to stop it; its notification can stop it too. Downloaded maps appear in
+ * [MapManager] and [MapViewer] at once.
+ *
+ * While the app may not show notifications, pressing a download button first asks for that
+ * permission, then downloads whatever the answer: the notification is optional. Android stops
+ * showing the request after the user refuses it twice.
  *
  * Pressing a folder opens it. In a sub-folder, the screen's back button and the system back
  * gesture go up one folder. If a folder cannot be read (e.g. there is no connection), the screen
@@ -53,13 +69,36 @@ import dev.giste.map.ui.MapDownloaderViewModel
 public fun MapDownloader(onBack: () -> Unit, modifier: Modifier = Modifier) {
     val viewModel: MapDownloaderViewModel = hiltViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    // The map waiting for the notification permission answer, by name, so it survives recreation.
+    var awaitingPermission by rememberSaveable { mutableStateOf<String?>(null) }
+    val askNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
+        // Download whatever the answer: the notification is optional.
+        val name = awaitingPermission
+        awaitingPermission = null
+        val file = (state as? MapDownloaderUiState.Listed)?.entries
+            ?.filterIsInstance<RemoteMapEntry.MapFile>()?.find { it.name == name }
+        if (file != null) viewModel.download(file)
+    }
     MapDownloaderContent(
         state = state,
         onBack = onBack,
         onOpen = viewModel::open,
         onUp = viewModel::goUp,
         onRetry = viewModel::retry,
-        onDownload = viewModel::download,
+        onDownload = { file ->
+            val canNotify = context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED
+            if (canNotify) {
+                viewModel.download(file)
+            } else {
+                awaitingPermission = file.name
+                askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        },
+        onCancel = viewModel::cancel,
+        onMobileData = viewModel::answerMobileData,
+        onDismissMobileData = viewModel::dismissMobileData,
         modifier = modifier,
     )
 }
