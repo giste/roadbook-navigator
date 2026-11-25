@@ -29,7 +29,7 @@
 
         <!-- Cancels a map download from its notification. Only the app's own notification uses it. -->
         <receiver
-            android:name="dev.giste.map.data.MapDownloadCancelReceiver"
+            android:name="dev.giste.map.data.download.MapDownloadCancelReceiver"
             android:exported="false" />
     </application>
 

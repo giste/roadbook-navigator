@@ -120,7 +120,7 @@ class MapDownloadCancelIntegrationTest {
 
     private companion object {
         /** `:map`'s `MapDownloadCancelReceiver` and its extra. */
-        const val RECEIVER = "dev.giste.map.data.MapDownloadCancelReceiver"
+        const val RECEIVER = "dev.giste.map.data.download.MapDownloadCancelReceiver"
         const val EXTRA_MAP = "dev.giste.map.extra.MAP"
 
         /** `:map`'s download queue and the tags of its works. */

@@ -19,6 +19,10 @@ package dev.giste.map.data
 
 import dev.giste.map.FakeLogger
 import dev.giste.map.MapDownloadServer
+import dev.giste.map.data.download.HttpMapFileDownloader
+import dev.giste.map.data.download.MapFileDownloadResult
+import dev.giste.map.data.remote.HttpMapUpdateRepository
+import dev.giste.map.data.remote.MapSite
 import dev.giste.map.domain.CheckMapUpdatesUseCase
 import dev.giste.map.domain.InstalledMapFile
 import dev.giste.map.domain.InstalledMapFiles

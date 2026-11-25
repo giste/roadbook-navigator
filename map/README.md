@@ -29,20 +29,26 @@ dev/giste/map/
 │                   MapDownload, isActive, MapDownloadFailure, MapDownloadRepository, NetworkConnection),
 │                   MapUpdates (MapUpdateRepository, remotePath, isOutdated, CheckMapUpdatesUseCase)
 ├── data/           LocalMapFileRepository, MapFileChecker (+ VtmMapFileChecker), MapFolder,
-│                   MapFolderChanges, HttpRemoteMapRepository, HttpMapUpdateRepository,
-│                   DirectoryListingParser, MapHttpClient,
-│                   MapSite, HttpMapFileDownloader (+ MapFileDownloader, MapFileDownloadResult),
-│                   FreeSpace (+ StorageManagerFreeSpace), MapDownloadWorker, MapDownloadNotifications,
-│                   WorkManagerMapDownloadRepository (+ toDownloads), MapDownloadCancelReceiver,
-│                   ConnectivityNetworkConnection
-├── ui/             MapViewModel, MapUiState, MapViewerContent (+ MapViewerTestTags and previews),
-│                   VtmMap, MapCamera, MapManagerViewModel,
-│                   MapManagerContent (+ MapManagerTestTags and previews), MapDownloaderViewModel,
-│                   MapDownloaderUiState, MapDownloaderContent (+ MapDownloaderTestTags and previews),
-│                   MapManagerUiState (+ ManagedMapFile), MapDownloadControls (+ MapDownloadTestTags
-│                   and the dialog previews), NotificationPermission
+│   │               MapFolderChanges: the map folder on the device
+│   ├── remote/     HttpRemoteMapRepository, DirectoryListingParser, HttpMapUpdateRepository,
+│   │               MapSite, MapHttpClient: reading the download site (listings, update dates)
+│   └── download/   HttpMapFileDownloader (+ MapFileDownloader, MapFileDownloadResult),
+│                   WorkManagerMapDownloadRepository (+ toDownloads), MapDownloadWorker,
+│                   MapDownloadNotifications, MapDownloadCancelReceiver,
+│                   FreeSpace (+ StorageManagerFreeSpace), ConnectivityNetworkConnection:
+│                   downloading maps from the site (it uses remote/'s MapSite and MapHttpClient)
+├── ui/             MapDownloadControls (+ MapDownloadTestTags and the dialog previews),
+│   │               NotificationPermission: shared by the manager and the downloader
+│   ├── viewer/     MapViewModel, MapUiState, MapViewerContent (+ MapViewerTestTags and previews),
+│   │               VtmMap, MapCamera
+│   ├── manager/    MapManagerViewModel, MapManagerUiState (+ ManagedMapFile),
+│   │               MapManagerContent (+ MapManagerTestTags and previews)
+│   └── downloader/ MapDownloaderViewModel, MapDownloaderUiState,
+│                   MapDownloaderContent (+ MapDownloaderTestTags and previews)
 └── di/             MapModule
 ```
+
+Tests use the same packages.
 
 ## Public API
 

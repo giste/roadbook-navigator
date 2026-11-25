@@ -22,8 +22,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import dev.giste.map.ui.MapViewModel
-import dev.giste.map.ui.MapViewerContent
+import dev.giste.map.ui.viewer.MapViewModel
+import dev.giste.map.ui.viewer.MapViewerContent
 
 /**
  * The map viewer: an offline map that follows the device location, turned so the direction of

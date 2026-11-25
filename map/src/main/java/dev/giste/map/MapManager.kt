@@ -22,9 +22,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import dev.giste.map.ui.MapManagerContent
-import dev.giste.map.ui.MapManagerUiState
-import dev.giste.map.ui.MapManagerViewModel
+import dev.giste.map.ui.manager.MapManagerContent
+import dev.giste.map.ui.manager.MapManagerUiState
+import dev.giste.map.ui.manager.MapManagerViewModel
 import dev.giste.map.ui.rememberDownloadWithNotificationPermission
 
 /**
