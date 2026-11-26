@@ -18,11 +18,14 @@
 package dev.giste.roadbooknavigator.integration
 
 import android.content.pm.ActivityInfo
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
 import androidx.work.Configuration
 import androidx.work.testing.SynchronousExecutor
@@ -32,6 +35,8 @@ import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import dagger.hilt.android.testing.HiltTestApplication
 import dev.giste.map.MapDownloadServer
+import dev.giste.map.MapSettingsSource
+import dev.giste.map.MapZoomLevel
 import dev.giste.roadbooknavigator.MainActivity
 import dev.giste.roadbooknavigator.settings.AppSettings
 import dev.giste.roadbooknavigator.settings.AppSettingsSource
@@ -69,6 +74,10 @@ class NavigationIntegrationTest {
 
     @Inject
     lateinit var appSettings: AppSettingsSource
+
+    /** The settings `:map` receives, as `:settings` provides them. */
+    @Inject
+    lateinit var mapSettings: MapSettingsSource
 
     /**
      * The map downloader reads its folders from this server: a closed local port, so the tests
@@ -189,6 +198,21 @@ class NavigationIntegrationTest {
         }
     }
 
+    @Test
+    fun mapZoomDecreased_reachesTheMap() {
+        openSettings()
+
+        composeRule.onNode(
+            hasText("−") and hasClickAction() and hasAnyAncestor(hasTestTag(MAP_ZOOM_STEPPER_TAG)),
+        ).performScrollTo().performClick()
+        composeRule.waitForIdle()
+
+        // From the default zoom level, 18, one level farther.
+        runBlocking {
+            withTimeout(TIMEOUT_MILLIS) { mapSettings.settings.first { it.zoomLevel == MapZoomLevel.of(17) } }
+        }
+    }
+
     /**
      * Waits until the stored app settings match [predicate], or fails after [TIMEOUT_MILLIS].
      * Call it once the change has been made (e.g. after `waitForIdle`), since it blocks the main
@@ -211,5 +235,11 @@ class NavigationIntegrationTest {
 
         /** The tag of the map manager's add button: `:map`'s `MapManagerTestTags.ADD`. */
         const val MAP_MANAGER_ADD_TAG = "map_manager_add"
+
+        /**
+         * The tag of the settings' map zoom stepper: `:settings`' `SettingsTestTags.MAP_ZOOM_STEPPER`,
+         * internal to `:settings`. Its − and + repeat in the other steppers.
+         */
+        const val MAP_ZOOM_STEPPER_TAG = "settings_map_zoom_stepper"
     }
 }

@@ -69,6 +69,17 @@
     <string name="settings_action_decrease">−</string>
     <string name="settings_action_increase">+</string>
 
+    <!-- Map -->
+    <string name="settings_section_map">Map</string>
+    <string name="settings_map_zoom_title">Map zoom</string>
+    <string name="settings_map_zoom_description">How close the map is shown. Each level shows the ground twice as large as the one before.</string>
+    <!-- A map zoom level: %1$d is the number, e.g. 18 -->
+    <string name="settings_map_zoom_level">%1$d</string>
+    <string name="settings_map_tilt_title">Map tilt</string>
+    <string name="settings_map_tilt_description">How much the map leans towards the horizon. At 0° it looks straight down.</string>
+    <!-- An angle in whole degrees: %1$d is the number -->
+    <string name="settings_degrees">%1$d°</string>
+
     <!-- Shown when a changed setting could not be stored -->
     <string name="settings_error_not_saved">The setting couldn\'t be saved. Try again.</string>
 </resources>

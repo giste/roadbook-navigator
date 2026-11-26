@@ -20,6 +20,7 @@ package dev.giste.roadbooknavigator.settings.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.giste.map.MapSettings
 import dev.giste.roadbook.RoadbookSettings
 import dev.giste.roadbook.RoadbookStyle
 import dev.giste.roadbook.ShortDistanceThreshold
@@ -30,6 +31,8 @@ import dev.giste.roadbooknavigator.settings.RemoteModel
 import dev.giste.roadbooknavigator.settings.RemoteSettings
 import dev.giste.roadbooknavigator.settings.ScreenOrientation
 import dev.giste.roadbooknavigator.settings.ThemeMode
+import dev.giste.roadbooknavigator.settings.domain.MAP_TILT_RANGE
+import dev.giste.roadbooknavigator.settings.domain.MAP_ZOOM_RANGE
 import dev.giste.roadbooknavigator.settings.domain.SettingsRepository
 import dev.giste.roadbooknavigator.settings.domain.SettingsUpdateResult
 import dev.giste.roadbooknavigator.settings.domain.stepped
@@ -56,12 +59,14 @@ private const val STOP_TIMEOUT_MILLIS: Long = 5_000
  * @param appSettings the app's own settings.
  * @param remoteSettings the remote control settings.
  * @param roadbookSettings the `:roadbook` settings.
+ * @param mapSettings the `:map` settings.
  */
 @HiltViewModel
 internal class SettingsViewModel @Inject constructor(
     private val appSettings: SettingsRepository<AppSettings>,
     private val remoteSettings: SettingsRepository<RemoteSettings>,
     private val roadbookSettings: SettingsRepository<RoadbookSettings>,
+    private val mapSettings: SettingsRepository<MapSettings>,
 ) : ViewModel() {
 
     /** Whether the last change could not be stored. */
@@ -72,12 +77,13 @@ internal class SettingsViewModel @Inject constructor(
 
     /** The screen state. Starts at [SettingsUiState.Loading] and never fails. */
     val uiState: StateFlow<SettingsUiState> = combine(
-        appSettings.settings,
-        remoteSettings.settings,
-        roadbookSettings.settings,
+        combine(appSettings.settings, remoteSettings.settings, roadbookSettings.settings, mapSettings.settings) {
+                app, remote, roadbook, map ->
+            StoredSettings(app, remote, roadbook, map)
+        },
         saveFailed,
         keyMoved,
-    ) { app, remote, roadbook, failed, moved ->
+    ) { (app, remote, roadbook, map), failed, moved ->
         SettingsUiState.Loaded(
             themeMode = app.themeMode,
             orientation = app.orientation,
@@ -87,6 +93,12 @@ internal class SettingsViewModel @Inject constructor(
             shortDistanceThreshold = roadbook.shortDistanceThreshold,
             canDecreaseThreshold = roadbook.shortDistanceThreshold > ShortDistanceThreshold.MIN,
             canIncreaseThreshold = roadbook.shortDistanceThreshold < ShortDistanceThreshold.MAX,
+            mapZoomLevel = map.zoomLevel,
+            canDecreaseMapZoom = map.zoomLevel.value > MAP_ZOOM_RANGE.first,
+            canIncreaseMapZoom = map.zoomLevel.value < MAP_ZOOM_RANGE.last,
+            mapTilt = map.tilt,
+            canDecreaseMapTilt = map.tilt.inDegrees > MAP_TILT_RANGE.start,
+            canIncreaseMapTilt = map.tilt.inDegrees < MAP_TILT_RANGE.endInclusive,
             saveFailed = failed,
             keyMoved = moved,
         )
@@ -168,6 +180,26 @@ internal class SettingsViewModel @Inject constructor(
         changeThreshold(steps = 1)
     }
 
+    /** Shows the map one zoom level farther, down to the farthest the screen offers. */
+    fun decreaseMapZoom() {
+        save { mapSettings.update { it.copy(zoomLevel = it.zoomLevel.stepped(-1)) } }
+    }
+
+    /** Shows the map one zoom level closer, up to the closest the screen offers. */
+    fun increaseMapZoom() {
+        save { mapSettings.update { it.copy(zoomLevel = it.zoomLevel.stepped(1)) } }
+    }
+
+    /** Makes the map look one step more straight down, down to flat. */
+    fun decreaseMapTilt() {
+        save { mapSettings.update { it.copy(tilt = it.tilt.stepped(-1)) } }
+    }
+
+    /** Makes the map lean one step more towards the horizon, up to the most the screen offers. */
+    fun increaseMapTilt() {
+        save { mapSettings.update { it.copy(tilt = it.tilt.stepped(1)) } }
+    }
+
     /** Hides the save error, once the screen has shown it. */
     fun dismissSaveError() {
         saveFailed.value = false
@@ -194,3 +226,11 @@ internal class SettingsViewModel @Inject constructor(
         }
     }
 }
+
+/** The stored settings the screen shows, read together. */
+private data class StoredSettings(
+    val app: AppSettings,
+    val remote: RemoteSettings,
+    val roadbook: RoadbookSettings,
+    val map: MapSettings,
+)

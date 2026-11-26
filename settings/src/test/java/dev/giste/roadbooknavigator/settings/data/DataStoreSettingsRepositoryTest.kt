@@ -19,6 +19,9 @@ package dev.giste.roadbooknavigator.settings.data
 
 import androidx.datastore.preferences.core.preferencesOf
 import app.cash.turbine.test
+import dev.giste.map.MapSettings
+import dev.giste.map.MapTilt
+import dev.giste.map.MapZoomLevel
 import dev.giste.roadbook.RoadbookSettings
 import dev.giste.roadbook.RoadbookStyle
 import dev.giste.roadbooknavigator.settings.AppSettings
@@ -126,5 +129,16 @@ class DataStoreSettingsRepositoryTest {
         val settings = DataStoreRemoteSettingsRepository(store, logger).settings.first()
 
         assertEquals(RemoteSettings(model = RemoteModel.DND2), settings)
+    }
+
+    @Test
+    fun mapRepository_storedValues_emitsThem() = runTest {
+        val store = FakePreferencesDataStore(
+            preferencesOf(MapSettingsCodec.ZOOM_LEVEL_KEY to 16, MapSettingsCodec.TILT_KEY to 30.0),
+        )
+
+        val settings = DataStoreMapSettingsRepository(store, logger).settings.first()
+
+        assertEquals(MapSettings(zoomLevel = MapZoomLevel.of(16), tilt = MapTilt.of(30.0)), settings)
     }
 }

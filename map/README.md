@@ -83,7 +83,7 @@ Package `dev.giste.map`:
 | `zoomLevel` | `MapZoomLevel` | 18 | How close the map is shown. Each level shows the ground twice as large as the one before. |
 | `tilt` | `MapTilt` | 60° | How much the map leans towards the horizon. 0° looks straight down. |
 
-A read-only map always shows these values. An interactive map starts with them and goes back to them whenever they change; in between, the user's gestures are kept. If the settings flow throws, `:map` logs it and uses the defaults. In Roadbook Navigator they are fixed to the defaults for now (`:settings`' `FixedMapSettingsSource`).
+A read-only map always shows these values. An interactive map starts with them and goes back to them whenever they change; in between, the user's gestures are kept. If the settings flow throws, `:map` logs it and uses the defaults. In Roadbook Navigator the rider sets them on the settings screen, within narrower ranges (see the `:settings` README).
 
 ## Persisted state
 
