@@ -31,7 +31,10 @@ import dev.giste.roadbook.RoadbookController
 import dev.giste.roadbooknavigator.ui.dashboard.DashboardTestTags
 import java.io.File
 import java.time.Duration
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.Assert.assertEquals
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
@@ -64,6 +67,40 @@ fun ComposeTestRule.awaitPartial(value: String) {
 fun ComposeTestRule.awaitText(text: String, exists: Boolean = true) {
     waitUntil(TIMEOUT_MILLIS) {
         onAllNodes(hasText(text)).fetchSemanticsNodes().isNotEmpty() == exists
+    }
+}
+
+/** How long [awaitValue] waits for a value before it lets the main thread run again. */
+private const val AWAIT_SLICE_MILLIS: Long = 50
+
+/**
+ * Waits until [flow] emits a value that matches [predicate], or fails after [TIMEOUT_MILLIS] of
+ * real time. Use it to wait for a change the UI made, e.g. a setting stored after a click.
+ *
+ * It never blocks the main thread for long. DataStore runs the transform of an `edit` in its
+ * caller's context, and a change made from the UI comes from `viewModelScope`, on the main thread,
+ * which Robolectric runs on the test thread. Blocking that thread until the value arrives would
+ * deadlock whenever DataStore asks for it after the click's `waitForIdle`. So it waits in short
+ * slices, and lets the main thread run in between.
+ *
+ * The deadline is in real time, because DataStore writes in real time on its own thread: the first
+ * write of a test JVM can take a while as its classes load. `waitUntil` would not do, as under
+ * Robolectric it measures its timeout on the test clock, which runs much faster than real time.
+ *
+ * @param flow the values to watch, e.g. a settings source's `settings`.
+ * @param predicate whether a value is the one awaited.
+ */
+fun <T> ComposeTestRule.awaitValue(flow: Flow<T>, predicate: (T) -> Boolean) {
+    val deadline = System.nanoTime() + TIMEOUT_MILLIS * 1_000_000
+    while (true) {
+        waitForIdle()
+        val found = runBlocking {
+            withTimeoutOrNull(AWAIT_SLICE_MILLIS) { flow.first(predicate) } != null
+        }
+        if (found) return
+        if (System.nanoTime() > deadline) {
+            throw AssertionError("No matching value within $TIMEOUT_MILLIS ms")
+        }
     }
 }
 

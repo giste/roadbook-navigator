@@ -48,9 +48,6 @@ import dev.giste.roadbooknavigator.settings.ScreenOrientation
 import dev.giste.roadbooknavigator.settings.ThemeMode
 import dev.giste.roadbooknavigator.ui.dashboard.DashboardTestTags
 import javax.inject.Inject
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -212,9 +209,7 @@ class NavigationIntegrationTest {
         composeRule.waitForIdle()
 
         // From the default zoom level, 18, one level farther.
-        runBlocking {
-            withTimeout(TIMEOUT_MILLIS) { mapSettings.settings.first { it.zoomLevel == MapZoomLevel.of(17) } }
-        }
+        composeRule.awaitValue(mapSettings.settings) { it.zoomLevel == MapZoomLevel.of(17) }
     }
 
     /** Opens the About screen from the settings, whose About button is at the end of the list. */
@@ -247,17 +242,9 @@ class NavigationIntegrationTest {
         composeRule.awaitText("Settings")
     }
 
-    /**
-     * Waits until the stored app settings match [predicate], or fails after [TIMEOUT_MILLIS].
-     * Call it once the change has been made (e.g. after `waitForIdle`), since it blocks the main
-     * thread, where Compose handles clicks.
-     *
-     * DataStore stores them on its own thread, in real time: the first write of a test JVM can take
-     * seconds while it loads its classes. `waitUntil` would not do, because under Robolectric it
-     * measures its timeout on the test clock, which runs much faster than real time.
-     */
+    /** Waits until the stored app settings match [predicate] (see [awaitValue]). */
     private fun awaitStored(predicate: (AppSettings) -> Boolean) {
-        runBlocking { withTimeout(TIMEOUT_MILLIS) { appSettings.settings.first(predicate) } }
+        composeRule.awaitValue(appSettings.settings, predicate)
     }
 
     private companion object {
