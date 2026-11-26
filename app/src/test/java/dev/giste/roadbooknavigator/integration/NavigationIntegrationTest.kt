@@ -23,6 +23,10 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.test.core.app.ApplicationProvider
+import androidx.work.Configuration
+import androidx.work.testing.SynchronousExecutor
+import androidx.work.testing.WorkManagerTestInitHelper
 import dagger.hilt.android.testing.BindValue
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
@@ -74,9 +78,18 @@ class NavigationIntegrationTest {
     @JvmField
     val mapDownloadServer: MapDownloadServer = MapDownloadServer("http://127.0.0.1:1/")
 
+    /**
+     * Injects the test and sets up a test WorkManager. The test application does not start
+     * WorkManager (the real app configures it with Hilt's worker factory), and the map manager
+     * reads `:map`'s download queue as soon as it opens, so without one it fails.
+     */
     @Before
     fun setUp() {
         hiltRule.inject()
+        WorkManagerTestInitHelper.initializeTestWorkManager(
+            ApplicationProvider.getApplicationContext(),
+            Configuration.Builder().setExecutor(SynchronousExecutor()).build(),
+        )
     }
 
     /** Opens the settings from the dashboard: the vehicle starts stopped, so the button shows. */
