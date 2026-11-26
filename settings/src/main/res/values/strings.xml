@@ -7,6 +7,8 @@
     <string name="settings_section_appearance">Appearance</string>
     <string name="settings_theme_title">Theme</string>
     <string name="settings_orientation_title">Screen orientation</string>
+    <string name="settings_full_screen_title">Full screen</string>
+    <string name="settings_full_screen_description">Hide the status and navigation bars. Swipe from the edge of the screen to show them for a moment.</string>
 
     <!-- Remote control -->
     <string name="settings_section_remote">Remote control</string>

@@ -24,10 +24,13 @@ package dev.giste.roadbooknavigator.settings
  * [DEFAULT_THEME_MODE].
  * @property orientation which way the app is shown on the screen. Defaults to
  * [DEFAULT_ORIENTATION].
+ * @property fullScreen whether the app hides the status and navigation bars, so it gets the whole
+ * screen. The app decides how to apply it. Defaults to [DEFAULT_FULL_SCREEN].
  */
 public data class AppSettings(
     public val themeMode: ThemeMode = DEFAULT_THEME_MODE,
     public val orientation: ScreenOrientation = DEFAULT_ORIENTATION,
+    public val fullScreen: Boolean = DEFAULT_FULL_SCREEN,
 ) {
 
     /** Default values of [AppSettings]. */
@@ -38,5 +41,8 @@ public data class AppSettings(
 
         /** Default [orientation]: follow the device's rotation. */
         public val DEFAULT_ORIENTATION: ScreenOrientation = ScreenOrientation.FOLLOW_SYSTEM
+
+        /** Default [fullScreen]: hide the system bars, so the roadbook gets the whole screen. */
+        public const val DEFAULT_FULL_SCREEN: Boolean = true
     }
 }

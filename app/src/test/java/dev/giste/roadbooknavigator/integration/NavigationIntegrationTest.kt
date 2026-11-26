@@ -47,6 +47,7 @@ import dev.giste.roadbooknavigator.settings.AppSettingsSource
 import dev.giste.roadbooknavigator.settings.ScreenOrientation
 import dev.giste.roadbooknavigator.settings.ThemeMode
 import dev.giste.roadbooknavigator.ui.dashboard.DashboardTestTags
+import dev.giste.roadbooknavigator.ui.requestsSystemBars
 import javax.inject.Inject
 import org.junit.Before
 import org.junit.Rule
@@ -199,6 +200,27 @@ class NavigationIntegrationTest {
             composeRule.activity.requestedOrientation ==
                 ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE
         }
+    }
+
+    @Test
+    fun appStarted_isFullScreen() {
+        composeRule.awaitPartial("0.00")
+
+        composeRule.waitUntil(TIMEOUT_MILLIS) { !composeRule.activity.window.requestsSystemBars() }
+    }
+
+    @Test
+    fun fullScreenTurnedOff_isStoredAndApplied() {
+        openSettings()
+
+        composeRule.onNode(hasText("Full screen") and hasClickAction())
+            .performScrollTo()
+            .performClick()
+        composeRule.waitForIdle()
+
+        awaitStored { !it.fullScreen }
+        // Applied once the stored value reaches the activity, on the main thread.
+        composeRule.waitUntil(TIMEOUT_MILLIS) { composeRule.activity.window.requestsSystemBars() }
     }
 
     @Test

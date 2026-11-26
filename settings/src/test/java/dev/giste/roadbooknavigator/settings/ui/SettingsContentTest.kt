@@ -22,6 +22,8 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
@@ -71,6 +73,7 @@ class SettingsContentTest {
     private val defaults = SettingsUiState.Loaded(
         themeMode = ThemeMode.SYSTEM,
         orientation = ScreenOrientation.FOLLOW_SYSTEM,
+        fullScreen = true,
         remoteModel = RemoteModel.DND2,
         remoteKeys = RemoteKeys.DND2,
         roadbookStyle = RoadbookStyle.APP_THEME,
@@ -97,6 +100,7 @@ class SettingsContentTest {
                     onBack = { calls += "back" },
                     onThemeModeChange = { calls += "theme $it" },
                     onOrientationChange = { calls += "orientation $it" },
+                    onFullScreenChange = { calls += "fullScreen $it" },
                     onRemoteModelChange = { calls += "remote $it" },
                     onAssignCustomKey = { action, key -> calls += "assign $action ${key.code}" },
                     onRoadbookStyleChange = { calls += "style $it" },
@@ -161,6 +165,11 @@ class SettingsContentTest {
         composeRule.onNodeWithText("Screen orientation").assertExists()
         ThemeMode.entries.forEach { themeChoice(it).assertExists() }
         ScreenOrientation.entries.forEach { orientationChoice(it).assertExists() }
+        composeRule.onNodeWithText("Full screen").assertExists()
+        composeRule.onNodeWithText(
+            "Hide the status and navigation bars. Swipe from the edge of the screen to show them " +
+                "for a moment.",
+        ).assertExists()
         composeRule.onNodeWithText("Remote control").assertExists()
         composeRule.onNodeWithText("Keys").assertExists()
         composeRule.onNodeWithText("Roadbook colors").assertExists()
@@ -217,6 +226,39 @@ class SettingsContentTest {
             listOf("orientation HORIZONTAL", "orientation FOLLOW_SYSTEM"),
             calls,
         )
+    }
+
+    @Test
+    fun settingsContent_fullScreen_showsItOn() {
+        show(defaults)
+
+        control("Full screen").assertIsOn()
+    }
+
+    @Test
+    fun settingsContent_notFullScreen_showsItOff() {
+        show(defaults.copy(fullScreen = false))
+
+        control("Full screen").assertIsOff()
+    }
+
+    @Test
+    fun settingsContent_fullScreenTapped_reportsTheOppositeValue() {
+        show(defaults)
+
+        control("Full screen").performClick()
+
+        assertEquals(listOf("fullScreen false"), calls)
+    }
+
+    @Test
+    fun settingsContent_notFullScreenTapped_reportsFullScreen() {
+        show(defaults.copy(fullScreen = false))
+
+        // The switch is part of the row, so tapping it toggles the row's value.
+        composeRule.onNodeWithText("Hide the status", substring = true).performClick()
+
+        assertEquals(listOf("fullScreen true"), calls)
     }
 
     @Test
@@ -371,6 +413,7 @@ class SettingsContentTest {
                     onBack = {},
                     onThemeModeChange = {},
                     onOrientationChange = {},
+                    onFullScreenChange = {},
                     onRemoteModelChange = {},
                     onAssignCustomKey = { _, _ -> },
                     onRoadbookStyleChange = {},
@@ -564,7 +607,7 @@ class SettingsContentTest {
     fun settingsContent_controls_areAtLeastTheMinimumTouchTarget() {
         show(defaults)
 
-        listOf("Terra Pirata", "FIA").forEach { label ->
+        listOf("Full screen", "Terra Pirata", "FIA").forEach { label ->
             val height = control(label).getUnclippedBoundsInRoot().height
             assertTrue("$label is $height high", height >= 56.dp)
         }
@@ -637,6 +680,11 @@ class SettingsContentTest {
         composeRule.onNodeWithText("Ajustes").assertExists()
         composeRule.onNodeWithText("Tema").assertExists()
         composeRule.onNodeWithText("Orientación de la pantalla").assertExists()
+        control("Pantalla completa").assertExists()
+        composeRule.onNodeWithText(
+            "Oculta las barras de estado y de navegación. Desliza desde el borde de la pantalla " +
+                "para verlas un momento.",
+        ).assertExists()
         control("Personalizado").assertExists()
         inBinding(RemoteAction.NEXT_WAYPOINT, "Viñeta siguiente").assertExists()
         inBinding(RemoteAction.NEXT_WAYPOINT, "Cruceta arriba").assertExists()

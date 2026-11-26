@@ -20,6 +20,7 @@ package dev.giste.roadbooknavigator.settings.data
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import dev.giste.core.logging.Logger
 import dev.giste.roadbooknavigator.settings.AppSettings
@@ -56,12 +57,16 @@ internal object AppSettingsCodec : SettingsCodec<AppSettings> {
     /** Name of the [ScreenOrientation]. */
     val ORIENTATION_KEY: Preferences.Key<String> = stringPreferencesKey("orientation")
 
+    /** Whether the app is shown full screen. */
+    val FULL_SCREEN_KEY: Preferences.Key<Boolean> = booleanPreferencesKey("full_screen")
+
     override val default: AppSettings = AppSettings()
 
     override fun read(preferences: Preferences, logger: Logger): AppSettings =
         AppSettings(
             themeMode = preferences.readEnum(THEME_MODE_KEY, default.themeMode, logger),
             orientation = preferences.readEnum(ORIENTATION_KEY, default.orientation, logger),
+            fullScreen = preferences[FULL_SCREEN_KEY] ?: default.fullScreen,
         )
 
     override fun write(preferences: MutablePreferences, settings: AppSettings) {
@@ -75,5 +80,6 @@ internal object AppSettingsCodec : SettingsCodec<AppSettings> {
             settings.orientation.name,
             default.orientation.name,
         )
+        preferences.storeUnlessDefault(FULL_SCREEN_KEY, settings.fullScreen, default.fullScreen)
     }
 }

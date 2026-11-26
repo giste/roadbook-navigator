@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -41,6 +42,7 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.Switch
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -133,6 +135,7 @@ internal object SettingsTestTags {
  * - **Theme:** system, light or dark, shown as icons (automatic brightness, sun and moon).
  * - **Screen orientation:** system, vertical or horizontal, shown as icons (a rotating device, a
  *   device upright and a device sideways).
+ * - **Full screen:** a switch that hides the status and navigation bars. The whole row toggles it.
  * - **Remote:** DND2, Terra Pirata or custom, and the keys of each action, on a button. For DND2
  *   and Terra Pirata the buttons are disabled (grayed), since their keys cannot change. With
  *   custom, each button opens [KeyCaptureDialog], which assigns the key the rider presses; which
@@ -154,6 +157,7 @@ internal object SettingsTestTags {
  * @param onBack called when the back button is pressed.
  * @param onThemeModeChange called with the theme mode the user picks.
  * @param onOrientationChange called with the screen orientation the user picks.
+ * @param onFullScreenChange called with whether the user wants the app full screen.
  * @param onRemoteModelChange called with the remote model the user picks.
  * @param onAssignCustomKey called with a custom action and the key the user pressed for it.
  * @param onRoadbookStyleChange called with the roadbook style the user picks.
@@ -177,6 +181,7 @@ internal fun SettingsContent(
     onBack: () -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
     onOrientationChange: (ScreenOrientation) -> Unit,
+    onFullScreenChange: (Boolean) -> Unit,
     onRemoteModelChange: (RemoteModel) -> Unit,
     onAssignCustomKey: (RemoteAction, RemoteKey) -> Unit,
     onRoadbookStyleChange: (RoadbookStyle) -> Unit,
@@ -241,6 +246,7 @@ internal fun SettingsContent(
                 state = state,
                 onThemeModeChange = onThemeModeChange,
                 onOrientationChange = onOrientationChange,
+                onFullScreenChange = onFullScreenChange,
                 onRemoteModelChange = onRemoteModelChange,
                 onAssignCustomKey = onAssignCustomKey,
                 onRoadbookStyleChange = onRoadbookStyleChange,
@@ -268,6 +274,7 @@ internal fun SettingsContent(
  * @param state the loaded settings.
  * @param onThemeModeChange called with the theme mode the user picks.
  * @param onOrientationChange called with the screen orientation the user picks.
+ * @param onFullScreenChange called with whether the user wants the app full screen.
  * @param onRemoteModelChange called with the remote model the user picks.
  * @param onAssignCustomKey called with a custom action and the key the user pressed for it.
  * @param onRoadbookStyleChange called with the roadbook style the user picks.
@@ -288,6 +295,7 @@ private fun SettingsSections(
     state: SettingsUiState.Loaded,
     onThemeModeChange: (ThemeMode) -> Unit,
     onOrientationChange: (ScreenOrientation) -> Unit,
+    onFullScreenChange: (Boolean) -> Unit,
     onRemoteModelChange: (RemoteModel) -> Unit,
     onAssignCustomKey: (RemoteAction, RemoteKey) -> Unit,
     onRoadbookStyleChange: (RoadbookStyle) -> Unit,
@@ -329,6 +337,12 @@ private fun SettingsSections(
             icon = { it.icon() },
             testTag = SettingsTestTags::orientation,
             onSelect = onOrientationChange,
+        )
+        SwitchSetting(
+            title = stringResource(R.string.settings_full_screen_title),
+            description = stringResource(R.string.settings_full_screen_description),
+            checked = state.fullScreen,
+            onCheckedChange = onFullScreenChange,
         )
 
         SectionTitle(stringResource(R.string.settings_section_remote))
@@ -596,6 +610,45 @@ private fun <T> SegmentedChoices(
 }
 
 /**
+ * A setting that is on or off: its name and a description on the start side, and a switch on the
+ * end side. The whole row, at least the minimum touch target high, toggles it, so a gloved tap
+ * anywhere on it works.
+ *
+ * @param title the setting's name.
+ * @param description what the setting does.
+ * @param checked whether the setting is on.
+ * @param onCheckedChange called with the new value when the row is tapped.
+ */
+@Composable
+private fun SwitchSetting(
+    title: String,
+    description: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    val dimensions = GisteTheme.dimensions
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = dimensions.minTouchTarget)
+            .toggleable(value = checked, onValueChange = onCheckedChange),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(dimensions.spacingMedium),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = title, style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        // The row handles the taps, so the switch only shows the value.
+        Switch(checked = checked, onCheckedChange = null)
+    }
+}
+
+/**
  * The button that opens the About screen: as wide as the screen and at least the minimum touch
  * target high, with its label on the start side and a chevron on the end side, as it opens
  * another screen.
@@ -829,6 +882,7 @@ private const val PHONE_PORTRAIT = "spec:width=411dp,height=891dp,dpi=420"
 private val DEFAULTS = SettingsUiState.Loaded(
     themeMode = ThemeMode.SYSTEM,
     orientation = ScreenOrientation.FOLLOW_SYSTEM,
+    fullScreen = true,
     remoteModel = RemoteModel.TERRA_PIRATA,
     remoteKeys = RemoteKeys.TERRA_PIRATA,
     roadbookStyle = RoadbookStyle.APP_THEME,
@@ -848,12 +902,13 @@ private val DEFAULTS = SettingsUiState.Loaded(
 )
 
 /**
- * Preview sample: dark theme, horizontal, DND2, FIA colors, the shortest threshold, the closest
- * map zoom and a flat map.
+ * Preview sample: dark theme, horizontal, not full screen, DND2, FIA colors, the shortest
+ * threshold, the closest map zoom and a flat map.
  */
 private val CHANGED = SettingsUiState.Loaded(
     themeMode = ThemeMode.DARK,
     orientation = ScreenOrientation.HORIZONTAL,
+    fullScreen = false,
     remoteModel = RemoteModel.DND2,
     remoteKeys = RemoteKeys.DND2,
     roadbookStyle = RoadbookStyle.FIA,
@@ -893,6 +948,7 @@ private fun SettingsPreview(state: SettingsUiState) {
             onBack = {},
             onThemeModeChange = {},
             onOrientationChange = {},
+            onFullScreenChange = {},
             onRemoteModelChange = {},
             onAssignCustomKey = { _, _ -> },
             onRoadbookStyleChange = {},

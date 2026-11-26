@@ -39,6 +39,7 @@ internal sealed interface SettingsUiState {
      *
      * @property themeMode the app's light or dark colors.
      * @property orientation which way the app is shown on the screen.
+     * @property fullScreen whether the app hides the status and navigation bars.
      * @property remoteModel the remote control in use.
      * @property remoteKeys the keys in use, those of [remoteModel].
      * @property roadbookStyle the colors the roadbook is drawn with.
@@ -63,6 +64,7 @@ internal sealed interface SettingsUiState {
     data class Loaded(
         val themeMode: ThemeMode,
         val orientation: ScreenOrientation,
+        val fullScreen: Boolean,
         val remoteModel: RemoteModel,
         val remoteKeys: RemoteKeys,
         val roadbookStyle: RoadbookStyle,
