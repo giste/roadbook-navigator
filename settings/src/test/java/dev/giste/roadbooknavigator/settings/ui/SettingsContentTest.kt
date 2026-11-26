@@ -75,8 +75,8 @@ class SettingsContentTest {
         remoteKeys = RemoteKeys.DND2,
         roadbookStyle = RoadbookStyle.APP_THEME,
         shortDistanceThreshold = ShortDistanceThreshold.DEFAULT,
-        canDecreaseThreshold = true,
-        canIncreaseThreshold = true,
+        canDecreaseShortDistanceThreshold = true,
+        canIncreaseShortDistanceThreshold = true,
         mapZoomLevel = MapZoomLevel.DEFAULT,
         canDecreaseMapZoom = true,
         canIncreaseMapZoom = true,
@@ -97,8 +97,8 @@ class SettingsContentTest {
                     onRemoteModelChange = { calls += "remote $it" },
                     onAssignCustomKey = { action, key -> calls += "assign $action ${key.code}" },
                     onRoadbookStyleChange = { calls += "style $it" },
-                    onDecreaseThreshold = { calls += "decrease" },
-                    onIncreaseThreshold = { calls += "increase" },
+                    onDecreaseShortDistanceThreshold = { calls += "decrease" },
+                    onIncreaseShortDistanceThreshold = { calls += "increase" },
                     onDecreaseMapZoom = { calls += "zoom out" },
                     onIncreaseMapZoom = { calls += "zoom in" },
                     onDecreaseMapTilt = { calls += "tilt down" },
@@ -363,8 +363,8 @@ class SettingsContentTest {
                     onRemoteModelChange = {},
                     onAssignCustomKey = { _, _ -> },
                     onRoadbookStyleChange = {},
-                    onDecreaseThreshold = {},
-                    onIncreaseThreshold = {},
+                    onDecreaseShortDistanceThreshold = {},
+                    onIncreaseShortDistanceThreshold = {},
                     onDecreaseMapZoom = {},
                     onIncreaseMapZoom = {},
                     onDecreaseMapTilt = {},
@@ -407,8 +407,8 @@ class SettingsContentTest {
     fun settingsContent_stepperPressed_reportsIt() {
         show(defaults)
 
-        stepperButton(SettingsTestTags.THRESHOLD_STEPPER, "−").performClick()
-        stepperButton(SettingsTestTags.THRESHOLD_STEPPER, "+").performClick()
+        stepperButton(SettingsTestTags.SHORT_DISTANCE_THRESHOLD_STEPPER, "−").performClick()
+        stepperButton(SettingsTestTags.SHORT_DISTANCE_THRESHOLD_STEPPER, "+").performClick()
 
         assertEquals(listOf("decrease", "increase"), calls)
     }
@@ -418,21 +418,21 @@ class SettingsContentTest {
         show(
             defaults.copy(
                 shortDistanceThreshold = ShortDistanceThreshold.of(Distance.meters(50.0)),
-                canDecreaseThreshold = false,
+                canDecreaseShortDistanceThreshold = false,
             ),
         )
 
-        stepperValue(SettingsTestTags.THRESHOLD_STEPPER, "50 m").assertExists()
-        stepperButton(SettingsTestTags.THRESHOLD_STEPPER, "−").assertIsNotEnabled()
-        stepperButton(SettingsTestTags.THRESHOLD_STEPPER, "+").assertIsEnabled()
+        stepperValue(SettingsTestTags.SHORT_DISTANCE_THRESHOLD_STEPPER, "50 m").assertExists()
+        stepperButton(SettingsTestTags.SHORT_DISTANCE_THRESHOLD_STEPPER, "−").assertIsNotEnabled()
+        stepperButton(SettingsTestTags.SHORT_DISTANCE_THRESHOLD_STEPPER, "+").assertIsEnabled()
     }
 
     @Test
     fun settingsContent_longestThreshold_disablesIncrease() {
-        show(defaults.copy(canIncreaseThreshold = false))
+        show(defaults.copy(canIncreaseShortDistanceThreshold = false))
 
-        stepperButton(SettingsTestTags.THRESHOLD_STEPPER, "−").assertIsEnabled()
-        stepperButton(SettingsTestTags.THRESHOLD_STEPPER, "+").assertIsNotEnabled()
+        stepperButton(SettingsTestTags.SHORT_DISTANCE_THRESHOLD_STEPPER, "−").assertIsEnabled()
+        stepperButton(SettingsTestTags.SHORT_DISTANCE_THRESHOLD_STEPPER, "+").assertIsNotEnabled()
     }
 
     @Test
@@ -514,7 +514,7 @@ class SettingsContentTest {
             assertTrue("$label is $height high", height >= 56.dp)
         }
         val steppers = listOf(
-            SettingsTestTags.THRESHOLD_STEPPER,
+            SettingsTestTags.SHORT_DISTANCE_THRESHOLD_STEPPER,
             SettingsTestTags.MAP_ZOOM_STEPPER,
             SettingsTestTags.MAP_TILT_STEPPER,
         )

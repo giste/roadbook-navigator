@@ -79,7 +79,7 @@ internal object SettingsTestTags {
     const val BACK: String = "settings_back"
 
     /** The short-distance threshold's stepper, whose − and + repeat in the other steppers. */
-    const val THRESHOLD_STEPPER: String = "settings_threshold_stepper"
+    const val SHORT_DISTANCE_THRESHOLD_STEPPER: String = "settings_short_distance_threshold_stepper"
 
     /** The map zoom's stepper. */
     const val MAP_ZOOM_STEPPER: String = "settings_map_zoom_stepper"
@@ -127,8 +127,8 @@ internal object SettingsTestTags {
  * @param onRemoteModelChange called with the remote model the user picks.
  * @param onAssignCustomKey called with a custom action and the key the user pressed for it.
  * @param onRoadbookStyleChange called with the roadbook style the user picks.
- * @param onDecreaseThreshold called when the threshold's − is pressed.
- * @param onIncreaseThreshold called when the threshold's + is pressed.
+ * @param onDecreaseShortDistanceThreshold called when the threshold's − is pressed.
+ * @param onIncreaseShortDistanceThreshold called when the threshold's + is pressed.
  * @param onDecreaseMapZoom called when the map zoom's − is pressed.
  * @param onIncreaseMapZoom called when the map zoom's + is pressed.
  * @param onDecreaseMapTilt called when the map tilt's − is pressed.
@@ -147,8 +147,8 @@ internal fun SettingsContent(
     onRemoteModelChange: (RemoteModel) -> Unit,
     onAssignCustomKey: (RemoteAction, RemoteKey) -> Unit,
     onRoadbookStyleChange: (RoadbookStyle) -> Unit,
-    onDecreaseThreshold: () -> Unit,
-    onIncreaseThreshold: () -> Unit,
+    onDecreaseShortDistanceThreshold: () -> Unit,
+    onIncreaseShortDistanceThreshold: () -> Unit,
     onDecreaseMapZoom: () -> Unit,
     onIncreaseMapZoom: () -> Unit,
     onDecreaseMapTilt: () -> Unit,
@@ -208,8 +208,8 @@ internal fun SettingsContent(
                 onRemoteModelChange = onRemoteModelChange,
                 onAssignCustomKey = onAssignCustomKey,
                 onRoadbookStyleChange = onRoadbookStyleChange,
-                onDecreaseThreshold = onDecreaseThreshold,
-                onIncreaseThreshold = onIncreaseThreshold,
+                onDecreaseShortDistanceThreshold = onDecreaseShortDistanceThreshold,
+                onIncreaseShortDistanceThreshold = onIncreaseShortDistanceThreshold,
                 onDecreaseMapZoom = onDecreaseMapZoom,
                 onIncreaseMapZoom = onIncreaseMapZoom,
                 onDecreaseMapTilt = onDecreaseMapTilt,
@@ -232,8 +232,8 @@ internal fun SettingsContent(
  * @param onRemoteModelChange called with the remote model the user picks.
  * @param onAssignCustomKey called with a custom action and the key the user pressed for it.
  * @param onRoadbookStyleChange called with the roadbook style the user picks.
- * @param onDecreaseThreshold called when the threshold's − is pressed.
- * @param onIncreaseThreshold called when the threshold's + is pressed.
+ * @param onDecreaseShortDistanceThreshold called when the threshold's − is pressed.
+ * @param onIncreaseShortDistanceThreshold called when the threshold's + is pressed.
  * @param onDecreaseMapZoom called when the map zoom's − is pressed.
  * @param onIncreaseMapZoom called when the map zoom's + is pressed.
  * @param onDecreaseMapTilt called when the map tilt's − is pressed.
@@ -249,8 +249,8 @@ private fun SettingsSections(
     onRemoteModelChange: (RemoteModel) -> Unit,
     onAssignCustomKey: (RemoteAction, RemoteKey) -> Unit,
     onRoadbookStyleChange: (RoadbookStyle) -> Unit,
-    onDecreaseThreshold: () -> Unit,
-    onIncreaseThreshold: () -> Unit,
+    onDecreaseShortDistanceThreshold: () -> Unit,
+    onIncreaseShortDistanceThreshold: () -> Unit,
     onDecreaseMapZoom: () -> Unit,
     onIncreaseMapZoom: () -> Unit,
     onDecreaseMapTilt: () -> Unit,
@@ -328,11 +328,11 @@ private fun SettingsSections(
                 R.string.settings_distance_meters,
                 state.shortDistanceThreshold.distance.inMeters.roundToInt(),
             ),
-            canDecrease = state.canDecreaseThreshold,
-            canIncrease = state.canIncreaseThreshold,
-            onDecrease = onDecreaseThreshold,
-            onIncrease = onIncreaseThreshold,
-            modifier = Modifier.testTag(SettingsTestTags.THRESHOLD_STEPPER),
+            canDecrease = state.canDecreaseShortDistanceThreshold,
+            canIncrease = state.canIncreaseShortDistanceThreshold,
+            onDecrease = onDecreaseShortDistanceThreshold,
+            onIncrease = onIncreaseShortDistanceThreshold,
+            modifier = Modifier.testTag(SettingsTestTags.SHORT_DISTANCE_THRESHOLD_STEPPER),
         )
 
         SectionTitle(stringResource(R.string.settings_section_map))
@@ -671,8 +671,8 @@ private val DEFAULTS = SettingsUiState.Loaded(
     remoteKeys = RemoteKeys.TERRA_PIRATA,
     roadbookStyle = RoadbookStyle.APP_THEME,
     shortDistanceThreshold = ShortDistanceThreshold.DEFAULT,
-    canDecreaseThreshold = true,
-    canIncreaseThreshold = true,
+    canDecreaseShortDistanceThreshold = true,
+    canIncreaseShortDistanceThreshold = true,
     mapZoomLevel = MapZoomLevel.DEFAULT,
     canDecreaseMapZoom = true,
     canIncreaseMapZoom = true,
@@ -693,8 +693,8 @@ private val CHANGED = SettingsUiState.Loaded(
     remoteKeys = RemoteKeys.DND2,
     roadbookStyle = RoadbookStyle.FIA,
     shortDistanceThreshold = ShortDistanceThreshold.of(Distance.meters(50.0)),
-    canDecreaseThreshold = false,
-    canIncreaseThreshold = true,
+    canDecreaseShortDistanceThreshold = false,
+    canIncreaseShortDistanceThreshold = true,
     mapZoomLevel = MapZoomLevel.of(20),
     canDecreaseMapZoom = true,
     canIncreaseMapZoom = false,
@@ -728,8 +728,8 @@ private fun SettingsPreview(state: SettingsUiState) {
             onRemoteModelChange = {},
             onAssignCustomKey = { _, _ -> },
             onRoadbookStyleChange = {},
-            onDecreaseThreshold = {},
-            onIncreaseThreshold = {},
+            onDecreaseShortDistanceThreshold = {},
+            onIncreaseShortDistanceThreshold = {},
             onDecreaseMapZoom = {},
             onIncreaseMapZoom = {},
             onDecreaseMapTilt = {},

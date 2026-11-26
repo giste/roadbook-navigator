@@ -63,8 +63,8 @@ class SettingsViewModelTest {
         remoteKeys = RemoteKeys.TERRA_PIRATA,
         roadbookStyle = RoadbookStyle.APP_THEME,
         shortDistanceThreshold = ShortDistanceThreshold.DEFAULT,
-        canDecreaseThreshold = true,
-        canIncreaseThreshold = true,
+        canDecreaseShortDistanceThreshold = true,
+        canIncreaseShortDistanceThreshold = true,
         mapZoomLevel = MapZoomLevel.DEFAULT,
         canDecreaseMapZoom = true,
         canIncreaseMapZoom = true,
@@ -96,8 +96,8 @@ class SettingsViewModelTest {
             skipItems(1)
             val state = awaitItem() as SettingsUiState.Loaded
 
-            assertEquals(false, state.canDecreaseThreshold)
-            assertEquals(true, state.canIncreaseThreshold)
+            assertEquals(false, state.canDecreaseShortDistanceThreshold)
+            assertEquals(true, state.canIncreaseShortDistanceThreshold)
         }
     }
 
@@ -109,8 +109,8 @@ class SettingsViewModelTest {
             skipItems(1)
             val state = awaitItem() as SettingsUiState.Loaded
 
-            assertEquals(true, state.canDecreaseThreshold)
-            assertEquals(false, state.canIncreaseThreshold)
+            assertEquals(true, state.canDecreaseShortDistanceThreshold)
+            assertEquals(false, state.canIncreaseShortDistanceThreshold)
         }
     }
 

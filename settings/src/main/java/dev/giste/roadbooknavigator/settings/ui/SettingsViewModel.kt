@@ -91,8 +91,10 @@ internal class SettingsViewModel @Inject constructor(
             remoteKeys = remote.keys,
             roadbookStyle = roadbook.style,
             shortDistanceThreshold = roadbook.shortDistanceThreshold,
-            canDecreaseThreshold = roadbook.shortDistanceThreshold > ShortDistanceThreshold.MIN,
-            canIncreaseThreshold = roadbook.shortDistanceThreshold < ShortDistanceThreshold.MAX,
+            canDecreaseShortDistanceThreshold =
+                roadbook.shortDistanceThreshold > ShortDistanceThreshold.MIN,
+            canIncreaseShortDistanceThreshold =
+                roadbook.shortDistanceThreshold < ShortDistanceThreshold.MAX,
             mapZoomLevel = map.zoomLevel,
             canDecreaseMapZoom = map.zoomLevel.value > MAP_ZOOM_RANGE.first,
             canIncreaseMapZoom = map.zoomLevel.value < MAP_ZOOM_RANGE.last,
@@ -172,12 +174,12 @@ internal class SettingsViewModel @Inject constructor(
 
     /** Makes the short-distance threshold one step shorter, down to its minimum. */
     fun decreaseShortDistanceThreshold() {
-        changeThreshold(steps = -1)
+        changeShortDistanceThreshold(steps = -1)
     }
 
     /** Makes the short-distance threshold one step longer, up to its maximum. */
     fun increaseShortDistanceThreshold() {
-        changeThreshold(steps = 1)
+        changeShortDistanceThreshold(steps = 1)
     }
 
     /** Shows the map one zoom level farther, down to the farthest the screen offers. */
@@ -211,7 +213,7 @@ internal class SettingsViewModel @Inject constructor(
     }
 
     /** Moves the threshold by [steps] from the stored one, so fast presses are never lost. */
-    private fun changeThreshold(steps: Int) {
+    private fun changeShortDistanceThreshold(steps: Int) {
         save {
             roadbookSettings.update {
                 it.copy(shortDistanceThreshold = it.shortDistanceThreshold.stepped(steps))

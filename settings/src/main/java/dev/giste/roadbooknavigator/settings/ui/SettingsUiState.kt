@@ -43,8 +43,8 @@ internal sealed interface SettingsUiState {
      * @property remoteKeys the keys in use, those of [remoteModel].
      * @property roadbookStyle the colors the roadbook is drawn with.
      * @property shortDistanceThreshold below which distance a waypoint is highlighted.
-     * @property canDecreaseThreshold whether the threshold can get shorter.
-     * @property canIncreaseThreshold whether the threshold can get longer.
+     * @property canDecreaseShortDistanceThreshold whether the threshold can get shorter.
+     * @property canIncreaseShortDistanceThreshold whether the threshold can get longer.
      * @property mapZoomLevel how close the map is shown.
      * @property canDecreaseMapZoom whether the map can be shown farther.
      * @property canIncreaseMapZoom whether the map can be shown closer.
@@ -63,8 +63,8 @@ internal sealed interface SettingsUiState {
         val remoteKeys: RemoteKeys,
         val roadbookStyle: RoadbookStyle,
         val shortDistanceThreshold: ShortDistanceThreshold,
-        val canDecreaseThreshold: Boolean,
-        val canIncreaseThreshold: Boolean,
+        val canDecreaseShortDistanceThreshold: Boolean,
+        val canIncreaseShortDistanceThreshold: Boolean,
         val mapZoomLevel: MapZoomLevel,
         val canDecreaseMapZoom: Boolean,
         val canIncreaseMapZoom: Boolean,
