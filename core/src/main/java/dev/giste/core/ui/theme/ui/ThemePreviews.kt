@@ -110,6 +110,32 @@ private fun ColorScheme.paletteGroups(): List<Pair<String, List<PaletteRole>>> =
         PaletteRole("outline on surface", surface, outline, "outline", MIN_GRAPHIC_CONTRAST),
         PaletteRole("outlineVariant on surface", surface, outlineVariant, "outlineVariant", 1.0),
     ),
+    "Fixed (same in light and dark)" to listOf(
+        PaletteRole("primaryFixed", primaryFixed, onPrimaryFixed, "onPrimaryFixed"),
+        PaletteRole("primaryFixedDim", primaryFixedDim, onPrimaryFixed, "onPrimaryFixed"),
+        PaletteRole(
+            "onPrimaryFixedVariant on primaryFixed",
+            primaryFixed,
+            onPrimaryFixedVariant,
+            "onPrimaryFixedVariant",
+        ),
+        PaletteRole("secondaryFixed", secondaryFixed, onSecondaryFixed, "onSecondaryFixed"),
+        PaletteRole("secondaryFixedDim", secondaryFixedDim, onSecondaryFixed, "onSecondaryFixed"),
+        PaletteRole(
+            "onSecondaryFixedVariant on secondaryFixed",
+            secondaryFixed,
+            onSecondaryFixedVariant,
+            "onSecondaryFixedVariant",
+        ),
+        PaletteRole("tertiaryFixed", tertiaryFixed, onTertiaryFixed, "onTertiaryFixed"),
+        PaletteRole("tertiaryFixedDim", tertiaryFixedDim, onTertiaryFixed, "onTertiaryFixed"),
+        PaletteRole(
+            "onTertiaryFixedVariant on tertiaryFixed",
+            tertiaryFixed,
+            onTertiaryFixedVariant,
+            "onTertiaryFixedVariant",
+        ),
+    ),
 )
 
 /**
