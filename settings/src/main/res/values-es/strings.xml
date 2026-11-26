@@ -6,13 +6,7 @@
     <!-- Appearance -->
     <string name="settings_section_appearance">Apariencia</string>
     <string name="settings_theme_title">Tema</string>
-    <string name="settings_theme_system">Sistema</string>
-    <string name="settings_theme_light">Claro</string>
-    <string name="settings_theme_dark">Oscuro</string>
     <string name="settings_orientation_title">Orientación de la pantalla</string>
-    <string name="settings_orientation_system">Sistema</string>
-    <string name="settings_orientation_vertical">Vertical</string>
-    <string name="settings_orientation_horizontal">Horizontal</string>
 
     <!-- Remote control -->
     <string name="settings_section_remote">Mando</string>

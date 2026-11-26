@@ -19,6 +19,7 @@ package dev.giste.roadbooknavigator.settings.ui
 
 import android.content.res.Configuration
 import android.view.KeyEvent
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -97,6 +98,23 @@ internal object SettingsTestTags {
     const val MAP_TILT_RESTORE: String = "settings_map_tilt_restore"
 
     /**
+     * The choice of one theme mode, which shows an icon instead of text.
+     *
+     * @param mode the theme mode of the choice.
+     * @return the tag of its button, e.g. `settings_theme_mode_dark`.
+     */
+    fun themeMode(mode: ThemeMode): String = "settings_theme_mode_${mode.name.lowercase()}"
+
+    /**
+     * The choice of one screen orientation, which shows an icon instead of text.
+     *
+     * @param orientation the screen orientation of the choice.
+     * @return the tag of its button, e.g. `settings_orientation_horizontal`.
+     */
+    fun orientation(orientation: ScreenOrientation): String =
+        "settings_orientation_${orientation.name.lowercase()}"
+
+    /**
      * The row of one remote action and its keys, whose texts may repeat in other rows (e.g. "No
      * key").
      *
@@ -112,8 +130,9 @@ internal object SettingsTestTags {
  * control, roadbook and map sections, and an About section that opens the app's About screen.
  * Every control is at least the minimum touch target high, so it works with gloves.
  *
- * - **Theme:** system, light or dark.
- * - **Screen orientation:** system, vertical or horizontal.
+ * - **Theme:** system, light or dark, shown as icons (automatic brightness, sun and moon).
+ * - **Screen orientation:** system, vertical or horizontal, shown as icons (a rotating device, a
+ *   device upright and a device sideways).
  * - **Remote:** DND2, Terra Pirata or custom, and the keys of each action, on a button. For DND2
  *   and Terra Pirata the buttons are disabled (grayed), since their keys cannot change. With
  *   custom, each button opens [KeyCaptureDialog], which assigns the key the rider presses; which
@@ -296,17 +315,19 @@ private fun SettingsSections(
     ) {
         SectionTitle(stringResource(R.string.settings_section_appearance))
         SettingTitle(stringResource(R.string.settings_theme_title))
-        Choices(
+        IconChoices(
             options = ThemeMode.entries,
             selected = state.themeMode,
-            label = { it.label() },
+            icon = { it.icon() },
+            testTag = SettingsTestTags::themeMode,
             onSelect = onThemeModeChange,
         )
         SettingTitle(stringResource(R.string.settings_orientation_title))
-        Choices(
+        IconChoices(
             options = ScreenOrientation.entries,
             selected = state.orientation,
-            label = { it.label() },
+            icon = { it.icon() },
+            testTag = SettingsTestTags::orientation,
             onSelect = onOrientationChange,
         )
 
@@ -497,16 +518,78 @@ private fun <T> Choices(
     label: @Composable (T) -> String,
     onSelect: (T) -> Unit,
 ) {
+    SegmentedChoices(
+        options = options,
+        selected = selected,
+        testTag = { null },
+        onSelect = onSelect,
+    ) { option ->
+        Text(label(option))
+    }
+}
+
+/**
+ * One choice among [options], as a row of segmented buttons as wide as the screen, each showing
+ * only an icon. An icon needs the same space in every language and needs no translation, so it
+ * suits choices whose meaning a symbol shows well.
+ *
+ * @param T the type of the options.
+ * @param options the options, in the order they are shown.
+ * @param selected the current option.
+ * @param icon the drawable of each option's icon.
+ * @param testTag the test tag of each option's button, as it has no text.
+ * @param onSelect called with the option the user picks.
+ */
+@Composable
+private fun <T> IconChoices(
+    options: List<T>,
+    selected: T,
+    icon: (T) -> Int,
+    testTag: (T) -> String,
+    onSelect: (T) -> Unit,
+) {
+    SegmentedChoices(
+        options = options,
+        selected = selected,
+        testTag = testTag,
+        onSelect = onSelect,
+    ) { option ->
+        Icon(painter = painterResource(icon(option)), contentDescription = null)
+    }
+}
+
+/**
+ * The row of segmented buttons behind [Choices] and [IconChoices]: as wide as the screen, each
+ * button at least the minimum touch target high, without a check mark on the selected one.
+ *
+ * @param T the type of the options.
+ * @param options the options, in the order they are shown.
+ * @param selected the current option.
+ * @param testTag the test tag of each option's button, or `null` for none.
+ * @param onSelect called with the option the user picks.
+ * @param content what each button shows.
+ */
+@Composable
+private fun <T> SegmentedChoices(
+    options: List<T>,
+    selected: T,
+    testTag: (T) -> String?,
+    onSelect: (T) -> Unit,
+    content: @Composable (T) -> Unit,
+) {
     SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
         options.forEachIndexed { index, option ->
+            val tag = testTag(option)
             SegmentedButton(
                 selected = option == selected,
                 onClick = { onSelect(option) },
                 shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
-                modifier = Modifier.heightIn(min = GisteTheme.dimensions.minTouchTarget),
+                modifier = Modifier
+                    .heightIn(min = GisteTheme.dimensions.minTouchTarget)
+                    .then(if (tag != null) Modifier.testTag(tag) else Modifier),
                 icon = {},
             ) {
-                Text(label(option))
+                content(option)
             }
         }
     }
@@ -642,25 +725,24 @@ private fun Stepper(
     }
 }
 
-/** The name of this theme mode, as the user sees it. */
-@Composable
-private fun ThemeMode.label(): String = stringResource(
-    when (this) {
-        ThemeMode.SYSTEM -> R.string.settings_theme_system
-        ThemeMode.LIGHT -> R.string.settings_theme_light
-        ThemeMode.DARK -> R.string.settings_theme_dark
-    },
-)
+/** The drawable of this theme mode's icon: automatic brightness, a sun or a moon. */
+@DrawableRes
+private fun ThemeMode.icon(): Int = when (this) {
+    ThemeMode.SYSTEM -> R.drawable.settings_ic_brightness_auto
+    ThemeMode.LIGHT -> R.drawable.settings_ic_light_mode
+    ThemeMode.DARK -> R.drawable.settings_ic_dark_mode
+}
 
-/** The name of this screen orientation, as the user sees it. */
-@Composable
-private fun ScreenOrientation.label(): String = stringResource(
-    when (this) {
-        ScreenOrientation.FOLLOW_SYSTEM -> R.string.settings_orientation_system
-        ScreenOrientation.VERTICAL -> R.string.settings_orientation_vertical
-        ScreenOrientation.HORIZONTAL -> R.string.settings_orientation_horizontal
-    },
-)
+/**
+ * The drawable of this screen orientation's icon: a rotating device, or a device upright or
+ * sideways.
+ */
+@DrawableRes
+private fun ScreenOrientation.icon(): Int = when (this) {
+    ScreenOrientation.FOLLOW_SYSTEM -> R.drawable.settings_ic_screen_rotation
+    ScreenOrientation.VERTICAL -> R.drawable.settings_ic_stay_current_portrait
+    ScreenOrientation.HORIZONTAL -> R.drawable.settings_ic_stay_current_landscape
+}
 
 /** The name of this remote model, as the user sees it. */
 @Composable

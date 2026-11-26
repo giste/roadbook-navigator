@@ -180,7 +180,7 @@ class NavigationIntegrationTest {
     fun themeModePicked_isStoredForTheApp() {
         openSettings()
 
-        composeRule.onNode(hasText("Dark") and hasClickAction()).performClick()
+        composeRule.onNodeWithTag(DARK_THEME_TAG).performClick()
         composeRule.waitForIdle()
 
         awaitStored { it.themeMode == ThemeMode.DARK }
@@ -190,7 +190,7 @@ class NavigationIntegrationTest {
     fun orientationPicked_isStoredAndApplied() {
         openSettings()
 
-        composeRule.onNode(hasText("Horizontal") and hasClickAction()).performClick()
+        composeRule.onNodeWithTag(HORIZONTAL_ORIENTATION_TAG).performClick()
         composeRule.waitForIdle()
 
         awaitStored { it.orientation == ScreenOrientation.HORIZONTAL }
@@ -283,5 +283,17 @@ class NavigationIntegrationTest {
          * `SettingsTestTags.MAP_ZOOM_RESTORE`.
          */
         const val MAP_ZOOM_RESTORE_TAG = "settings_map_zoom_restore"
+
+        /**
+         * The tag of the dark theme's choice, an icon: `:settings`'
+         * `SettingsTestTags.themeMode(ThemeMode.DARK)`.
+         */
+        const val DARK_THEME_TAG = "settings_theme_mode_dark"
+
+        /**
+         * The tag of the horizontal orientation's choice, an icon: `:settings`'
+         * `SettingsTestTags.orientation(ScreenOrientation.HORIZONTAL)`.
+         */
+        const val HORIZONTAL_ORIENTATION_TAG = "settings_orientation_horizontal"
     }
 }

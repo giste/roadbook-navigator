@@ -144,12 +144,13 @@ class SettingsContentTest {
     /** The defaults with the custom remote selected, which starts with DND2's keys. */
     private val custom = defaults.copy(remoteModel = RemoteModel.CUSTOM)
 
-    /**
-     * The "System" choice of the theme (index 0) or of the screen orientation (index 1), which
-     * share their label. They are found in the order the screen shows them.
-     */
-    private fun systemChoice(index: Int) =
-        composeRule.onAllNodes(hasText("System") and hasClickAction())[index].performScrollTo()
+    /** The icon-only choice of [mode]. */
+    private fun themeChoice(mode: ThemeMode) =
+        composeRule.onNodeWithTag(SettingsTestTags.themeMode(mode)).performScrollTo()
+
+    /** The icon-only choice of [orientation]. */
+    private fun orientationChoice(orientation: ScreenOrientation) =
+        composeRule.onNodeWithTag(SettingsTestTags.orientation(orientation)).performScrollTo()
 
     @Test
     fun settingsContent_loaded_showsEverySetting() {
@@ -158,6 +159,8 @@ class SettingsContentTest {
         composeRule.onNodeWithText("Settings").assertExists()
         composeRule.onNodeWithText("Theme").assertExists()
         composeRule.onNodeWithText("Screen orientation").assertExists()
+        ThemeMode.entries.forEach { themeChoice(it).assertExists() }
+        ScreenOrientation.entries.forEach { orientationChoice(it).assertExists() }
         composeRule.onNodeWithText("Remote control").assertExists()
         composeRule.onNodeWithText("Keys").assertExists()
         composeRule.onNodeWithText("Roadbook colors").assertExists()
@@ -175,11 +178,12 @@ class SettingsContentTest {
             ),
         )
 
-        control("Dark").assertIsSelected()
-        systemChoice(0).assertIsNotSelected()
-        control("Horizontal").assertIsSelected()
-        control("Vertical").assertIsNotSelected()
-        systemChoice(1).assertIsNotSelected()
+        themeChoice(ThemeMode.DARK).assertIsSelected()
+        themeChoice(ThemeMode.LIGHT).assertIsNotSelected()
+        themeChoice(ThemeMode.SYSTEM).assertIsNotSelected()
+        orientationChoice(ScreenOrientation.HORIZONTAL).assertIsSelected()
+        orientationChoice(ScreenOrientation.VERTICAL).assertIsNotSelected()
+        orientationChoice(ScreenOrientation.FOLLOW_SYSTEM).assertIsNotSelected()
         control("FIA").assertIsSelected()
         control("App theme").assertIsNotSelected()
     }
@@ -196,17 +200,18 @@ class SettingsContentTest {
     fun settingsContent_themeModePicked_reportsIt() {
         show(defaults)
 
-        control("Light").performClick()
+        themeChoice(ThemeMode.LIGHT).performClick()
+        themeChoice(ThemeMode.DARK).performClick()
 
-        assertEquals(listOf("theme LIGHT"), calls)
+        assertEquals(listOf("theme LIGHT", "theme DARK"), calls)
     }
 
     @Test
     fun settingsContent_orientationPicked_reportsIt() {
         show(defaults.copy(orientation = ScreenOrientation.VERTICAL))
 
-        control("Horizontal").performClick()
-        systemChoice(1).performClick()
+        orientationChoice(ScreenOrientation.HORIZONTAL).performClick()
+        orientationChoice(ScreenOrientation.FOLLOW_SYSTEM).performClick()
 
         assertEquals(
             listOf("orientation HORIZONTAL", "orientation FOLLOW_SYSTEM"),
@@ -559,9 +564,15 @@ class SettingsContentTest {
     fun settingsContent_controls_areAtLeastTheMinimumTouchTarget() {
         show(defaults)
 
-        listOf("Dark", "Horizontal", "Terra Pirata", "FIA").forEach { label ->
+        listOf("Terra Pirata", "FIA").forEach { label ->
             val height = control(label).getUnclippedBoundsInRoot().height
             assertTrue("$label is $height high", height >= 56.dp)
+        }
+        val iconChoices = ThemeMode.entries.map { themeChoice(it) } +
+            ScreenOrientation.entries.map { orientationChoice(it) }
+        iconChoices.forEach { choice ->
+            val height = choice.getUnclippedBoundsInRoot().height
+            assertTrue("An icon choice is $height high", height >= 56.dp)
         }
         val steppers = listOf(
             SettingsTestTags.SHORT_DISTANCE_THRESHOLD_STEPPER,
@@ -624,7 +635,7 @@ class SettingsContentTest {
         show(defaults)
 
         composeRule.onNodeWithText("Ajustes").assertExists()
-        control("Oscuro").assertExists()
+        composeRule.onNodeWithText("Tema").assertExists()
         composeRule.onNodeWithText("Orientación de la pantalla").assertExists()
         control("Personalizado").assertExists()
         inBinding(RemoteAction.NEXT_WAYPOINT, "Viñeta siguiente").assertExists()
