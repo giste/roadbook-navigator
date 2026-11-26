@@ -36,6 +36,8 @@ import dev.giste.roadbooknavigator.settings.RemoteModel
 import dev.giste.roadbooknavigator.settings.RemoteSettings
 import dev.giste.roadbooknavigator.settings.ScreenOrientation
 import dev.giste.roadbooknavigator.settings.ThemeMode
+import dev.giste.roadbooknavigator.settings.domain.SHORT_DISTANCE_MAX
+import dev.giste.roadbooknavigator.settings.domain.SHORT_DISTANCE_MIN
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -92,8 +94,8 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun uiState_shortestThreshold_cannotDecrease() = runTest {
-        roadbook.settings.value = RoadbookSettings(shortDistanceThreshold = ShortDistanceThreshold.MIN)
+    fun uiState_shortestOfferedThreshold_cannotDecrease() = runTest {
+        roadbook.settings.value = RoadbookSettings(shortDistanceThreshold = SHORT_DISTANCE_MIN)
 
         viewModel.uiState.test {
             skipItems(1)
@@ -105,8 +107,8 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun uiState_longestThreshold_cannotIncrease() = runTest {
-        roadbook.settings.value = RoadbookSettings(shortDistanceThreshold = ShortDistanceThreshold.MAX)
+    fun uiState_longestOfferedThreshold_cannotIncrease() = runTest {
+        roadbook.settings.value = RoadbookSettings(shortDistanceThreshold = SHORT_DISTANCE_MAX)
 
         viewModel.uiState.test {
             skipItems(1)

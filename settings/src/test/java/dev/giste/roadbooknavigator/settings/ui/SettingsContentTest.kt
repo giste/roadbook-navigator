@@ -426,12 +426,12 @@ class SettingsContentTest {
     fun settingsContent_shortestThreshold_disablesDecrease() {
         show(
             defaults.copy(
-                shortDistanceThreshold = ShortDistanceThreshold.of(Distance.meters(50.0)),
+                shortDistanceThreshold = ShortDistanceThreshold.of(Distance.meters(100.0)),
                 canDecreaseShortDistanceThreshold = false,
             ),
         )
 
-        stepperValue(SettingsTestTags.SHORT_DISTANCE_THRESHOLD_STEPPER, "50 m").assertExists()
+        stepperValue(SettingsTestTags.SHORT_DISTANCE_THRESHOLD_STEPPER, "100 m").assertExists()
         stepperButton(SettingsTestTags.SHORT_DISTANCE_THRESHOLD_STEPPER, "−").assertIsNotEnabled()
         stepperButton(SettingsTestTags.SHORT_DISTANCE_THRESHOLD_STEPPER, "+").assertIsEnabled()
     }
