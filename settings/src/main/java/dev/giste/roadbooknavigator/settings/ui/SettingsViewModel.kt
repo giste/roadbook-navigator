@@ -21,6 +21,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.giste.map.MapSettings
+import dev.giste.map.MapTilt
+import dev.giste.map.MapZoomLevel
 import dev.giste.roadbook.RoadbookSettings
 import dev.giste.roadbook.RoadbookStyle
 import dev.giste.roadbook.ShortDistanceThreshold
@@ -95,12 +97,16 @@ internal class SettingsViewModel @Inject constructor(
                 roadbook.shortDistanceThreshold > ShortDistanceThreshold.MIN,
             canIncreaseShortDistanceThreshold =
                 roadbook.shortDistanceThreshold < ShortDistanceThreshold.MAX,
+            canRestoreShortDistanceThreshold =
+                roadbook.shortDistanceThreshold != ShortDistanceThreshold.DEFAULT,
             mapZoomLevel = map.zoomLevel,
             canDecreaseMapZoom = map.zoomLevel.value > MAP_ZOOM_RANGE.first,
             canIncreaseMapZoom = map.zoomLevel.value < MAP_ZOOM_RANGE.last,
+            canRestoreMapZoom = map.zoomLevel != MapZoomLevel.DEFAULT,
             mapTilt = map.tilt,
             canDecreaseMapTilt = map.tilt.inDegrees > MAP_TILT_RANGE.start,
             canIncreaseMapTilt = map.tilt.inDegrees < MAP_TILT_RANGE.endInclusive,
+            canRestoreMapTilt = map.tilt != MapTilt.DEFAULT,
             saveFailed = failed,
             keyMoved = moved,
         )
@@ -182,6 +188,15 @@ internal class SettingsViewModel @Inject constructor(
         changeShortDistanceThreshold(steps = 1)
     }
 
+    /** Sets the short-distance threshold back to its default. */
+    fun restoreShortDistanceThreshold() {
+        save {
+            roadbookSettings.update {
+                it.copy(shortDistanceThreshold = ShortDistanceThreshold.DEFAULT)
+            }
+        }
+    }
+
     /** Shows the map one zoom level farther, down to the farthest the screen offers. */
     fun decreaseMapZoom() {
         save { mapSettings.update { it.copy(zoomLevel = it.zoomLevel.stepped(-1)) } }
@@ -200,6 +215,16 @@ internal class SettingsViewModel @Inject constructor(
     /** Makes the map lean one step more towards the horizon, up to the most the screen offers. */
     fun increaseMapTilt() {
         save { mapSettings.update { it.copy(tilt = it.tilt.stepped(1)) } }
+    }
+
+    /** Sets the map zoom back to its default. */
+    fun restoreMapZoom() {
+        save { mapSettings.update { it.copy(zoomLevel = MapZoomLevel.DEFAULT) } }
+    }
+
+    /** Sets the map tilt back to its default. */
+    fun restoreMapTilt() {
+        save { mapSettings.update { it.copy(tilt = MapTilt.DEFAULT) } }
     }
 
     /** Hides the save error, once the screen has shown it. */

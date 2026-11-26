@@ -77,12 +77,15 @@ class SettingsContentTest {
         shortDistanceThreshold = ShortDistanceThreshold.DEFAULT,
         canDecreaseShortDistanceThreshold = true,
         canIncreaseShortDistanceThreshold = true,
+        canRestoreShortDistanceThreshold = false,
         mapZoomLevel = MapZoomLevel.DEFAULT,
         canDecreaseMapZoom = true,
         canIncreaseMapZoom = true,
+        canRestoreMapZoom = false,
         mapTilt = MapTilt.DEFAULT,
         canDecreaseMapTilt = true,
         canIncreaseMapTilt = false,
+        canRestoreMapTilt = false,
         saveFailed = false,
     )
 
@@ -99,10 +102,13 @@ class SettingsContentTest {
                     onRoadbookStyleChange = { calls += "style $it" },
                     onDecreaseShortDistanceThreshold = { calls += "decrease" },
                     onIncreaseShortDistanceThreshold = { calls += "increase" },
+                    onRestoreShortDistanceThreshold = { calls += "restore threshold" },
                     onDecreaseMapZoom = { calls += "zoom out" },
                     onIncreaseMapZoom = { calls += "zoom in" },
+                    onRestoreMapZoom = { calls += "restore zoom" },
                     onDecreaseMapTilt = { calls += "tilt down" },
                     onIncreaseMapTilt = { calls += "tilt up" },
+                    onRestoreMapTilt = { calls += "restore tilt" },
                     onSaveErrorShown = { calls += "errorShown" },
                     onKeyMoveShown = { calls += "keyMoveShown" },
                     onOpenAbout = { calls += "about" },
@@ -365,10 +371,13 @@ class SettingsContentTest {
                     onRoadbookStyleChange = {},
                     onDecreaseShortDistanceThreshold = {},
                     onIncreaseShortDistanceThreshold = {},
+                    onRestoreShortDistanceThreshold = {},
                     onDecreaseMapZoom = {},
                     onIncreaseMapZoom = {},
+                    onRestoreMapZoom = {},
                     onDecreaseMapTilt = {},
                     onIncreaseMapTilt = {},
+                    onRestoreMapTilt = {},
                     onSaveErrorShown = {},
                     onKeyMoveShown = {},
                     onOpenAbout = {},
@@ -443,6 +452,47 @@ class SettingsContentTest {
         stepperValue(SettingsTestTags.MAP_ZOOM_STEPPER, "18").assertExists()
         composeRule.onNodeWithText("Map tilt").performScrollTo().assertExists()
         stepperValue(SettingsTestTags.MAP_TILT_STEPPER, "60°").assertExists()
+    }
+
+    /** The restore button tagged [tag], scrolled into view. */
+    private fun restoreButton(tag: String) = composeRule.onNodeWithTag(tag).performScrollTo()
+
+    /** Every restore button's tag. */
+    private val restoreTags = listOf(
+        SettingsTestTags.SHORT_DISTANCE_THRESHOLD_RESTORE,
+        SettingsTestTags.MAP_ZOOM_RESTORE,
+        SettingsTestTags.MAP_TILT_RESTORE,
+    )
+
+    @Test
+    fun settingsContent_atDefaults_disablesEveryRestoreButton() {
+        show(defaults)
+
+        restoreTags.forEach { restoreButton(it).assertIsNotEnabled() }
+    }
+
+    @Test
+    fun settingsContent_changedValues_restoreButtonsReportThem() {
+        show(
+            defaults.copy(
+                canRestoreShortDistanceThreshold = true,
+                canRestoreMapZoom = true,
+                canRestoreMapTilt = true,
+            ),
+        )
+
+        restoreTags.forEach { restoreButton(it).assertIsEnabled().performClick() }
+
+        assertEquals(listOf("restore threshold", "restore zoom", "restore tilt"), calls)
+    }
+
+    @Test
+    fun settingsContent_oneChangedValue_enablesOnlyItsRestoreButton() {
+        show(defaults.copy(canRestoreMapZoom = true))
+
+        restoreButton(SettingsTestTags.SHORT_DISTANCE_THRESHOLD_RESTORE).assertIsNotEnabled()
+        restoreButton(SettingsTestTags.MAP_ZOOM_RESTORE).assertIsEnabled()
+        restoreButton(SettingsTestTags.MAP_TILT_RESTORE).assertIsNotEnabled()
     }
 
     @Test
@@ -526,6 +576,10 @@ class SettingsContentTest {
         }
         val back = composeRule.onNodeWithTag(SettingsTestTags.BACK).getUnclippedBoundsInRoot()
         assertTrue("Back is ${back.height} high", back.height >= 56.dp)
+        restoreTags.forEach { tag ->
+            val bounds = restoreButton(tag).getUnclippedBoundsInRoot()
+            assertTrue("$tag is ${bounds.height} high", bounds.height >= 56.dp)
+        }
         val about = control("About and licences").getUnclippedBoundsInRoot()
         assertTrue("About is ${about.height} high", about.height >= 56.dp)
     }

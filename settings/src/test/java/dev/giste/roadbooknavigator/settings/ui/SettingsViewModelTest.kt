@@ -65,12 +65,15 @@ class SettingsViewModelTest {
         shortDistanceThreshold = ShortDistanceThreshold.DEFAULT,
         canDecreaseShortDistanceThreshold = true,
         canIncreaseShortDistanceThreshold = true,
+        canRestoreShortDistanceThreshold = false,
         mapZoomLevel = MapZoomLevel.DEFAULT,
         canDecreaseMapZoom = true,
         canIncreaseMapZoom = true,
+        canRestoreMapZoom = false,
         mapTilt = MapTilt.DEFAULT,
         canDecreaseMapTilt = true,
         canIncreaseMapTilt = false,
+        canRestoreMapTilt = false,
         saveFailed = false,
     )
 
@@ -230,7 +233,96 @@ class SettingsViewModelTest {
         assertEquals(Distance.meters(350.0), roadbook.settings.value.shortDistanceThreshold.distance)
     }
 
+    @Test
+    fun uiState_changedThreshold_canRestoreIt() = runTest {
+        roadbook.settings.value =
+            RoadbookSettings(shortDistanceThreshold = ShortDistanceThreshold.MAX)
+
+        viewModel.uiState.test {
+            skipItems(1)
+            val state = awaitItem() as SettingsUiState.Loaded
+
+            assertEquals(true, state.canRestoreShortDistanceThreshold)
+            assertEquals(false, state.canRestoreMapZoom)
+            assertEquals(false, state.canRestoreMapTilt)
+        }
+    }
+
+    @Test
+    fun restoreShortDistanceThreshold_storesTheDefault() = runTest {
+        roadbook.settings.value = RoadbookSettings(
+            style = RoadbookStyle.FIA,
+            shortDistanceThreshold = ShortDistanceThreshold.MAX,
+        )
+
+        viewModel.restoreShortDistanceThreshold()
+        advanceUntilIdle()
+
+        // Only the threshold goes back: the style is kept.
+        assertEquals(RoadbookSettings(style = RoadbookStyle.FIA), roadbook.settings.value)
+    }
+
+    @Test
+    fun restoreShortDistanceThreshold_notSaved_showsTheSaveError() = runTest {
+        roadbook.failUpdates = true
+
+        viewModel.uiState.test {
+            skipItems(2)
+
+            viewModel.restoreShortDistanceThreshold()
+
+            assertEquals(true, (awaitItem() as SettingsUiState.Loaded).saveFailed)
+        }
+    }
+
     // --- Map ---
+
+    @Test
+    fun uiState_changedZoom_canRestoreOnlyIt() = runTest {
+        map.settings.value = MapSettings(zoomLevel = MapZoomLevel.of(16))
+
+        viewModel.uiState.test {
+            skipItems(1)
+            val state = awaitItem() as SettingsUiState.Loaded
+
+            assertEquals(true, state.canRestoreMapZoom)
+            assertEquals(false, state.canRestoreMapTilt)
+            assertEquals(false, state.canRestoreShortDistanceThreshold)
+        }
+    }
+
+    @Test
+    fun uiState_changedTilt_canRestoreOnlyIt() = runTest {
+        map.settings.value = MapSettings(tilt = MapTilt.of(30.0))
+
+        viewModel.uiState.test {
+            skipItems(1)
+            val state = awaitItem() as SettingsUiState.Loaded
+
+            assertEquals(false, state.canRestoreMapZoom)
+            assertEquals(true, state.canRestoreMapTilt)
+        }
+    }
+
+    @Test
+    fun restoreMapZoom_storesTheDefaultAndKeepsTheTilt() = runTest {
+        map.settings.value = MapSettings(zoomLevel = MapZoomLevel.of(16), tilt = MapTilt.of(30.0))
+
+        viewModel.restoreMapZoom()
+        advanceUntilIdle()
+
+        assertEquals(MapSettings(tilt = MapTilt.of(30.0)), map.settings.value)
+    }
+
+    @Test
+    fun restoreMapTilt_storesTheDefaultAndKeepsTheZoom() = runTest {
+        map.settings.value = MapSettings(zoomLevel = MapZoomLevel.of(16), tilt = MapTilt.of(30.0))
+
+        viewModel.restoreMapTilt()
+        advanceUntilIdle()
+
+        assertEquals(MapSettings(zoomLevel = MapZoomLevel.of(16)), map.settings.value)
+    }
 
     @Test
     fun uiState_farthestOfferedZoom_cannotDecrease() = runTest {
@@ -281,7 +373,13 @@ class SettingsViewModelTest {
             map.settings.value = MapSettings(zoomLevel = MapZoomLevel.of(16), tilt = MapTilt.of(30.0))
 
             assertEquals(
-                defaults.copy(mapZoomLevel = MapZoomLevel.of(16), mapTilt = MapTilt.of(30.0), canIncreaseMapTilt = true),
+                defaults.copy(
+                    mapZoomLevel = MapZoomLevel.of(16),
+                    canRestoreMapZoom = true,
+                    mapTilt = MapTilt.of(30.0),
+                    canIncreaseMapTilt = true,
+                    canRestoreMapTilt = true,
+                ),
                 awaitItem(),
             )
         }

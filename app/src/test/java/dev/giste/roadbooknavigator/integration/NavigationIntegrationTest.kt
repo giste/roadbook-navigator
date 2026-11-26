@@ -106,7 +106,9 @@ class NavigationIntegrationTest {
     private fun openSettings() {
         composeRule.awaitPartial("0.00")
         composeRule.onNodeWithTag(DashboardTestTags.SETTINGS).performClick()
-        composeRule.awaitText("Settings")
+        // The first section's title, not the screen's: the title shows while the settings are
+        // still being read, before any control exists to be tapped.
+        composeRule.awaitText("Appearance")
     }
 
     /**
@@ -212,6 +214,19 @@ class NavigationIntegrationTest {
         composeRule.awaitValue(mapSettings.settings) { it.zoomLevel == MapZoomLevel.of(17) }
     }
 
+    @Test
+    fun mapZoomRestored_reachesTheMap() {
+        openSettings()
+        composeRule.onNode(
+            hasText("−") and hasClickAction() and hasAnyAncestor(hasTestTag(MAP_ZOOM_STEPPER_TAG)),
+        ).performScrollTo().performClick()
+        composeRule.awaitValue(mapSettings.settings) { it.zoomLevel == MapZoomLevel.of(17) }
+
+        composeRule.onNodeWithTag(MAP_ZOOM_RESTORE_TAG).performScrollTo().performClick()
+
+        composeRule.awaitValue(mapSettings.settings) { it.zoomLevel == MapZoomLevel.DEFAULT }
+    }
+
     /** Opens the About screen from the settings, whose About button is at the end of the list. */
     private fun openAbout() {
         openSettings()
@@ -262,5 +277,11 @@ class NavigationIntegrationTest {
          * internal to `:settings`. Its − and + repeat in the other steppers.
          */
         const val MAP_ZOOM_STEPPER_TAG = "settings_map_zoom_stepper"
+
+        /**
+         * The tag of the map zoom's restore button: `:settings`'
+         * `SettingsTestTags.MAP_ZOOM_RESTORE`.
+         */
+        const val MAP_ZOOM_RESTORE_TAG = "settings_map_zoom_restore"
     }
 }
