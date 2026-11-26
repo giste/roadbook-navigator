@@ -91,6 +91,7 @@ internal class SettingsViewModel @Inject constructor(
         SettingsUiState.Loaded(
             themeMode = app.themeMode,
             orientation = app.orientation,
+            fullScreen = app.fullScreen,
             remoteModel = remote.model,
             remoteKeys = remote.keys,
             roadbookStyle = roadbook.style,
@@ -134,6 +135,15 @@ internal class SettingsViewModel @Inject constructor(
      */
     fun setOrientation(orientation: ScreenOrientation) {
         save { appSettings.update { it.copy(orientation = orientation) } }
+    }
+
+    /**
+     * Stores whether the app is shown [fullScreen].
+     *
+     * @param fullScreen `true` to hide the status and navigation bars, `false` to show them.
+     */
+    fun setFullScreen(fullScreen: Boolean) {
+        save { appSettings.update { it.copy(fullScreen = fullScreen) } }
     }
 
     /**

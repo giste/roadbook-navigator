@@ -61,6 +61,7 @@ class SettingsViewModelTest {
     private val defaults = SettingsUiState.Loaded(
         themeMode = ThemeMode.SYSTEM,
         orientation = ScreenOrientation.FOLLOW_SYSTEM,
+        fullScreen = true,
         remoteModel = RemoteModel.TERRA_PIRATA,
         remoteKeys = RemoteKeys.TERRA_PIRATA,
         roadbookStyle = RoadbookStyle.APP_THEME,
@@ -144,6 +145,35 @@ class SettingsViewModelTest {
         advanceUntilIdle()
 
         assertEquals(ScreenOrientation.HORIZONTAL, app.settings.value.orientation)
+    }
+
+    @Test
+    fun uiState_storedNotFullScreen_showsIt() = runTest {
+        app.settings.value = AppSettings(fullScreen = false)
+
+        viewModel.uiState.test {
+            skipItems(1)
+
+            assertEquals(defaults.copy(fullScreen = false), awaitItem())
+        }
+    }
+
+    @Test
+    fun setFullScreen_off_storesIt() = runTest {
+        viewModel.setFullScreen(false)
+        advanceUntilIdle()
+
+        assertEquals(false, app.settings.value.fullScreen)
+    }
+
+    @Test
+    fun setFullScreen_onAgain_storesIt() = runTest {
+        app.settings.value = AppSettings(fullScreen = false)
+
+        viewModel.setFullScreen(true)
+        advanceUntilIdle()
+
+        assertEquals(true, app.settings.value.fullScreen)
     }
 
     @Test

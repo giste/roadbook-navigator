@@ -47,6 +47,7 @@ import dev.giste.roadbooknavigator.settings.AppSettingsSource
 import dev.giste.roadbooknavigator.settings.ScreenOrientation
 import dev.giste.roadbooknavigator.settings.ThemeMode
 import dev.giste.roadbooknavigator.ui.dashboard.DashboardTestTags
+import dev.giste.roadbooknavigator.ui.requestsSystemBars
 import javax.inject.Inject
 import org.junit.Before
 import org.junit.Rule
@@ -180,7 +181,7 @@ class NavigationIntegrationTest {
     fun themeModePicked_isStoredForTheApp() {
         openSettings()
 
-        composeRule.onNode(hasText("Dark") and hasClickAction()).performClick()
+        composeRule.onNodeWithTag(DARK_THEME_TAG).performClick()
         composeRule.waitForIdle()
 
         awaitStored { it.themeMode == ThemeMode.DARK }
@@ -190,7 +191,7 @@ class NavigationIntegrationTest {
     fun orientationPicked_isStoredAndApplied() {
         openSettings()
 
-        composeRule.onNode(hasText("Horizontal") and hasClickAction()).performClick()
+        composeRule.onNodeWithTag(HORIZONTAL_ORIENTATION_TAG).performClick()
         composeRule.waitForIdle()
 
         awaitStored { it.orientation == ScreenOrientation.HORIZONTAL }
@@ -199,6 +200,27 @@ class NavigationIntegrationTest {
             composeRule.activity.requestedOrientation ==
                 ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE
         }
+    }
+
+    @Test
+    fun appStarted_isFullScreen() {
+        composeRule.awaitPartial("0.00")
+
+        composeRule.waitUntil(TIMEOUT_MILLIS) { !composeRule.activity.window.requestsSystemBars() }
+    }
+
+    @Test
+    fun fullScreenTurnedOff_isStoredAndApplied() {
+        openSettings()
+
+        composeRule.onNode(hasText("Full screen") and hasClickAction())
+            .performScrollTo()
+            .performClick()
+        composeRule.waitForIdle()
+
+        awaitStored { !it.fullScreen }
+        // Applied once the stored value reaches the activity, on the main thread.
+        composeRule.waitUntil(TIMEOUT_MILLIS) { composeRule.activity.window.requestsSystemBars() }
     }
 
     @Test
@@ -283,5 +305,17 @@ class NavigationIntegrationTest {
          * `SettingsTestTags.MAP_ZOOM_RESTORE`.
          */
         const val MAP_ZOOM_RESTORE_TAG = "settings_map_zoom_restore"
+
+        /**
+         * The tag of the dark theme's choice, an icon: `:settings`'
+         * `SettingsTestTags.themeMode(ThemeMode.DARK)`.
+         */
+        const val DARK_THEME_TAG = "settings_theme_mode_dark"
+
+        /**
+         * The tag of the horizontal orientation's choice, an icon: `:settings`'
+         * `SettingsTestTags.orientation(ScreenOrientation.HORIZONTAL)`.
+         */
+        const val HORIZONTAL_ORIENTATION_TAG = "settings_orientation_horizontal"
     }
 }

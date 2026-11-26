@@ -19,6 +19,7 @@ package dev.giste.roadbooknavigator.settings.ui
 
 import android.content.res.Configuration
 import android.view.KeyEvent
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,6 +31,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -40,6 +42,7 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.Switch
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -97,6 +100,23 @@ internal object SettingsTestTags {
     const val MAP_TILT_RESTORE: String = "settings_map_tilt_restore"
 
     /**
+     * The choice of one theme mode, which shows an icon instead of text.
+     *
+     * @param mode the theme mode of the choice.
+     * @return the tag of its button, e.g. `settings_theme_mode_dark`.
+     */
+    fun themeMode(mode: ThemeMode): String = "settings_theme_mode_${mode.name.lowercase()}"
+
+    /**
+     * The choice of one screen orientation, which shows an icon instead of text.
+     *
+     * @param orientation the screen orientation of the choice.
+     * @return the tag of its button, e.g. `settings_orientation_horizontal`.
+     */
+    fun orientation(orientation: ScreenOrientation): String =
+        "settings_orientation_${orientation.name.lowercase()}"
+
+    /**
      * The row of one remote action and its keys, whose texts may repeat in other rows (e.g. "No
      * key").
      *
@@ -112,8 +132,10 @@ internal object SettingsTestTags {
  * control, roadbook and map sections, and an About section that opens the app's About screen.
  * Every control is at least the minimum touch target high, so it works with gloves.
  *
- * - **Theme:** system, light or dark.
- * - **Screen orientation:** system, vertical or horizontal.
+ * - **Theme:** system, light or dark, shown as icons (automatic brightness, sun and moon).
+ * - **Screen orientation:** system, vertical or horizontal, shown as icons (a rotating device, a
+ *   device upright and a device sideways).
+ * - **Full screen:** a switch that hides the status and navigation bars. The whole row toggles it.
  * - **Remote:** DND2, Terra Pirata or custom, and the keys of each action, on a button. For DND2
  *   and Terra Pirata the buttons are disabled (grayed), since their keys cannot change. With
  *   custom, each button opens [KeyCaptureDialog], which assigns the key the rider presses; which
@@ -135,6 +157,7 @@ internal object SettingsTestTags {
  * @param onBack called when the back button is pressed.
  * @param onThemeModeChange called with the theme mode the user picks.
  * @param onOrientationChange called with the screen orientation the user picks.
+ * @param onFullScreenChange called with whether the user wants the app full screen.
  * @param onRemoteModelChange called with the remote model the user picks.
  * @param onAssignCustomKey called with a custom action and the key the user pressed for it.
  * @param onRoadbookStyleChange called with the roadbook style the user picks.
@@ -158,6 +181,7 @@ internal fun SettingsContent(
     onBack: () -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
     onOrientationChange: (ScreenOrientation) -> Unit,
+    onFullScreenChange: (Boolean) -> Unit,
     onRemoteModelChange: (RemoteModel) -> Unit,
     onAssignCustomKey: (RemoteAction, RemoteKey) -> Unit,
     onRoadbookStyleChange: (RoadbookStyle) -> Unit,
@@ -222,6 +246,7 @@ internal fun SettingsContent(
                 state = state,
                 onThemeModeChange = onThemeModeChange,
                 onOrientationChange = onOrientationChange,
+                onFullScreenChange = onFullScreenChange,
                 onRemoteModelChange = onRemoteModelChange,
                 onAssignCustomKey = onAssignCustomKey,
                 onRoadbookStyleChange = onRoadbookStyleChange,
@@ -249,6 +274,7 @@ internal fun SettingsContent(
  * @param state the loaded settings.
  * @param onThemeModeChange called with the theme mode the user picks.
  * @param onOrientationChange called with the screen orientation the user picks.
+ * @param onFullScreenChange called with whether the user wants the app full screen.
  * @param onRemoteModelChange called with the remote model the user picks.
  * @param onAssignCustomKey called with a custom action and the key the user pressed for it.
  * @param onRoadbookStyleChange called with the roadbook style the user picks.
@@ -269,6 +295,7 @@ private fun SettingsSections(
     state: SettingsUiState.Loaded,
     onThemeModeChange: (ThemeMode) -> Unit,
     onOrientationChange: (ScreenOrientation) -> Unit,
+    onFullScreenChange: (Boolean) -> Unit,
     onRemoteModelChange: (RemoteModel) -> Unit,
     onAssignCustomKey: (RemoteAction, RemoteKey) -> Unit,
     onRoadbookStyleChange: (RoadbookStyle) -> Unit,
@@ -296,18 +323,26 @@ private fun SettingsSections(
     ) {
         SectionTitle(stringResource(R.string.settings_section_appearance))
         SettingTitle(stringResource(R.string.settings_theme_title))
-        Choices(
+        IconChoices(
             options = ThemeMode.entries,
             selected = state.themeMode,
-            label = { it.label() },
+            icon = { it.icon() },
+            testTag = SettingsTestTags::themeMode,
             onSelect = onThemeModeChange,
         )
         SettingTitle(stringResource(R.string.settings_orientation_title))
-        Choices(
+        IconChoices(
             options = ScreenOrientation.entries,
             selected = state.orientation,
-            label = { it.label() },
+            icon = { it.icon() },
+            testTag = SettingsTestTags::orientation,
             onSelect = onOrientationChange,
+        )
+        SwitchSetting(
+            title = stringResource(R.string.settings_full_screen_title),
+            description = stringResource(R.string.settings_full_screen_description),
+            checked = state.fullScreen,
+            onCheckedChange = onFullScreenChange,
         )
 
         SectionTitle(stringResource(R.string.settings_section_remote))
@@ -497,18 +532,119 @@ private fun <T> Choices(
     label: @Composable (T) -> String,
     onSelect: (T) -> Unit,
 ) {
+    SegmentedChoices(
+        options = options,
+        selected = selected,
+        testTag = { null },
+        onSelect = onSelect,
+    ) { option ->
+        Text(label(option))
+    }
+}
+
+/**
+ * One choice among [options], as a row of segmented buttons as wide as the screen, each showing
+ * only an icon. An icon needs the same space in every language and needs no translation, so it
+ * suits choices whose meaning a symbol shows well.
+ *
+ * @param T the type of the options.
+ * @param options the options, in the order they are shown.
+ * @param selected the current option.
+ * @param icon the drawable of each option's icon.
+ * @param testTag the test tag of each option's button, as it has no text.
+ * @param onSelect called with the option the user picks.
+ */
+@Composable
+private fun <T> IconChoices(
+    options: List<T>,
+    selected: T,
+    icon: (T) -> Int,
+    testTag: (T) -> String,
+    onSelect: (T) -> Unit,
+) {
+    SegmentedChoices(
+        options = options,
+        selected = selected,
+        testTag = testTag,
+        onSelect = onSelect,
+    ) { option ->
+        Icon(painter = painterResource(icon(option)), contentDescription = null)
+    }
+}
+
+/**
+ * The row of segmented buttons behind [Choices] and [IconChoices]: as wide as the screen, each
+ * button at least the minimum touch target high, without a check mark on the selected one.
+ *
+ * @param T the type of the options.
+ * @param options the options, in the order they are shown.
+ * @param selected the current option.
+ * @param testTag the test tag of each option's button, or `null` for none.
+ * @param onSelect called with the option the user picks.
+ * @param content what each button shows.
+ */
+@Composable
+private fun <T> SegmentedChoices(
+    options: List<T>,
+    selected: T,
+    testTag: (T) -> String?,
+    onSelect: (T) -> Unit,
+    content: @Composable (T) -> Unit,
+) {
     SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
         options.forEachIndexed { index, option ->
+            val tag = testTag(option)
             SegmentedButton(
                 selected = option == selected,
                 onClick = { onSelect(option) },
                 shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
-                modifier = Modifier.heightIn(min = GisteTheme.dimensions.minTouchTarget),
+                modifier = Modifier
+                    .heightIn(min = GisteTheme.dimensions.minTouchTarget)
+                    .then(if (tag != null) Modifier.testTag(tag) else Modifier),
                 icon = {},
             ) {
-                Text(label(option))
+                content(option)
             }
         }
+    }
+}
+
+/**
+ * A setting that is on or off: its name and a description on the start side, and a switch on the
+ * end side. The whole row, at least the minimum touch target high, toggles it, so a gloved tap
+ * anywhere on it works.
+ *
+ * @param title the setting's name.
+ * @param description what the setting does.
+ * @param checked whether the setting is on.
+ * @param onCheckedChange called with the new value when the row is tapped.
+ */
+@Composable
+private fun SwitchSetting(
+    title: String,
+    description: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    val dimensions = GisteTheme.dimensions
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = dimensions.minTouchTarget)
+            .toggleable(value = checked, onValueChange = onCheckedChange),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(dimensions.spacingMedium),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = title, style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        // The row handles the taps, so the switch only shows the value.
+        Switch(checked = checked, onCheckedChange = null)
     }
 }
 
@@ -642,25 +778,24 @@ private fun Stepper(
     }
 }
 
-/** The name of this theme mode, as the user sees it. */
-@Composable
-private fun ThemeMode.label(): String = stringResource(
-    when (this) {
-        ThemeMode.SYSTEM -> R.string.settings_theme_system
-        ThemeMode.LIGHT -> R.string.settings_theme_light
-        ThemeMode.DARK -> R.string.settings_theme_dark
-    },
-)
+/** The drawable of this theme mode's icon: automatic brightness, a sun or a moon. */
+@DrawableRes
+private fun ThemeMode.icon(): Int = when (this) {
+    ThemeMode.SYSTEM -> R.drawable.settings_ic_brightness_auto
+    ThemeMode.LIGHT -> R.drawable.settings_ic_light_mode
+    ThemeMode.DARK -> R.drawable.settings_ic_dark_mode
+}
 
-/** The name of this screen orientation, as the user sees it. */
-@Composable
-private fun ScreenOrientation.label(): String = stringResource(
-    when (this) {
-        ScreenOrientation.FOLLOW_SYSTEM -> R.string.settings_orientation_system
-        ScreenOrientation.VERTICAL -> R.string.settings_orientation_vertical
-        ScreenOrientation.HORIZONTAL -> R.string.settings_orientation_horizontal
-    },
-)
+/**
+ * The drawable of this screen orientation's icon: a rotating device, or a device upright or
+ * sideways.
+ */
+@DrawableRes
+private fun ScreenOrientation.icon(): Int = when (this) {
+    ScreenOrientation.FOLLOW_SYSTEM -> R.drawable.settings_ic_screen_rotation
+    ScreenOrientation.VERTICAL -> R.drawable.settings_ic_stay_current_portrait
+    ScreenOrientation.HORIZONTAL -> R.drawable.settings_ic_stay_current_landscape
+}
 
 /** The name of this remote model, as the user sees it. */
 @Composable
@@ -747,6 +882,7 @@ private const val PHONE_PORTRAIT = "spec:width=411dp,height=891dp,dpi=420"
 private val DEFAULTS = SettingsUiState.Loaded(
     themeMode = ThemeMode.SYSTEM,
     orientation = ScreenOrientation.FOLLOW_SYSTEM,
+    fullScreen = true,
     remoteModel = RemoteModel.TERRA_PIRATA,
     remoteKeys = RemoteKeys.TERRA_PIRATA,
     roadbookStyle = RoadbookStyle.APP_THEME,
@@ -766,12 +902,13 @@ private val DEFAULTS = SettingsUiState.Loaded(
 )
 
 /**
- * Preview sample: dark theme, horizontal, DND2, FIA colors, the shortest threshold, the closest
- * map zoom and a flat map.
+ * Preview sample: dark theme, horizontal, not full screen, DND2, FIA colors, the shortest
+ * threshold, the closest map zoom and a flat map.
  */
 private val CHANGED = SettingsUiState.Loaded(
     themeMode = ThemeMode.DARK,
     orientation = ScreenOrientation.HORIZONTAL,
+    fullScreen = false,
     remoteModel = RemoteModel.DND2,
     remoteKeys = RemoteKeys.DND2,
     roadbookStyle = RoadbookStyle.FIA,
@@ -811,6 +948,7 @@ private fun SettingsPreview(state: SettingsUiState) {
             onBack = {},
             onThemeModeChange = {},
             onOrientationChange = {},
+            onFullScreenChange = {},
             onRemoteModelChange = {},
             onAssignCustomKey = { _, _ -> },
             onRoadbookStyleChange = {},

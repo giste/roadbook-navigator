@@ -23,6 +23,7 @@ import dev.giste.roadbooknavigator.settings.AppSettings
 import dev.giste.roadbooknavigator.settings.FakeLogger
 import dev.giste.roadbooknavigator.settings.ScreenOrientation
 import dev.giste.roadbooknavigator.settings.ThemeMode
+import dev.giste.roadbooknavigator.settings.data.AppSettingsCodec.FULL_SCREEN_KEY
 import dev.giste.roadbooknavigator.settings.data.AppSettingsCodec.ORIENTATION_KEY
 import dev.giste.roadbooknavigator.settings.data.AppSettingsCodec.THEME_MODE_KEY
 import org.junit.Assert.assertEquals
@@ -43,6 +44,7 @@ class AppSettingsCodecTest {
         val settings = AppSettings(
             themeMode = ThemeMode.DARK,
             orientation = ScreenOrientation.HORIZONTAL,
+            fullScreen = false,
         )
         val preferences = mutablePreferencesOf()
         AppSettingsCodec.write(preferences, settings)
@@ -76,6 +78,33 @@ class AppSettingsCodecTest {
 
         assertEquals(AppSettings(themeMode = ThemeMode.DARK), settings)
         assertEquals(1, logger.warnings.size)
+    }
+
+    @Test
+    fun read_nothingStored_isFullScreen() {
+        assertTrue(AppSettingsCodec.read(preferencesOf(), logger).fullScreen)
+    }
+
+    @Test
+    fun write_fullScreenOff_storesFalse() {
+        val preferences = mutablePreferencesOf()
+
+        AppSettingsCodec.write(preferences, AppSettings(fullScreen = false))
+
+        assertEquals(
+            mapOf(FULL_SCREEN_KEY.name to false),
+            preferences.asMap().mapKeys { it.key.name },
+        )
+    }
+
+    @Test
+    fun write_fullScreenBackToTheDefault_removesItsKey() {
+        val preferences = mutablePreferencesOf()
+        AppSettingsCodec.write(preferences, AppSettings(fullScreen = false))
+
+        AppSettingsCodec.write(preferences, AppSettings())
+
+        assertTrue(preferences.asMap().isEmpty())
     }
 
     @Test
