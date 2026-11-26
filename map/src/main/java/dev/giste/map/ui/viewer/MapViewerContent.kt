@@ -23,7 +23,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -132,16 +132,20 @@ internal fun MapViewerContent(
 }
 
 /**
- * The button that opens the map manager: a map icon on a filled primary circle, so it stands out
- * on any map, as large as the minimum touch target. It never takes the focus.
+ * The button that opens the map manager: a floating action button with a map icon, as large as
+ * the minimum touch target. It has the shape of the app's other floating action buttons, but the
+ * filled primary color instead of their default container color, which would have little
+ * contrast on the light map; its shadow also lifts it off the map. It never takes the focus.
  *
  * @param onClick called when the button is pressed.
  * @param modifier applied to the button.
  */
 @Composable
 private fun ManageMapsButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    FilledIconButton(
+    FloatingActionButton(
         onClick = onClick,
+        containerColor = MaterialTheme.colorScheme.primary,
+        contentColor = MaterialTheme.colorScheme.onPrimary,
         modifier = modifier
             .size(GisteTheme.dimensions.minTouchTarget)
             .focusProperties { canFocus = false }

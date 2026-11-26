@@ -19,11 +19,14 @@ package dev.giste.map.ui.viewer
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.InputModeManager
 import androidx.compose.ui.platform.LocalInputModeManager
@@ -32,6 +35,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertWidthIsEqualTo
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -50,6 +54,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 @RunWith(RobolectricTestRunner::class)
 class MapViewerContentTest {
@@ -275,6 +280,31 @@ class MapViewerContentTest {
         button.requestFocus()
 
         button.assert(isFocused().not())
+    }
+
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun mapViewerContent_manageButton_isARoundedSquareInThePrimaryColor() {
+        var primary = Color.Unspecified
+        rule.setContent {
+            GisteTheme {
+                primary = MaterialTheme.colorScheme.primary
+                MapViewerContent(
+                    state = ready,
+                    modifier = Modifier.size(width = 300.dp, height = 200.dp),
+                    showManageButton = true,
+                    onManageMaps = {},
+                    map = { _, _, mapModifier -> Box(mapModifier) },
+                )
+            }
+        }
+
+        val pixels = rule.onNodeWithTag(MapViewerTestTags.MANAGE).captureToImage().toPixelMap()
+        // 8 dp in from the top start corner of the 56 dp button: outside a circle, which only
+        // reaches there at 8.2 dp, but inside the rounded corner of a floating action button.
+        val inset = with(rule.density) { 8.dp.roundToPx() }
+
+        assertEquals(primary, pixels[inset, inset])
     }
 
     private companion object {
