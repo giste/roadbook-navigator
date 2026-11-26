@@ -21,6 +21,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.giste.map.MapSettings
+import dev.giste.map.MapTilt
+import dev.giste.map.MapZoomLevel
 import dev.giste.roadbook.RoadbookSettings
 import dev.giste.roadbook.RoadbookStyle
 import dev.giste.roadbook.ShortDistanceThreshold
@@ -91,14 +93,20 @@ internal class SettingsViewModel @Inject constructor(
             remoteKeys = remote.keys,
             roadbookStyle = roadbook.style,
             shortDistanceThreshold = roadbook.shortDistanceThreshold,
-            canDecreaseThreshold = roadbook.shortDistanceThreshold > ShortDistanceThreshold.MIN,
-            canIncreaseThreshold = roadbook.shortDistanceThreshold < ShortDistanceThreshold.MAX,
+            canDecreaseShortDistanceThreshold =
+                roadbook.shortDistanceThreshold > ShortDistanceThreshold.MIN,
+            canIncreaseShortDistanceThreshold =
+                roadbook.shortDistanceThreshold < ShortDistanceThreshold.MAX,
+            canRestoreShortDistanceThreshold =
+                roadbook.shortDistanceThreshold != ShortDistanceThreshold.DEFAULT,
             mapZoomLevel = map.zoomLevel,
             canDecreaseMapZoom = map.zoomLevel.value > MAP_ZOOM_RANGE.first,
             canIncreaseMapZoom = map.zoomLevel.value < MAP_ZOOM_RANGE.last,
+            canRestoreMapZoom = map.zoomLevel != MapZoomLevel.DEFAULT,
             mapTilt = map.tilt,
             canDecreaseMapTilt = map.tilt.inDegrees > MAP_TILT_RANGE.start,
             canIncreaseMapTilt = map.tilt.inDegrees < MAP_TILT_RANGE.endInclusive,
+            canRestoreMapTilt = map.tilt != MapTilt.DEFAULT,
             saveFailed = failed,
             keyMoved = moved,
         )
@@ -172,12 +180,21 @@ internal class SettingsViewModel @Inject constructor(
 
     /** Makes the short-distance threshold one step shorter, down to its minimum. */
     fun decreaseShortDistanceThreshold() {
-        changeThreshold(steps = -1)
+        changeShortDistanceThreshold(steps = -1)
     }
 
     /** Makes the short-distance threshold one step longer, up to its maximum. */
     fun increaseShortDistanceThreshold() {
-        changeThreshold(steps = 1)
+        changeShortDistanceThreshold(steps = 1)
+    }
+
+    /** Sets the short-distance threshold back to its default. */
+    fun restoreShortDistanceThreshold() {
+        save {
+            roadbookSettings.update {
+                it.copy(shortDistanceThreshold = ShortDistanceThreshold.DEFAULT)
+            }
+        }
     }
 
     /** Shows the map one zoom level farther, down to the farthest the screen offers. */
@@ -200,6 +217,16 @@ internal class SettingsViewModel @Inject constructor(
         save { mapSettings.update { it.copy(tilt = it.tilt.stepped(1)) } }
     }
 
+    /** Sets the map zoom back to its default. */
+    fun restoreMapZoom() {
+        save { mapSettings.update { it.copy(zoomLevel = MapZoomLevel.DEFAULT) } }
+    }
+
+    /** Sets the map tilt back to its default. */
+    fun restoreMapTilt() {
+        save { mapSettings.update { it.copy(tilt = MapTilt.DEFAULT) } }
+    }
+
     /** Hides the save error, once the screen has shown it. */
     fun dismissSaveError() {
         saveFailed.value = false
@@ -211,7 +238,7 @@ internal class SettingsViewModel @Inject constructor(
     }
 
     /** Moves the threshold by [steps] from the stored one, so fast presses are never lost. */
-    private fun changeThreshold(steps: Int) {
+    private fun changeShortDistanceThreshold(steps: Int) {
         save {
             roadbookSettings.update {
                 it.copy(shortDistanceThreshold = it.shortDistanceThreshold.stepped(steps))

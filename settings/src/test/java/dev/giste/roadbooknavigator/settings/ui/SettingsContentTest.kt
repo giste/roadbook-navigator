@@ -75,14 +75,17 @@ class SettingsContentTest {
         remoteKeys = RemoteKeys.DND2,
         roadbookStyle = RoadbookStyle.APP_THEME,
         shortDistanceThreshold = ShortDistanceThreshold.DEFAULT,
-        canDecreaseThreshold = true,
-        canIncreaseThreshold = true,
+        canDecreaseShortDistanceThreshold = true,
+        canIncreaseShortDistanceThreshold = true,
+        canRestoreShortDistanceThreshold = false,
         mapZoomLevel = MapZoomLevel.DEFAULT,
         canDecreaseMapZoom = true,
         canIncreaseMapZoom = true,
+        canRestoreMapZoom = false,
         mapTilt = MapTilt.DEFAULT,
         canDecreaseMapTilt = true,
         canIncreaseMapTilt = false,
+        canRestoreMapTilt = false,
         saveFailed = false,
     )
 
@@ -97,12 +100,15 @@ class SettingsContentTest {
                     onRemoteModelChange = { calls += "remote $it" },
                     onAssignCustomKey = { action, key -> calls += "assign $action ${key.code}" },
                     onRoadbookStyleChange = { calls += "style $it" },
-                    onDecreaseThreshold = { calls += "decrease" },
-                    onIncreaseThreshold = { calls += "increase" },
+                    onDecreaseShortDistanceThreshold = { calls += "decrease" },
+                    onIncreaseShortDistanceThreshold = { calls += "increase" },
+                    onRestoreShortDistanceThreshold = { calls += "restore threshold" },
                     onDecreaseMapZoom = { calls += "zoom out" },
                     onIncreaseMapZoom = { calls += "zoom in" },
+                    onRestoreMapZoom = { calls += "restore zoom" },
                     onDecreaseMapTilt = { calls += "tilt down" },
                     onIncreaseMapTilt = { calls += "tilt up" },
+                    onRestoreMapTilt = { calls += "restore tilt" },
                     onSaveErrorShown = { calls += "errorShown" },
                     onKeyMoveShown = { calls += "keyMoveShown" },
                     onOpenAbout = { calls += "about" },
@@ -363,12 +369,15 @@ class SettingsContentTest {
                     onRemoteModelChange = {},
                     onAssignCustomKey = { _, _ -> },
                     onRoadbookStyleChange = {},
-                    onDecreaseThreshold = {},
-                    onIncreaseThreshold = {},
+                    onDecreaseShortDistanceThreshold = {},
+                    onIncreaseShortDistanceThreshold = {},
+                    onRestoreShortDistanceThreshold = {},
                     onDecreaseMapZoom = {},
                     onIncreaseMapZoom = {},
+                    onRestoreMapZoom = {},
                     onDecreaseMapTilt = {},
                     onIncreaseMapTilt = {},
+                    onRestoreMapTilt = {},
                     onSaveErrorShown = {},
                     onKeyMoveShown = {},
                     onOpenAbout = {},
@@ -407,8 +416,8 @@ class SettingsContentTest {
     fun settingsContent_stepperPressed_reportsIt() {
         show(defaults)
 
-        stepperButton(SettingsTestTags.THRESHOLD_STEPPER, "−").performClick()
-        stepperButton(SettingsTestTags.THRESHOLD_STEPPER, "+").performClick()
+        stepperButton(SettingsTestTags.SHORT_DISTANCE_THRESHOLD_STEPPER, "−").performClick()
+        stepperButton(SettingsTestTags.SHORT_DISTANCE_THRESHOLD_STEPPER, "+").performClick()
 
         assertEquals(listOf("decrease", "increase"), calls)
     }
@@ -418,21 +427,21 @@ class SettingsContentTest {
         show(
             defaults.copy(
                 shortDistanceThreshold = ShortDistanceThreshold.of(Distance.meters(50.0)),
-                canDecreaseThreshold = false,
+                canDecreaseShortDistanceThreshold = false,
             ),
         )
 
-        stepperValue(SettingsTestTags.THRESHOLD_STEPPER, "50 m").assertExists()
-        stepperButton(SettingsTestTags.THRESHOLD_STEPPER, "−").assertIsNotEnabled()
-        stepperButton(SettingsTestTags.THRESHOLD_STEPPER, "+").assertIsEnabled()
+        stepperValue(SettingsTestTags.SHORT_DISTANCE_THRESHOLD_STEPPER, "50 m").assertExists()
+        stepperButton(SettingsTestTags.SHORT_DISTANCE_THRESHOLD_STEPPER, "−").assertIsNotEnabled()
+        stepperButton(SettingsTestTags.SHORT_DISTANCE_THRESHOLD_STEPPER, "+").assertIsEnabled()
     }
 
     @Test
     fun settingsContent_longestThreshold_disablesIncrease() {
-        show(defaults.copy(canIncreaseThreshold = false))
+        show(defaults.copy(canIncreaseShortDistanceThreshold = false))
 
-        stepperButton(SettingsTestTags.THRESHOLD_STEPPER, "−").assertIsEnabled()
-        stepperButton(SettingsTestTags.THRESHOLD_STEPPER, "+").assertIsNotEnabled()
+        stepperButton(SettingsTestTags.SHORT_DISTANCE_THRESHOLD_STEPPER, "−").assertIsEnabled()
+        stepperButton(SettingsTestTags.SHORT_DISTANCE_THRESHOLD_STEPPER, "+").assertIsNotEnabled()
     }
 
     @Test
@@ -443,6 +452,47 @@ class SettingsContentTest {
         stepperValue(SettingsTestTags.MAP_ZOOM_STEPPER, "18").assertExists()
         composeRule.onNodeWithText("Map tilt").performScrollTo().assertExists()
         stepperValue(SettingsTestTags.MAP_TILT_STEPPER, "60°").assertExists()
+    }
+
+    /** The restore button tagged [tag], scrolled into view. */
+    private fun restoreButton(tag: String) = composeRule.onNodeWithTag(tag).performScrollTo()
+
+    /** Every restore button's tag. */
+    private val restoreTags = listOf(
+        SettingsTestTags.SHORT_DISTANCE_THRESHOLD_RESTORE,
+        SettingsTestTags.MAP_ZOOM_RESTORE,
+        SettingsTestTags.MAP_TILT_RESTORE,
+    )
+
+    @Test
+    fun settingsContent_atDefaults_disablesEveryRestoreButton() {
+        show(defaults)
+
+        restoreTags.forEach { restoreButton(it).assertIsNotEnabled() }
+    }
+
+    @Test
+    fun settingsContent_changedValues_restoreButtonsReportThem() {
+        show(
+            defaults.copy(
+                canRestoreShortDistanceThreshold = true,
+                canRestoreMapZoom = true,
+                canRestoreMapTilt = true,
+            ),
+        )
+
+        restoreTags.forEach { restoreButton(it).assertIsEnabled().performClick() }
+
+        assertEquals(listOf("restore threshold", "restore zoom", "restore tilt"), calls)
+    }
+
+    @Test
+    fun settingsContent_oneChangedValue_enablesOnlyItsRestoreButton() {
+        show(defaults.copy(canRestoreMapZoom = true))
+
+        restoreButton(SettingsTestTags.SHORT_DISTANCE_THRESHOLD_RESTORE).assertIsNotEnabled()
+        restoreButton(SettingsTestTags.MAP_ZOOM_RESTORE).assertIsEnabled()
+        restoreButton(SettingsTestTags.MAP_TILT_RESTORE).assertIsNotEnabled()
     }
 
     @Test
@@ -514,7 +564,7 @@ class SettingsContentTest {
             assertTrue("$label is $height high", height >= 56.dp)
         }
         val steppers = listOf(
-            SettingsTestTags.THRESHOLD_STEPPER,
+            SettingsTestTags.SHORT_DISTANCE_THRESHOLD_STEPPER,
             SettingsTestTags.MAP_ZOOM_STEPPER,
             SettingsTestTags.MAP_TILT_STEPPER,
         )
@@ -526,6 +576,10 @@ class SettingsContentTest {
         }
         val back = composeRule.onNodeWithTag(SettingsTestTags.BACK).getUnclippedBoundsInRoot()
         assertTrue("Back is ${back.height} high", back.height >= 56.dp)
+        restoreTags.forEach { tag ->
+            val bounds = restoreButton(tag).getUnclippedBoundsInRoot()
+            assertTrue("$tag is ${bounds.height} high", bounds.height >= 56.dp)
+        }
         val about = control("About and licences").getUnclippedBoundsInRoot()
         assertTrue("About is ${about.height} high", about.height >= 56.dp)
     }

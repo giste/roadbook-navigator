@@ -79,13 +79,22 @@ internal object SettingsTestTags {
     const val BACK: String = "settings_back"
 
     /** The short-distance threshold's stepper, whose − and + repeat in the other steppers. */
-    const val THRESHOLD_STEPPER: String = "settings_threshold_stepper"
+    const val SHORT_DISTANCE_THRESHOLD_STEPPER: String = "settings_short_distance_threshold_stepper"
 
     /** The map zoom's stepper. */
     const val MAP_ZOOM_STEPPER: String = "settings_map_zoom_stepper"
 
     /** The map tilt's stepper. */
     const val MAP_TILT_STEPPER: String = "settings_map_tilt_stepper"
+
+    /** The button that restores the short-distance threshold's default, an icon without text. */
+    const val SHORT_DISTANCE_THRESHOLD_RESTORE: String = "settings_short_distance_threshold_restore"
+
+    /** The button that restores the map zoom's default. */
+    const val MAP_ZOOM_RESTORE: String = "settings_map_zoom_restore"
+
+    /** The button that restores the map tilt's default. */
+    const val MAP_TILT_RESTORE: String = "settings_map_tilt_restore"
 
     /**
      * The row of one remote action and its keys, whose texts may repeat in other rows (e.g. "No
@@ -113,6 +122,8 @@ internal object SettingsTestTags {
  * - **Highlight close waypoints:** the short-distance threshold, changed in steps with − and +.
  * - **Map zoom** and **map tilt:** how close the map is shown and how much it leans, changed in
  *   steps with − and + within the ranges the app offers.
+ * - Each of these three has a restore icon at the end of its title, which sets it back to its
+ *   default at once. It is disabled (grayed) while the value already is the default.
  * - **About and licences:** a button that opens the About screen.
  *
  * When [SettingsUiState.Loaded.saveFailed] is set, a snackbar says the change was not stored, and
@@ -127,12 +138,15 @@ internal object SettingsTestTags {
  * @param onRemoteModelChange called with the remote model the user picks.
  * @param onAssignCustomKey called with a custom action and the key the user pressed for it.
  * @param onRoadbookStyleChange called with the roadbook style the user picks.
- * @param onDecreaseThreshold called when the threshold's − is pressed.
- * @param onIncreaseThreshold called when the threshold's + is pressed.
+ * @param onDecreaseShortDistanceThreshold called when the threshold's − is pressed.
+ * @param onIncreaseShortDistanceThreshold called when the threshold's + is pressed.
+ * @param onRestoreShortDistanceThreshold called when the threshold's restore button is pressed.
  * @param onDecreaseMapZoom called when the map zoom's − is pressed.
  * @param onIncreaseMapZoom called when the map zoom's + is pressed.
+ * @param onRestoreMapZoom called when the map zoom's restore button is pressed.
  * @param onDecreaseMapTilt called when the map tilt's − is pressed.
  * @param onIncreaseMapTilt called when the map tilt's + is pressed.
+ * @param onRestoreMapTilt called when the map tilt's restore button is pressed.
  * @param onSaveErrorShown called once the save error has been shown.
  * @param onKeyMoveShown called once the notice of a moved key has been shown.
  * @param onOpenAbout called when the About button is pressed.
@@ -147,12 +161,15 @@ internal fun SettingsContent(
     onRemoteModelChange: (RemoteModel) -> Unit,
     onAssignCustomKey: (RemoteAction, RemoteKey) -> Unit,
     onRoadbookStyleChange: (RoadbookStyle) -> Unit,
-    onDecreaseThreshold: () -> Unit,
-    onIncreaseThreshold: () -> Unit,
+    onDecreaseShortDistanceThreshold: () -> Unit,
+    onIncreaseShortDistanceThreshold: () -> Unit,
+    onRestoreShortDistanceThreshold: () -> Unit,
     onDecreaseMapZoom: () -> Unit,
     onIncreaseMapZoom: () -> Unit,
+    onRestoreMapZoom: () -> Unit,
     onDecreaseMapTilt: () -> Unit,
     onIncreaseMapTilt: () -> Unit,
+    onRestoreMapTilt: () -> Unit,
     onSaveErrorShown: () -> Unit,
     onKeyMoveShown: () -> Unit,
     onOpenAbout: () -> Unit,
@@ -208,12 +225,15 @@ internal fun SettingsContent(
                 onRemoteModelChange = onRemoteModelChange,
                 onAssignCustomKey = onAssignCustomKey,
                 onRoadbookStyleChange = onRoadbookStyleChange,
-                onDecreaseThreshold = onDecreaseThreshold,
-                onIncreaseThreshold = onIncreaseThreshold,
+                onDecreaseShortDistanceThreshold = onDecreaseShortDistanceThreshold,
+                onIncreaseShortDistanceThreshold = onIncreaseShortDistanceThreshold,
+                onRestoreShortDistanceThreshold = onRestoreShortDistanceThreshold,
                 onDecreaseMapZoom = onDecreaseMapZoom,
                 onIncreaseMapZoom = onIncreaseMapZoom,
+                onRestoreMapZoom = onRestoreMapZoom,
                 onDecreaseMapTilt = onDecreaseMapTilt,
                 onIncreaseMapTilt = onIncreaseMapTilt,
+                onRestoreMapTilt = onRestoreMapTilt,
                 onOpenAbout = onOpenAbout,
                 modifier = Modifier
                     .fillMaxSize()
@@ -232,12 +252,15 @@ internal fun SettingsContent(
  * @param onRemoteModelChange called with the remote model the user picks.
  * @param onAssignCustomKey called with a custom action and the key the user pressed for it.
  * @param onRoadbookStyleChange called with the roadbook style the user picks.
- * @param onDecreaseThreshold called when the threshold's − is pressed.
- * @param onIncreaseThreshold called when the threshold's + is pressed.
+ * @param onDecreaseShortDistanceThreshold called when the threshold's − is pressed.
+ * @param onIncreaseShortDistanceThreshold called when the threshold's + is pressed.
+ * @param onRestoreShortDistanceThreshold called when the threshold's restore button is pressed.
  * @param onDecreaseMapZoom called when the map zoom's − is pressed.
  * @param onIncreaseMapZoom called when the map zoom's + is pressed.
+ * @param onRestoreMapZoom called when the map zoom's restore button is pressed.
  * @param onDecreaseMapTilt called when the map tilt's − is pressed.
  * @param onIncreaseMapTilt called when the map tilt's + is pressed.
+ * @param onRestoreMapTilt called when the map tilt's restore button is pressed.
  * @param onOpenAbout called when the About button is pressed.
  * @param modifier applied to the column.
  */
@@ -249,12 +272,15 @@ private fun SettingsSections(
     onRemoteModelChange: (RemoteModel) -> Unit,
     onAssignCustomKey: (RemoteAction, RemoteKey) -> Unit,
     onRoadbookStyleChange: (RoadbookStyle) -> Unit,
-    onDecreaseThreshold: () -> Unit,
-    onIncreaseThreshold: () -> Unit,
+    onDecreaseShortDistanceThreshold: () -> Unit,
+    onIncreaseShortDistanceThreshold: () -> Unit,
+    onRestoreShortDistanceThreshold: () -> Unit,
     onDecreaseMapZoom: () -> Unit,
     onIncreaseMapZoom: () -> Unit,
+    onRestoreMapZoom: () -> Unit,
     onDecreaseMapTilt: () -> Unit,
     onIncreaseMapTilt: () -> Unit,
+    onRestoreMapTilt: () -> Unit,
     onOpenAbout: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -317,7 +343,12 @@ private fun SettingsSections(
             label = { it.label() },
             onSelect = onRoadbookStyleChange,
         )
-        SettingTitle(stringResource(R.string.settings_short_distance_title))
+        RestorableSettingTitle(
+            text = stringResource(R.string.settings_short_distance_title),
+            canRestore = state.canRestoreShortDistanceThreshold,
+            onRestore = onRestoreShortDistanceThreshold,
+            restoreTag = SettingsTestTags.SHORT_DISTANCE_THRESHOLD_RESTORE,
+        )
         Text(
             text = stringResource(R.string.settings_short_distance_description),
             style = MaterialTheme.typography.bodyMedium,
@@ -328,15 +359,20 @@ private fun SettingsSections(
                 R.string.settings_distance_meters,
                 state.shortDistanceThreshold.distance.inMeters.roundToInt(),
             ),
-            canDecrease = state.canDecreaseThreshold,
-            canIncrease = state.canIncreaseThreshold,
-            onDecrease = onDecreaseThreshold,
-            onIncrease = onIncreaseThreshold,
-            modifier = Modifier.testTag(SettingsTestTags.THRESHOLD_STEPPER),
+            canDecrease = state.canDecreaseShortDistanceThreshold,
+            canIncrease = state.canIncreaseShortDistanceThreshold,
+            onDecrease = onDecreaseShortDistanceThreshold,
+            onIncrease = onIncreaseShortDistanceThreshold,
+            modifier = Modifier.testTag(SettingsTestTags.SHORT_DISTANCE_THRESHOLD_STEPPER),
         )
 
         SectionTitle(stringResource(R.string.settings_section_map))
-        SettingTitle(stringResource(R.string.settings_map_zoom_title))
+        RestorableSettingTitle(
+            text = stringResource(R.string.settings_map_zoom_title),
+            canRestore = state.canRestoreMapZoom,
+            onRestore = onRestoreMapZoom,
+            restoreTag = SettingsTestTags.MAP_ZOOM_RESTORE,
+        )
         Text(
             text = stringResource(R.string.settings_map_zoom_description),
             style = MaterialTheme.typography.bodyMedium,
@@ -350,7 +386,12 @@ private fun SettingsSections(
             onIncrease = onIncreaseMapZoom,
             modifier = Modifier.testTag(SettingsTestTags.MAP_ZOOM_STEPPER),
         )
-        SettingTitle(stringResource(R.string.settings_map_tilt_title))
+        RestorableSettingTitle(
+            text = stringResource(R.string.settings_map_tilt_title),
+            canRestore = state.canRestoreMapTilt,
+            onRestore = onRestoreMapTilt,
+            restoreTag = SettingsTestTags.MAP_TILT_RESTORE,
+        )
         Text(
             text = stringResource(R.string.settings_map_tilt_description),
             style = MaterialTheme.typography.bodyMedium,
@@ -396,6 +437,45 @@ private fun SectionTitle(text: String) {
 @Composable
 private fun SettingTitle(text: String) {
     Text(text = text, style = MaterialTheme.typography.titleMedium)
+}
+
+/**
+ * The name of one setting with a restore icon at the end of the row, which sets the setting back
+ * to its default. The icon sits on the title row rather than next to the stepper, because a phone
+ * is too narrow for − value + and a fourth button at the touch target size.
+ *
+ * @param text the setting's name.
+ * @param canRestore whether the value differs from the default. If not, the button is disabled
+ * (grayed), so the row looks the same whatever the value.
+ * @param onRestore called when the button is pressed, only while [canRestore].
+ * @param restoreTag the button's test tag, as it shows an icon instead of text.
+ */
+@Composable
+private fun RestorableSettingTitle(
+    text: String,
+    canRestore: Boolean,
+    onRestore: () -> Unit,
+    restoreTag: String,
+) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.weight(1f),
+        )
+        IconButton(
+            onClick = onRestore,
+            enabled = canRestore,
+            modifier = Modifier
+                .size(GisteTheme.dimensions.minTouchTarget)
+                .testTag(restoreTag),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.settings_ic_restore),
+                contentDescription = null,
+            )
+        }
+    }
 }
 
 /**
@@ -671,14 +751,17 @@ private val DEFAULTS = SettingsUiState.Loaded(
     remoteKeys = RemoteKeys.TERRA_PIRATA,
     roadbookStyle = RoadbookStyle.APP_THEME,
     shortDistanceThreshold = ShortDistanceThreshold.DEFAULT,
-    canDecreaseThreshold = true,
-    canIncreaseThreshold = true,
+    canDecreaseShortDistanceThreshold = true,
+    canIncreaseShortDistanceThreshold = true,
+    canRestoreShortDistanceThreshold = false,
     mapZoomLevel = MapZoomLevel.DEFAULT,
     canDecreaseMapZoom = true,
     canIncreaseMapZoom = true,
+    canRestoreMapZoom = false,
     mapTilt = MapTilt.DEFAULT,
     canDecreaseMapTilt = true,
     canIncreaseMapTilt = false,
+    canRestoreMapTilt = false,
     saveFailed = false,
 )
 
@@ -693,14 +776,17 @@ private val CHANGED = SettingsUiState.Loaded(
     remoteKeys = RemoteKeys.DND2,
     roadbookStyle = RoadbookStyle.FIA,
     shortDistanceThreshold = ShortDistanceThreshold.of(Distance.meters(50.0)),
-    canDecreaseThreshold = false,
-    canIncreaseThreshold = true,
+    canDecreaseShortDistanceThreshold = false,
+    canIncreaseShortDistanceThreshold = true,
+    canRestoreShortDistanceThreshold = true,
     mapZoomLevel = MapZoomLevel.of(20),
     canDecreaseMapZoom = true,
     canIncreaseMapZoom = false,
+    canRestoreMapZoom = true,
     mapTilt = MapTilt.of(0.0),
     canDecreaseMapTilt = false,
     canIncreaseMapTilt = true,
+    canRestoreMapTilt = true,
     saveFailed = false,
 )
 
@@ -728,12 +814,15 @@ private fun SettingsPreview(state: SettingsUiState) {
             onRemoteModelChange = {},
             onAssignCustomKey = { _, _ -> },
             onRoadbookStyleChange = {},
-            onDecreaseThreshold = {},
-            onIncreaseThreshold = {},
+            onDecreaseShortDistanceThreshold = {},
+            onIncreaseShortDistanceThreshold = {},
+            onRestoreShortDistanceThreshold = {},
             onDecreaseMapZoom = {},
             onIncreaseMapZoom = {},
+            onRestoreMapZoom = {},
             onDecreaseMapTilt = {},
             onIncreaseMapTilt = {},
+            onRestoreMapTilt = {},
             onSaveErrorShown = {},
             onKeyMoveShown = {},
             onOpenAbout = {},

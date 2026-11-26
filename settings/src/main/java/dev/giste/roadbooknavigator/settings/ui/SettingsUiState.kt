@@ -43,14 +43,18 @@ internal sealed interface SettingsUiState {
      * @property remoteKeys the keys in use, those of [remoteModel].
      * @property roadbookStyle the colors the roadbook is drawn with.
      * @property shortDistanceThreshold below which distance a waypoint is highlighted.
-     * @property canDecreaseThreshold whether the threshold can get shorter.
-     * @property canIncreaseThreshold whether the threshold can get longer.
+     * @property canDecreaseShortDistanceThreshold whether the threshold can get shorter.
+     * @property canIncreaseShortDistanceThreshold whether the threshold can get longer.
+     * @property canRestoreShortDistanceThreshold whether the threshold differs from its default, so
+     * it can be restored.
      * @property mapZoomLevel how close the map is shown.
      * @property canDecreaseMapZoom whether the map can be shown farther.
      * @property canIncreaseMapZoom whether the map can be shown closer.
+     * @property canRestoreMapZoom whether the map zoom differs from its default.
      * @property mapTilt how much the map leans towards the horizon.
      * @property canDecreaseMapTilt whether the map can look more straight down.
      * @property canIncreaseMapTilt whether the map can lean more.
+     * @property canRestoreMapTilt whether the map tilt differs from its default.
      * @property saveFailed whether the last change could not be stored, so the screen tells the
      * user until they dismiss it.
      * @property keyMoved the key the last custom assignment took from another action, so the
@@ -63,14 +67,17 @@ internal sealed interface SettingsUiState {
         val remoteKeys: RemoteKeys,
         val roadbookStyle: RoadbookStyle,
         val shortDistanceThreshold: ShortDistanceThreshold,
-        val canDecreaseThreshold: Boolean,
-        val canIncreaseThreshold: Boolean,
+        val canDecreaseShortDistanceThreshold: Boolean,
+        val canIncreaseShortDistanceThreshold: Boolean,
+        val canRestoreShortDistanceThreshold: Boolean,
         val mapZoomLevel: MapZoomLevel,
         val canDecreaseMapZoom: Boolean,
         val canIncreaseMapZoom: Boolean,
+        val canRestoreMapZoom: Boolean,
         val mapTilt: MapTilt,
         val canDecreaseMapTilt: Boolean,
         val canIncreaseMapTilt: Boolean,
+        val canRestoreMapTilt: Boolean,
         val saveFailed: Boolean,
         val keyMoved: KeyMove? = null,
     ) : SettingsUiState

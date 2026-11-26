@@ -200,7 +200,9 @@ class RemoteKeysIntegrationTest {
     /** Opens the settings from the dashboard, with the button shown while stopped. */
     private fun openSettings() {
         composeRule.onNodeWithTag(DashboardTestTags.SETTINGS).performClick()
-        composeRule.awaitText("Settings")
+        // The first section's title, not the screen's: the title shows while the settings are
+        // still being read, before any control exists to be tapped.
+        composeRule.awaitText("Appearance")
     }
 
     /** Leaves the settings with the system back gesture. */
