@@ -77,13 +77,16 @@ private val SAMPLE_CONTENT = RoadbookContentState.Content(
     shortDistanceThreshold = ShortDistanceThreshold.DEFAULT,
 )
 
-/** The viewer in [state], with the import button shown, in the app theme. */
+/**
+ * The viewer in [state], in the app theme, with the import button shown when [showImportButton]
+ * (as when stopped).
+ */
 @Composable
-private fun ScreenPreview(state: RoadbookUiState) {
+private fun ScreenPreview(state: RoadbookUiState, showImportButton: Boolean = true) {
     GisteTheme {
         RoadbookViewerContent(
             state = state,
-            showImportButton = true,
+            showImportButton = showImportButton,
             onImportClick = {},
             onImportFailureShown = {},
             onSetPartial = {},
@@ -118,6 +121,17 @@ private fun RoadbookViewerLoadingPreview() {
 @Composable
 private fun RoadbookViewerEmptyPreview() {
     ScreenPreview(RoadbookUiState(roadbook = RoadbookContentState.Empty))
+}
+
+@Preview(
+    name = "Empty, riding",
+    uiMode = Configuration.UI_MODE_NIGHT_NO,
+    widthDp = WIDTH,
+    heightDp = SHORT,
+)
+@Composable
+private fun RoadbookViewerEmptyRidingPreview() {
+    ScreenPreview(RoadbookUiState(roadbook = RoadbookContentState.Empty), showImportButton = false)
 }
 
 @Preview(

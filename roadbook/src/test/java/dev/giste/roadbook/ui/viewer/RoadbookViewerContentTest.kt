@@ -21,20 +21,26 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.InputMode
+import androidx.compose.ui.input.InputModeManager
+import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.SemanticsNode
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasProgressBarRangeInfo
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.requestFocus
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import dev.giste.core.ui.theme.GisteTheme
@@ -80,9 +86,13 @@ class RoadbookViewerContentTest {
     /** What the screen shows. Tests change it to update the screen. */
     private var state by mutableStateOf(RoadbookUiState())
 
+    /** Switches between touch and key input, as a remote control's key does. */
+    private lateinit var inputModeManager: InputModeManager
+
     private fun show(initial: RoadbookUiState, showImportButton: Boolean = true) {
         state = initial
         rule.setContent {
+            inputModeManager = LocalInputModeManager.current
             GisteTheme {
                 RoadbookViewerContent(
                     state = state,
@@ -107,31 +117,46 @@ class RoadbookViewerContentTest {
     }
 
     @Test
-    fun empty_showsMessageAndImportButton() {
+    fun loading_hidesImportButton() {
+        show(RoadbookUiState(roadbook = RoadbookContentState.Loading))
+
+        rule.onAllNodesWithTag(RoadbookViewerTestTags.IMPORT).assertCountEquals(0)
+    }
+
+    @Test
+    fun empty_showsMessageAndImportButton_importsOnClick() {
         show(RoadbookUiState(roadbook = RoadbookContentState.Empty))
 
         rule.onNodeWithText("No roadbook loaded").assertIsDisplayed()
-        rule.onNodeWithText("Import roadbook").performClick()
+        rule.onNodeWithTag(RoadbookViewerTestTags.IMPORT).performClick()
 
         assertEquals(1, importClicks)
     }
 
     @Test
-    fun unreadable_asksToImportAgain() {
+    fun empty_whileRiding_showsMessageAndHidesImportButton() {
+        show(RoadbookUiState(roadbook = RoadbookContentState.Empty), showImportButton = false)
+
+        rule.onNodeWithText("No roadbook loaded").assertIsDisplayed()
+        rule.onAllNodesWithTag(RoadbookViewerTestTags.IMPORT).assertCountEquals(0)
+    }
+
+    @Test
+    fun unreadable_asksToImportAgain_importsOnClick() {
         show(RoadbookUiState(roadbook = RoadbookContentState.Unreadable))
 
         rule.onNodeWithText("The saved roadbook can't be read. Import it again.")
             .assertIsDisplayed()
-        rule.onNodeWithText("Import roadbook").performClick()
+        rule.onNodeWithTag(RoadbookViewerTestTags.IMPORT).performClick()
 
         assertEquals(1, importClicks)
     }
 
     @Test
-    fun empty_importButtonShownEvenWhileRiding() {
-        show(RoadbookUiState(roadbook = RoadbookContentState.Empty), showImportButton = false)
+    fun unreadable_whileRiding_hidesImportButton() {
+        show(RoadbookUiState(roadbook = RoadbookContentState.Unreadable), showImportButton = false)
 
-        rule.onNodeWithText("Import roadbook").assertIsDisplayed()
+        rule.onAllNodesWithTag(RoadbookViewerTestTags.IMPORT).assertCountEquals(0)
     }
 
     @Test
@@ -147,7 +172,7 @@ class RoadbookViewerContentTest {
     fun content_importButtonShown_importsOnClick() {
         show(RoadbookUiState(roadbook = content()))
 
-        rule.onNodeWithText("Import roadbook").performClick()
+        rule.onNodeWithTag(RoadbookViewerTestTags.IMPORT).performClick()
 
         assertEquals(1, importClicks)
     }
@@ -156,7 +181,7 @@ class RoadbookViewerContentTest {
     fun content_whileRiding_hidesImportButton() {
         show(RoadbookUiState(roadbook = content()), showImportButton = false)
 
-        rule.onAllNodesWithText("Import roadbook").assertCountEquals(0)
+        rule.onAllNodesWithTag(RoadbookViewerTestTags.IMPORT).assertCountEquals(0)
     }
 
     @Test
@@ -164,14 +189,28 @@ class RoadbookViewerContentTest {
         show(RoadbookUiState(roadbook = content(), import = ImportState.Importing))
 
         rule.onNode(progressIndicator).assertIsDisplayed()
-        rule.onAllNodesWithText("Import roadbook").assertCountEquals(0)
+        rule.onAllNodesWithTag(RoadbookViewerTestTags.IMPORT).assertCountEquals(0)
     }
 
     @Test
-    fun importing_withoutRoadbook_disablesImportButton() {
+    fun importing_withoutRoadbook_showsProgressAndHidesImportButton() {
         show(RoadbookUiState(roadbook = RoadbookContentState.Empty, import = ImportState.Importing))
 
-        rule.onNodeWithText("Import roadbook").assertIsNotEnabled()
+        rule.onNode(progressIndicator).assertIsDisplayed()
+        rule.onAllNodesWithTag(RoadbookViewerTestTags.IMPORT).assertCountEquals(0)
+    }
+
+    @Test
+    fun importButton_keyModeFocusRequested_doesNotTakeIt() {
+        show(RoadbookUiState(roadbook = content()))
+        // As after a key of a remote: in touch mode no button takes the focus anyway.
+        rule.runOnIdle { inputModeManager.requestInputMode(InputMode.Keyboard) }
+        val button = rule.onNodeWithTag(RoadbookViewerTestTags.IMPORT)
+
+        // Where an unhandled arrow or Tab key would move the focus.
+        button.requestFocus()
+
+        button.assert(isFocused().not())
     }
 
     @Test

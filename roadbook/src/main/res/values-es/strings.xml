@@ -7,7 +7,6 @@
     <!-- Screen -->
     <string name="roadbook_empty">No hay ningún roadbook cargado</string>
     <string name="roadbook_unreadable">No se puede leer el roadbook guardado. Vuelve a importarlo.</string>
-    <string name="roadbook_action_import">Importar roadbook</string>
     <string name="roadbook_import_failed_unreadable">No se puede leer el archivo.</string>
     <string name="roadbook_import_failed_malformed">El archivo no es un roadbook válido.</string>
     <string name="roadbook_import_failed_no_waypoints">El roadbook no tiene viñetas.</string>

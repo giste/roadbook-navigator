@@ -8,8 +8,6 @@
     <string name="roadbook_empty">No roadbook loaded</string>
     <!-- Screen: shown when the saved roadbook cannot be read back (e.g. after an update). -->
     <string name="roadbook_unreadable">The saved roadbook can\'t be read. Import it again.</string>
-    <!-- Screen: button that opens the file picker to import a roadbook. -->
-    <string name="roadbook_action_import">Import roadbook</string>
     <!-- Screen: shown when the picked file can't be opened or read. -->
     <string name="roadbook_import_failed_unreadable">The file can\'t be read.</string>
     <!-- Screen: shown when the picked file is not a valid roadbook. -->
