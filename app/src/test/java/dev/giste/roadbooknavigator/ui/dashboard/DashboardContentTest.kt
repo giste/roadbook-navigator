@@ -59,6 +59,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.giste.core.ui.theme.GisteTheme
 import dev.giste.geo.Distance
+import dev.giste.roadbooknavigator.settings.DashboardSettings
+import dev.giste.roadbooknavigator.settings.ScreenShare
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -244,7 +246,7 @@ class DashboardContentTest {
     fun dashboardContent_widerThanTall_showsSideColumnAndRoadbookOnTheRight() {
         show(moving, width = 1_000.dp, height = 500.dp)
 
-        val side = 1_000.dp * LANDSCAPE_SIDE_COLUMN_WEIGHT
+        val side = 1_000.dp * DashboardSettings.DEFAULT_LANDSCAPE_SIDE_COLUMN.fraction
         val totalHeight = 500.dp * LANDSCAPE_TOTAL_WEIGHT
         val partialHeight = 500.dp * LANDSCAPE_PARTIAL_WEIGHT
         // The settings slot, on the total's left, is as wide as the total is tall.
@@ -269,7 +271,7 @@ class DashboardContentTest {
     fun dashboardContent_tallerThanWide_showsDistancesMapAndRoadbookStacked() {
         show(moving, width = 500.dp, height = 1_000.dp)
 
-        val distancesHeight = 1_000.dp * PORTRAIT_DISTANCES_WEIGHT
+        val distancesHeight = 1_000.dp * DashboardSettings.DEFAULT_PORTRAIT_DISTANCES.fraction
         val mapHeight = 1_000.dp * PORTRAIT_MAP_WEIGHT
         val totalWidth = 500.dp * PORTRAIT_TOTAL_WEIGHT
         // The settings slot, on the total's left, is as wide as the total is tall.
@@ -293,6 +295,68 @@ class DashboardContentTest {
             width = 500.dp,
             height = 1_000.dp * PORTRAIT_ROADBOOK_WEIGHT,
         )
+    }
+
+    @Test
+    fun dashboardContent_widerSideColumn_givesItThatShareOfTheWidth() {
+        val layout = DashboardSettings(landscapeSideColumn = ScreenShare.of(40))
+        show(moving.copy(layout = layout), width = 1_000.dp, height = 500.dp)
+
+        partial().assertLeftPositionInRootIsEqualTo(0.dp).assertWidthIsEqualTo(400.dp)
+        composeRule.onNodeWithTag(MAP_TAG).assertWidthIsEqualTo(400.dp)
+        composeRule.onNodeWithTag(ROADBOOK_TAG)
+            .assertBounds(left = 400.dp, top = 0.dp, width = 600.dp, height = 500.dp)
+    }
+
+    @Test
+    fun dashboardContent_tallerDistancesRow_givesItThatShareAndTheRestToMapAndRoadbook() {
+        val layout = DashboardSettings(portraitDistances = ScreenShare.of(12))
+        show(moving.copy(layout = layout), width = 500.dp, height = 1_000.dp)
+
+        // The map and the roadbook share the 880 dp left by their weights, 0.32 to 0.6.
+        val mapShare = PORTRAIT_MAP_WEIGHT / (PORTRAIT_MAP_WEIGHT + PORTRAIT_ROADBOOK_WEIGHT)
+        val mapHeight = 880.dp * mapShare
+        partial().assertTopPositionInRootIsEqualTo(0.dp).assertHeightIsEqualTo(120.dp)
+        composeRule.onNodeWithTag(MAP_TAG)
+            .assertBounds(left = 0.dp, top = 120.dp, width = 500.dp, height = mapHeight)
+        composeRule.onNodeWithTag(ROADBOOK_TAG).assertBounds(
+            left = 0.dp,
+            top = 120.dp + mapHeight,
+            width = 500.dp,
+            height = 880.dp - mapHeight,
+        )
+    }
+
+    @Test
+    fun dashboardContent_tallerDistancesRow_keepsTheSettingsSlotAtItsDefaultWidth() {
+        val layout = DashboardSettings(portraitDistances = ScreenShare.of(12))
+        show(DashboardUiState.INITIAL.copy(layout = layout), width = 500.dp, height = 1_000.dp)
+
+        // 8 % of 1,000 dp, as with the default row, though the row is 120 dp tall.
+        val slotWidth = 80.dp
+        val button = composeRule.onNodeWithTag(DashboardTestTags.SETTINGS).getUnclippedBoundsInRoot()
+        assertEquals(0.dp, button.left)
+        assertEquals(slotWidth, button.right)
+        assertEquals(120.dp, button.bottom - button.top)
+        total().assertBounds(
+            left = slotWidth,
+            top = 0.dp,
+            width = 500.dp * PORTRAIT_TOTAL_WEIGHT - slotWidth,
+            height = 120.dp,
+        )
+    }
+
+    @Test
+    fun dashboardContent_tallerDistancesRow_keepsTheTotalAsWideAsWithTheDefault() {
+        var state by mutableStateOf(moving)
+        composeRule.setContent { TestDashboard(state, 500.dp, 1_000.dp) }
+        val default = total().getUnclippedBoundsInRoot()
+
+        state = moving.copy(layout = DashboardSettings(portraitDistances = ScreenShare.of(12)))
+
+        val taller = total().getUnclippedBoundsInRoot()
+        assertEquals(default.left, taller.left)
+        assertEquals(default.right, taller.right)
     }
 
     @Test

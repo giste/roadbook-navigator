@@ -18,6 +18,7 @@
 package dev.giste.roadbooknavigator.ui.dashboard
 
 import dev.giste.geo.Distance
+import dev.giste.roadbooknavigator.settings.DashboardSettings
 
 /**
  * What the dashboard shows.
@@ -26,13 +27,19 @@ import dev.giste.geo.Distance
  * @property showStoppedActions whether the actions offered only while the vehicle is stopped are
  * shown: importing a roadbook and opening the settings, so the rider is not tempted to use them
  * while riding.
+ * @property layout how the dashboard shares the screen between its parts. The defaults until the
+ * settings are read.
  */
 internal data class DashboardUiState(
     val odometer: OdometerUiState,
     val showStoppedActions: Boolean,
+    val layout: DashboardSettings = DashboardSettings(),
 ) {
     companion object {
-        /** Before anything is known: the distances are loading and the vehicle counts as stopped. */
+        /**
+         * Before anything is known: the distances are loading, the vehicle counts as stopped, and
+         * the layout is the default one.
+         */
         val INITIAL: DashboardUiState =
             DashboardUiState(odometer = OdometerUiState.Loading, showStoppedActions = true)
     }

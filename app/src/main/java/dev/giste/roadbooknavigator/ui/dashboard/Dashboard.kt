@@ -61,6 +61,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -70,11 +71,10 @@ import dev.giste.geo.Distance
 import dev.giste.map.MapViewer
 import dev.giste.roadbook.RoadbookViewer
 import dev.giste.roadbooknavigator.R
+import dev.giste.roadbooknavigator.settings.DashboardSettings
+import dev.giste.roadbooknavigator.settings.ScreenShare
 import dev.giste.roadbooknavigator.ui.InterceptKeyEvents
 import dev.giste.roadbooknavigator.ui.RiderTypography
-
-/** Landscape: share of the width taken by the side column (total, partial and map). */
-internal const val LANDSCAPE_SIDE_COLUMN_WEIGHT: Float = 0.3f
 
 /** Landscape: share of the side column's height taken by the total. */
 internal const val LANDSCAPE_TOTAL_WEIGHT: Float = 0.12f
@@ -85,13 +85,18 @@ internal const val LANDSCAPE_PARTIAL_WEIGHT: Float = 0.14f
 /** Landscape: share of the side column's height taken by the map, below the distances. */
 internal const val LANDSCAPE_MAP_WEIGHT: Float = 0.74f
 
-/** Portrait: share of the height taken by the row of distances, at the top. */
-internal const val PORTRAIT_DISTANCES_WEIGHT: Float = 0.08f
-
-/** Portrait: share of the height taken by the map, below the distances. */
+/**
+ * Portrait: weight of the map in the height below the distances, against
+ * [PORTRAIT_ROADBOOK_WEIGHT]. With the default distances row (8 %), the map takes 32 % of the
+ * height.
+ */
 internal const val PORTRAIT_MAP_WEIGHT: Float = 0.32f
 
-/** Portrait: share of the height taken by the roadbook, at the bottom. */
+/**
+ * Portrait: weight of the roadbook in the height below the distances, against
+ * [PORTRAIT_MAP_WEIGHT]. With the default distances row (8 %), the roadbook takes 60 % of the
+ * height.
+ */
 internal const val PORTRAIT_ROADBOOK_WEIGHT: Float = 0.6f
 
 /** Portrait: share of the distances row's width taken by the total, on the left. */
@@ -165,8 +170,9 @@ internal fun Dashboard(onOpenSettings: () -> Unit, onManageMaps: () -> Unit, mod
  *   and the roadbook.
  *
  * The orientation comes from the size the dashboard is given, not from the window or the device,
- * so it also works in split screen and in previews. The shares of each part are the `LANDSCAPE_*`
- * and `PORTRAIT_*` constants.
+ * so it also works in split screen and in previews. The landscape side column's share of the width
+ * and the portrait distances row's share of the height come from [DashboardUiState.layout]; the
+ * other shares are the `LANDSCAPE_*` and `PORTRAIT_*` constants.
  *
  * The distances have no visible label, so their digits can be as large as their boxes allow. Each is
  * sized for its largest value (999.99 km for the partial, 9,999.9 km for the total), so the digits
@@ -179,7 +185,9 @@ internal fun Dashboard(onOpenSettings: () -> Unit, onManageMaps: () -> Unit, mod
  * text typed in it, survive configuration changes.
  *
  * The settings button sits on the start side of the total, in a square slot of its own that the
- * total's background covers, and its gear grows with the slot. It is shown only while [DashboardUiState.showStoppedActions] is set, so a touch
+ * total's background covers, and its gear grows with the slot, up to the size it has with the
+ * default portrait distances row. A taller row does not widen it, so the total keeps its width.
+ * It is shown only while [DashboardUiState.showStoppedActions] is set, so a touch
  * while riding cannot leave the dashboard (which would stop the odometer). While moving, the slot
  * stays empty instead of going away, so the total keeps its size and place. The roadbook offers its
  * import button, and the map its manage button, under the same condition.
@@ -225,11 +233,12 @@ internal fun DashboardContent(
     // The total is plain; the partial, which the rider looks at most, is highlighted. The settings
     // button has a fixed place on the total's start side, in a slot kept empty while moving, so the
     // total never changes size when the button comes and goes.
-    val totalReading: @Composable (Modifier) -> Unit = { readingModifier ->
+    val totalReading: @Composable (Modifier, Dp) -> Unit = { readingModifier, slotMaxWidth ->
         Row(modifier = readingModifier.background(MaterialTheme.colorScheme.surface)) {
             SettingsSlot(
                 showButton = state.showStoppedActions,
                 onOpenSettings = onOpenSettings,
+                maxWidth = slotMaxWidth,
                 modifier = Modifier.fillMaxHeight(),
             )
             DistanceReading(
@@ -277,15 +286,21 @@ internal fun DashboardContent(
             .background(MaterialTheme.colorScheme.background),
     ) {
         if (maxWidth > maxHeight) {
+            // The total's height does not depend on the settings here, so the slot is not capped.
             LandscapeLayout(
-                total = totalReading,
+                sideColumn = state.layout.landscapeSideColumn,
+                total = { totalReading(it, Dp.Infinity) },
                 partial = partialReading,
                 map = mapSlot,
                 roadbook = roadbookSlot,
             )
         } else {
+            // As wide as the row is tall with the default share, so a taller row leaves the
+            // total its width instead of widening the slot.
+            val slotMaxWidth = maxHeight * DashboardSettings.DEFAULT_PORTRAIT_DISTANCES.fraction
             PortraitLayout(
-                total = totalReading,
+                distances = state.layout.portraitDistances,
+                total = { totalReading(it, slotMaxWidth) },
                 partial = partialReading,
                 map = mapSlot,
                 roadbook = roadbookSlot,
@@ -327,6 +342,7 @@ private enum class OdometerDialog {
 /**
  * The landscape layout: total, partial and map stacked in a side column, roadbook on the right.
  *
+ * @param sideColumn the share of the width taken by the side column.
  * @param total draws the total in the modifier it is given.
  * @param partial draws the partial in the modifier it is given.
  * @param map draws the map in the modifier it is given.
@@ -334,24 +350,27 @@ private enum class OdometerDialog {
  */
 @Composable
 private fun LandscapeLayout(
+    sideColumn: ScreenShare,
     total: @Composable (Modifier) -> Unit,
     partial: @Composable (Modifier) -> Unit,
     map: @Composable (Modifier) -> Unit,
     roadbook: @Composable (Modifier) -> Unit,
 ) {
     Row(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.weight(LANDSCAPE_SIDE_COLUMN_WEIGHT).fillMaxHeight()) {
+        Column(modifier = Modifier.weight(sideColumn.fraction).fillMaxHeight()) {
             total(Modifier.weight(LANDSCAPE_TOTAL_WEIGHT).fillMaxWidth())
             partial(Modifier.weight(LANDSCAPE_PARTIAL_WEIGHT).fillMaxWidth())
             map(Modifier.weight(LANDSCAPE_MAP_WEIGHT).fillMaxWidth())
         }
-        roadbook(Modifier.weight(1f - LANDSCAPE_SIDE_COLUMN_WEIGHT).fillMaxHeight())
+        roadbook(Modifier.weight(1f - sideColumn.fraction).fillMaxHeight())
     }
 }
 
 /**
  * The portrait layout: total and partial side by side, then the map, then the roadbook.
  *
+ * @param distances the share of the height taken by the row of distances. The map and the roadbook
+ * share the rest by their weights.
  * @param total draws the total in the modifier it is given.
  * @param partial draws the partial in the modifier it is given.
  * @param map draws the map in the modifier it is given.
@@ -359,42 +378,50 @@ private fun LandscapeLayout(
  */
 @Composable
 private fun PortraitLayout(
+    distances: ScreenShare,
     total: @Composable (Modifier) -> Unit,
     partial: @Composable (Modifier) -> Unit,
     map: @Composable (Modifier) -> Unit,
     roadbook: @Composable (Modifier) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
-        Row(modifier = Modifier.weight(PORTRAIT_DISTANCES_WEIGHT).fillMaxWidth()) {
+        Row(modifier = Modifier.weight(distances.fraction).fillMaxWidth()) {
             total(Modifier.weight(PORTRAIT_TOTAL_WEIGHT).fillMaxHeight())
             partial(Modifier.weight(PORTRAIT_PARTIAL_WEIGHT).fillMaxHeight())
         }
-        map(Modifier.weight(PORTRAIT_MAP_WEIGHT).fillMaxWidth())
-        roadbook(Modifier.weight(PORTRAIT_ROADBOOK_WEIGHT).fillMaxWidth())
+        Column(modifier = Modifier.weight(1f - distances.fraction).fillMaxWidth()) {
+            map(Modifier.weight(PORTRAIT_MAP_WEIGHT).fillMaxWidth())
+            roadbook(Modifier.weight(PORTRAIT_ROADBOOK_WEIGHT).fillMaxWidth())
+        }
     }
 }
 
 /**
  * The settings button's place, on the start side of the total: a square as tall as the total's
- * box, so the gear grows with the space, but never narrower than the minimum touch target. It
- * keeps its size whether the button is shown or not.
+ * box, so the gear grows with the space, but never wider than [maxWidth] nor narrower than the
+ * minimum touch target. It keeps its size whether the button is shown or not.
  *
  * @param showButton whether to show the button; otherwise the slot stays empty.
  * @param onOpenSettings called when the button is pressed.
+ * @param maxWidth the widest the slot may be, so a tall box does not take the total's width; a
+ * narrower slot stays as tall as the box, and its gear fits its width.
  * @param modifier applied to the root layout. It must give the slot a bounded height.
  */
 @Composable
 private fun SettingsSlot(
     showButton: Boolean,
     onOpenSettings: () -> Unit,
+    maxWidth: Dp,
     modifier: Modifier = Modifier,
 ) {
     val minWidth = GisteTheme.dimensions.minTouchTarget
     Box(
         modifier = modifier.layout { measurable, constraints ->
-            // As wide as tall, or the minimum touch target on boxes shorter than that.
+            // As wide as tall up to maxWidth, but never below the minimum touch target.
             val height = constraints.maxHeight
-            val width = maxOf(height, minWidth.roundToPx())
+            val widest =
+                if (maxWidth == Dp.Infinity) height else minOf(height, maxWidth.roundToPx())
+            val width = maxOf(widest, minWidth.roundToPx())
             val placeable = measurable.measure(Constraints.fixed(width, height))
             layout(width, height) { placeable.place(0, 0) }
         },
@@ -530,6 +557,14 @@ private val STOPPED = DashboardUiState(odometer = LARGEST_DISTANCES, showStopped
 /** Preview sample: moving, without the settings and import buttons. */
 private val MOVING = DashboardUiState(odometer = LARGEST_DISTANCES, showStoppedActions = false)
 
+/** Preview sample: stopped, with the widest side column and the tallest distances row offered. */
+private val LARGEST_SHARES = STOPPED.copy(
+    layout = DashboardSettings(
+        landscapeSideColumn = ScreenShare.of(40),
+        portraitDistances = ScreenShare.of(12),
+    ),
+)
+
 /** The dashboard in [state], with placeholders instead of the roadbook and the map. */
 @Composable
 private fun DashboardPreview(state: DashboardUiState) {
@@ -578,4 +613,12 @@ private fun DashboardPhoneStoppedPreview() {
 @Composable
 private fun DashboardMovingPreview() {
     DashboardPreview(MOVING)
+}
+
+@Preview(name = "Tab Active3 landscape, largest shares, light", device = TAB_ACTIVE3_LANDSCAPE, uiMode = Configuration.UI_MODE_NIGHT_NO)
+@Preview(name = "Tab Active3 portrait, largest shares, dark", device = TAB_ACTIVE3_PORTRAIT, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(name = "Phone portrait, largest shares, light", device = PHONE_PORTRAIT, uiMode = Configuration.UI_MODE_NIGHT_NO)
+@Composable
+private fun DashboardLargestSharesPreview() {
+    DashboardPreview(LARGEST_SHARES)
 }
