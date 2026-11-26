@@ -108,15 +108,27 @@ class DashboardIntegrationTest {
     }
 
     @Test
-    fun importButton_moving_isHiddenUntilStoppedAgain() {
-        roadbook.importExample()
-        composeRule.awaitText("Import roadbook")
+    fun importButton_noRoadbookAndMoving_isHiddenUntilStoppedAgain() {
+        composeRule.awaitText("No roadbook loaded")
+        composeRule.awaitTag(ROADBOOK_IMPORT_TAG)
 
         simulateFixAt(kilometersPerHour = 30f, metersNorth = 0.0)
-        composeRule.awaitText("Import roadbook", exists = false)
+        composeRule.awaitTag(ROADBOOK_IMPORT_TAG, exists = false)
 
         simulateFixAt(kilometersPerHour = 2f, metersNorth = 10.0)
-        composeRule.awaitText("Import roadbook")
+        composeRule.awaitTag(ROADBOOK_IMPORT_TAG)
+    }
+
+    @Test
+    fun importButton_moving_isHiddenUntilStoppedAgain() {
+        roadbook.importExample()
+        composeRule.awaitTag(ROADBOOK_IMPORT_TAG)
+
+        simulateFixAt(kilometersPerHour = 30f, metersNorth = 0.0)
+        composeRule.awaitTag(ROADBOOK_IMPORT_TAG, exists = false)
+
+        simulateFixAt(kilometersPerHour = 2f, metersNorth = 10.0)
+        composeRule.awaitTag(ROADBOOK_IMPORT_TAG)
     }
 
     @Test
@@ -139,5 +151,14 @@ class DashboardIntegrationTest {
         composeRule.onNodeWithText("Reset").performClick()
 
         composeRule.awaitPartial("0.00")
+    }
+
+    private companion object {
+        /**
+         * The tag of the roadbook's import button: `:roadbook`'s
+         * `RoadbookViewerTestTags.IMPORT`, which is internal to `:roadbook`, so it is repeated
+         * here.
+         */
+        const val ROADBOOK_IMPORT_TAG = "roadbook_viewer_import"
     }
 }

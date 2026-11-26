@@ -20,20 +20,18 @@ package dev.giste.roadbook.ui.viewer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.snapping.SnapPosition
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -47,6 +45,9 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -60,16 +61,24 @@ import dev.giste.roadbook.ui.waypoint.WaypointItem
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 
+/** Test tags of the viewer parts that tests cannot find by their own text. */
+internal object RoadbookViewerTestTags {
+
+    /** The floating import button: it shows only an icon. */
+    const val IMPORT: String = "roadbook_viewer_import"
+}
+
 /**
  * The roadbook viewer, without state of its own: it shows [state] and reports what the user does.
  *
- * It shows a progress indicator while loading or importing, a message with an import button when
- * there is no roadbook to show, or the roadbook as a list of waypoints kept at the saved
- * position. A failed import is reported in a snackbar.
+ * It shows a progress indicator while loading or importing, a message when there is no roadbook
+ * to show, or the roadbook as a list of waypoints kept at the saved position. A floating import
+ * button sits at the bottom end in every one of them, the same with or without a roadbook, and is
+ * hidden while importing. A failed import is reported in a snackbar.
  *
  * @param state what to show.
- * @param showImportButton whether to show the floating import button over the roadbook. The app
- * hides it while riding. The buttons shown when there is no roadbook are always shown.
+ * @param showImportButton whether to show the floating import button. The app hides it while
+ * riding, with or without a roadbook.
  * @param onImportClick called when the user asks to import a roadbook.
  * @param onImportFailureShown called once a failed import has been reported.
  * @param onSetPartial called with the partial of a waypoint whose distances were long-pressed.
@@ -110,14 +119,10 @@ internal fun RoadbookViewerContent(
                 RoadbookContentState.Loading -> Unit
                 RoadbookContentState.Empty -> NoRoadbook(
                     message = stringResource(R.string.roadbook_empty),
-                    importEnabled = !importing,
-                    onImportClick = onImportClick,
                     modifier = Modifier.align(Alignment.Center),
                 )
                 RoadbookContentState.Unreadable -> NoRoadbook(
                     message = stringResource(R.string.roadbook_unreadable),
-                    importEnabled = !importing,
-                    onImportClick = onImportClick,
                     modifier = Modifier.align(Alignment.Center),
                 )
                 is RoadbookContentState.Content -> {
@@ -129,17 +134,17 @@ internal fun RoadbookViewerContent(
                             onScrollStopped = onScrollStopped,
                         )
                     }
-                    if (showImportButton && !importing) {
-                        ExtendedFloatingActionButton(
-                            onClick = onImportClick,
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(dimensions.spacingMedium),
-                        ) {
-                            Text(text = stringResource(R.string.roadbook_action_import))
-                        }
-                    }
                 }
+            }
+            // Not while loading either: until the saved roadbook is read, an import could be
+            // overwritten by it.
+            if (showImportButton && !importing && state.roadbook != RoadbookContentState.Loading) {
+                ImportButton(
+                    onClick = onImportClick,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(dimensions.spacingMedium),
+                )
             }
             if (state.roadbook == RoadbookContentState.Loading || importing) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
@@ -212,33 +217,37 @@ private fun RoadbookList(
     }
 }
 
-/** A message saying why there is no roadbook to show, with a button to import one. */
+/** A message saying why there is no roadbook to show. The floating button imports one. */
 @Composable
-private fun NoRoadbook(
-    message: String,
-    importEnabled: Boolean,
-    onImportClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val dimensions = GisteTheme.dimensions
-    Column(
-        modifier = modifier.padding(dimensions.spacingLarge),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(dimensions.spacingMedium),
+private fun NoRoadbook(message: String, modifier: Modifier = Modifier) {
+    Text(
+        text = message,
+        style = MaterialTheme.typography.titleLarge,
+        color = RoadbookTheme.colors.onSurface,
+        textAlign = TextAlign.Center,
+        modifier = modifier.padding(GisteTheme.dimensions.spacingLarge),
+    )
+}
+
+/**
+ * The floating button that opens the file picker: a standard Material 3 floating action button,
+ * with its default shape and colors, showing only the import icon.
+ *
+ * It never takes the focus: it is meant to be touched, and otherwise, when an app drives the
+ * screen with keys (e.g. a remote control), an arrow or Tab key it does not handle would move the
+ * focus onto it, and an Enter or center key would open the file picker.
+ */
+@Composable
+private fun ImportButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val minTouchTarget = GisteTheme.dimensions.minTouchTarget
+    FloatingActionButton(
+        onClick = onClick,
+        modifier = modifier
+            .defaultMinSize(minWidth = minTouchTarget, minHeight = minTouchTarget)
+            .focusProperties { canFocus = false }
+            .testTag(RoadbookViewerTestTags.IMPORT),
     ) {
-        Text(
-            text = message,
-            style = MaterialTheme.typography.titleLarge,
-            color = RoadbookTheme.colors.onSurface,
-            textAlign = TextAlign.Center,
-        )
-        Button(
-            onClick = onImportClick,
-            enabled = importEnabled,
-            modifier = Modifier.heightIn(min = dimensions.minTouchTarget),
-        ) {
-            Text(text = stringResource(R.string.roadbook_action_import))
-        }
+        Icon(painter = painterResource(R.drawable.roadbook_ic_import), contentDescription = null)
     }
 }
 

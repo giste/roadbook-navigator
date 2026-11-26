@@ -40,15 +40,15 @@ private val ROADBOOK_MIME_TYPES = arrayOf("*/*")
  * `moveToPreviousWaypoint()` change, and long-pressing a waypoint's distances emits
  * [RoadbookEvent.SetPartialRequested] on `RoadbookController.events`.
  *
- * Without a roadbook, it shows a message and a button that opens the system file picker. With
- * one, a floating button does the same when [showImportButton] is `true`. A failed import is
- * reported in the viewer.
+ * A floating button at the bottom end opens the system file picker, the same with or without a
+ * roadbook, when [showImportButton] is `true`. Without a roadbook, the viewer also shows a message
+ * saying why. A failed import is reported in the viewer.
  *
  * The app must bind a [RoadbookSettingsSource], which sets the roadbook style and the short
  * distance threshold.
  *
- * @param showImportButton whether to show the floating import button over the roadbook. Hide it
- * while riding, so nothing covers the roadbook or can be pressed by accident.
+ * @param showImportButton whether to show the floating import button, with or without a
+ * roadbook. Hide it while riding, so nothing covers the roadbook or can be pressed by accident.
  * @param modifier the modifier applied to the viewer.
  */
 @Composable

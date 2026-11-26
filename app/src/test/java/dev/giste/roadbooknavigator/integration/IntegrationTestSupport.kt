@@ -70,6 +70,13 @@ fun ComposeTestRule.awaitText(text: String, exists: Boolean = true) {
     }
 }
 
+/** Waits until a node tagged [tag] exists ([exists]) or no longer exists. */
+fun ComposeTestRule.awaitTag(tag: String, exists: Boolean = true) {
+    waitUntil(TIMEOUT_MILLIS) {
+        onAllNodes(hasTestTag(tag)).fetchSemanticsNodes().isNotEmpty() == exists
+    }
+}
+
 /** How long [awaitValue] waits for a value before it lets the main thread run again. */
 private const val AWAIT_SLICE_MILLIS: Long = 50
 
