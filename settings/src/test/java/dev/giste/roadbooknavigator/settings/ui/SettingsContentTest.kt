@@ -105,6 +105,7 @@ class SettingsContentTest {
                     onIncreaseMapTilt = { calls += "tilt up" },
                     onSaveErrorShown = { calls += "errorShown" },
                     onKeyMoveShown = { calls += "keyMoveShown" },
+                    onOpenAbout = { calls += "about" },
                 )
             }
         }
@@ -370,6 +371,7 @@ class SettingsContentTest {
                     onIncreaseMapTilt = {},
                     onSaveErrorShown = {},
                     onKeyMoveShown = {},
+                    onOpenAbout = {},
                 )
             }
         }
@@ -524,6 +526,18 @@ class SettingsContentTest {
         }
         val back = composeRule.onNodeWithTag(SettingsTestTags.BACK).getUnclippedBoundsInRoot()
         assertTrue("Back is ${back.height} high", back.height >= 56.dp)
+        val about = control("About and licences").getUnclippedBoundsInRoot()
+        assertTrue("About is ${about.height} high", about.height >= 56.dp)
+    }
+
+    @Test
+    fun settingsContent_aboutPressed_reportsIt() {
+        show(defaults)
+
+        composeRule.onNodeWithText("About").performScrollTo().assertExists()
+        control("About and licences").performClick()
+
+        assertEquals(listOf("about"), calls)
     }
 
     @Test
@@ -565,6 +579,8 @@ class SettingsContentTest {
         composeRule.onNodeWithText("Mapa").performScrollTo().assertExists()
         composeRule.onNodeWithText("Zoom del mapa").performScrollTo().assertExists()
         composeRule.onNodeWithText("Inclinación del mapa").performScrollTo().assertExists()
+        composeRule.onNodeWithText("Acerca de").performScrollTo().assertExists()
+        control("Acerca de y licencias").assertExists()
     }
 
     private companion object {

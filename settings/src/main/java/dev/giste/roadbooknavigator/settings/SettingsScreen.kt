@@ -27,7 +27,8 @@ import dev.giste.roadbooknavigator.settings.ui.SettingsViewModel
 
 /**
  * The settings screen, with its state from Hilt: the app theme, the screen orientation, the
- * remote control, the roadbook settings and the map's zoom and tilt.
+ * remote control, the roadbook settings and the map's zoom and tilt, then a link to the app's
+ * About screen.
  *
  * Every change is stored at once and reaches the modules through their settings sources, so the
  * app reacts while the screen is still open. The screen tells the user if a change could not be
@@ -35,10 +36,16 @@ import dev.giste.roadbooknavigator.settings.ui.SettingsViewModel
  *
  * @param onBack called when the user leaves the screen with its back button. The system back
  * gesture is the caller's, e.g. its navigation.
+ * @param onOpenAbout called when the user asks for the About screen (the app, its version and
+ * its licences), which the caller shows.
  * @param modifier applied to the root layout.
  */
 @Composable
-public fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
+public fun SettingsScreen(
+    onBack: () -> Unit,
+    onOpenAbout: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val viewModel: SettingsViewModel = hiltViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     SettingsContent(
@@ -57,6 +64,7 @@ public fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
         onIncreaseMapTilt = viewModel::increaseMapTilt,
         onSaveErrorShown = viewModel::dismissSaveError,
         onKeyMoveShown = viewModel::dismissKeyMoved,
+        onOpenAbout = onOpenAbout,
         modifier = modifier,
     )
 }

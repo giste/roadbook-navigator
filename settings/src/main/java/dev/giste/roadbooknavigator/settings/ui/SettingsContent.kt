@@ -100,7 +100,8 @@ internal object SettingsTestTags {
 
 /**
  * The settings screen for [state]: a top bar with a back button, then the appearance, remote
- * control, roadbook and map sections. Every control is at least the minimum touch target high, so it works with gloves.
+ * control, roadbook and map sections, and an About section that opens the app's About screen.
+ * Every control is at least the minimum touch target high, so it works with gloves.
  *
  * - **Theme:** system, light or dark.
  * - **Screen orientation:** system, vertical or horizontal.
@@ -112,6 +113,7 @@ internal object SettingsTestTags {
  * - **Highlight close waypoints:** the short-distance threshold, changed in steps with − and +.
  * - **Map zoom** and **map tilt:** how close the map is shown and how much it leans, changed in
  *   steps with − and + within the ranges the app offers.
+ * - **About and licences:** a button that opens the About screen.
  *
  * When [SettingsUiState.Loaded.saveFailed] is set, a snackbar says the change was not stored, and
  * [onSaveErrorShown] is called once it has been shown. Likewise, when
@@ -133,6 +135,7 @@ internal object SettingsTestTags {
  * @param onIncreaseMapTilt called when the map tilt's + is pressed.
  * @param onSaveErrorShown called once the save error has been shown.
  * @param onKeyMoveShown called once the notice of a moved key has been shown.
+ * @param onOpenAbout called when the About button is pressed.
  * @param modifier applied to the root layout.
  */
 @Composable
@@ -152,6 +155,7 @@ internal fun SettingsContent(
     onIncreaseMapTilt: () -> Unit,
     onSaveErrorShown: () -> Unit,
     onKeyMoveShown: () -> Unit,
+    onOpenAbout: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -210,6 +214,7 @@ internal fun SettingsContent(
                 onIncreaseMapZoom = onIncreaseMapZoom,
                 onDecreaseMapTilt = onDecreaseMapTilt,
                 onIncreaseMapTilt = onIncreaseMapTilt,
+                onOpenAbout = onOpenAbout,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
@@ -233,6 +238,7 @@ internal fun SettingsContent(
  * @param onIncreaseMapZoom called when the map zoom's + is pressed.
  * @param onDecreaseMapTilt called when the map tilt's − is pressed.
  * @param onIncreaseMapTilt called when the map tilt's + is pressed.
+ * @param onOpenAbout called when the About button is pressed.
  * @param modifier applied to the column.
  */
 @Composable
@@ -249,6 +255,7 @@ private fun SettingsSections(
     onIncreaseMapZoom: () -> Unit,
     onDecreaseMapTilt: () -> Unit,
     onIncreaseMapTilt: () -> Unit,
+    onOpenAbout: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val dimensions = GisteTheme.dimensions
@@ -357,6 +364,9 @@ private fun SettingsSections(
             onIncrease = onIncreaseMapTilt,
             modifier = Modifier.testTag(SettingsTestTags.MAP_TILT_STEPPER),
         )
+
+        SectionTitle(stringResource(R.string.settings_section_about))
+        AboutButton(onClick = onOpenAbout)
     }
 
     capturing?.let { action ->
@@ -419,6 +429,29 @@ private fun <T> Choices(
                 Text(label(option))
             }
         }
+    }
+}
+
+/**
+ * The button that opens the About screen: as wide as the screen and at least the minimum touch
+ * target high, with its label on the start side and a chevron on the end side, as it opens
+ * another screen.
+ *
+ * @param onClick called when the button is pressed.
+ */
+@Composable
+private fun AboutButton(onClick: () -> Unit) {
+    FilledTonalButton(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = GisteTheme.dimensions.minTouchTarget),
+    ) {
+        Text(text = stringResource(R.string.settings_about_open), modifier = Modifier.weight(1f))
+        Icon(
+            painter = painterResource(R.drawable.settings_ic_chevron_right),
+            contentDescription = null,
+        )
     }
 }
 
@@ -703,6 +736,7 @@ private fun SettingsPreview(state: SettingsUiState) {
             onIncreaseMapTilt = {},
             onSaveErrorShown = {},
             onKeyMoveShown = {},
+            onOpenAbout = {},
         )
     }
 }

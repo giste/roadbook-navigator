@@ -82,4 +82,8 @@
 
     <!-- Shown when a changed setting could not be stored -->
     <string name="settings_error_not_saved">No se ha podido guardar el ajuste. Inténtalo de nuevo.</string>
+
+    <!-- Acerca de -->
+    <string name="settings_section_about">Acerca de</string>
+    <string name="settings_about_open">Acerca de y licencias</string>
 </resources>

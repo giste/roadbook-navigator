@@ -20,4 +20,21 @@
     <string name="app_odometer_reset_all_confirm">Poner a cero</string>
     <string name="app_action_set">Fijar</string>
     <string name="app_action_cancel">Cancelar</string>
+
+    <!-- Pantalla Acerca de, abierta desde los ajustes -->
+    <string name="app_about_title">Acerca de</string>
+    <string name="app_about_version">Versión %1$s</string>
+    <string name="app_about_app_licence">Roadbook Navigator es software libre, bajo la Licencia Pública General de GNU, versión 3 o posterior.</string>
+    <string name="app_about_app_licence_link">Leer la licencia</string>
+    <string name="app_about_section_map_data">Datos del mapa</string>
+    <string name="app_about_osm_licence">Los datos del mapa están disponibles bajo la Open Database License.</string>
+    <string name="app_about_osm_copyright_link">Derechos de autor y licencia</string>
+    <string name="app_about_section_map_renderer">Motor del mapa</string>
+    <string name="app_about_vtm">El mapa se dibuja con VTM, del proyecto mapsforge, bajo la Licencia Pública General Reducida de GNU, versión 3 o posterior.</string>
+    <string name="app_about_vtm_link">Web de VTM</string>
+    <string name="app_about_section_libraries">Bibliotecas de código abierto</string>
+    <string name="app_about_libraries_hint">Toca una biblioteca para leer su licencia.</string>
+    <string name="app_about_libraries_unavailable">No se ha podido leer la lista de bibliotecas.</string>
+    <string name="app_about_library_details">%1$s · %2$s</string>
+    <string name="app_about_link_failed">Ninguna app puede abrir este enlace.</string>
 </resources>
