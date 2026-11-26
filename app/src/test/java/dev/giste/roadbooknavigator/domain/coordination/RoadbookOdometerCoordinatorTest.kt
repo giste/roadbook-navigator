@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.giste.roadbooknavigator.coordination
+package dev.giste.roadbooknavigator.domain.coordination
 
 import dev.giste.geo.Distance
 import dev.giste.roadbook.RoadbookEvent

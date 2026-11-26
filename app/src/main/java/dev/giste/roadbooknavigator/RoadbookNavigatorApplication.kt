@@ -23,7 +23,7 @@ import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
 import dev.giste.core.logging.DebugLogging
-import dev.giste.roadbooknavigator.coordination.RoadbookOdometerCoordinator
+import dev.giste.roadbooknavigator.domain.coordination.RoadbookOdometerCoordinator
 import javax.inject.Inject
 
 /**

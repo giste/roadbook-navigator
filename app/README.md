@@ -28,14 +28,14 @@ dev/giste/roadbooknavigator/
 │                   PartialInput (parser and numpad keys), DistanceFormat,
 │                   RemoteKeyEvents (KeyEvent.toKeyPress)
 │   └── about/      AboutScreen + AboutContent + AboutTestTags, AboutViewModel + AboutUiState
+│   └── permission/ PreciseLocationPermission
 ├── domain/         RemoteKeyInterpreter (+ KeyPress, RemoteKeyOutcome),
 │                   OpenSourceLibrary + LibraryLicence, OpenSourceLibraryRepository
 │                   (+ OpenSourceLibrariesResult)
+│   └── coordination/  RoadbookOdometerCoordinator
 ├── data/           AboutLibrariesOpenSourceLibraryRepository (+ readLibraryDefinitions,
 │                   parseOpenSourceLibraries)
-├── coordination/   RoadbookOdometerCoordinator
-├── adapter/        LocationOdometerLocationSource, LocationMapLocationSource
-├── permission/     PreciseLocationPermission
+│   └── adapter/    LocationOdometerLocationSource, LocationMapLocationSource
 └── di/             AdapterModule, AboutModule
 ```
 

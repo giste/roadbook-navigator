@@ -23,8 +23,8 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dev.giste.map.MapLocationSource
 import dev.giste.odometer.OdometerLocationSource
-import dev.giste.roadbooknavigator.adapter.LocationMapLocationSource
-import dev.giste.roadbooknavigator.adapter.LocationOdometerLocationSource
+import dev.giste.roadbooknavigator.data.adapter.LocationMapLocationSource
+import dev.giste.roadbooknavigator.data.adapter.LocationOdometerLocationSource
 
 /** Binds the adapters that connect one module's outputs to another module's input ports. */
 @Module

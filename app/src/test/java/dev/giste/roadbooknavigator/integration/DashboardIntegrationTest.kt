@@ -31,7 +31,7 @@ import dev.giste.geo.Distance
 import dev.giste.odometer.OdometerController
 import dev.giste.roadbook.RoadbookController
 import dev.giste.roadbooknavigator.MainActivity
-import dev.giste.roadbooknavigator.coordination.RoadbookOdometerCoordinator
+import dev.giste.roadbooknavigator.domain.coordination.RoadbookOdometerCoordinator
 import dev.giste.roadbooknavigator.ui.dashboard.DashboardTestTags
 import dev.giste.roadbooknavigator.ui.dashboard.pressNumpadKeys
 import javax.inject.Inject
