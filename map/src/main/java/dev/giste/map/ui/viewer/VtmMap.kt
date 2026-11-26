@@ -31,14 +31,10 @@ import dev.giste.map.MapSettings
 import dev.giste.map.domain.MapCenter
 import dev.giste.map.domain.MapFile
 import org.oscim.android.MapView
-import org.oscim.backend.CanvasAdapter
 import org.oscim.core.BoundingBox
 import org.oscim.layers.tile.buildings.BuildingLayer
 import org.oscim.layers.tile.vector.labeling.LabelLayer
 import org.oscim.map.Map
-import org.oscim.renderer.GLViewport
-import org.oscim.scalebar.DefaultMapScaleBar
-import org.oscim.scalebar.MapScaleBarLayer
 import org.oscim.theme.internal.VtmThemes
 import org.oscim.tiling.source.mapfile.MapFileTileSource
 import org.oscim.tiling.source.mapfile.MultiMapFileTileSource
@@ -49,8 +45,6 @@ import org.oscim.tiling.source.mapfile.MultiMapFileTileSource
  */
 private const val MAP_VIEW_CENTER_Y: Float = 0.6f
 
-/** Gap between the scale bar and the view's left edge, in density-independent pixels. */
-private const val SCALE_BAR_OFFSET: Float = 5f
 
 /**
  * The map of [state], drawn by VTM's OpenGL `MapView`.
@@ -143,11 +137,11 @@ private fun rememberMapView(): MapView {
 }
 
 /**
- * Sets up a new map: the files as one vector source with buildings and labels, a scale bar, the
- * default theme, and the starting position.
+ * Sets up a new map: the files as one vector source with buildings and labels, the default theme,
+ * and the starting position.
  *
- * The scale bar sits at the bottom left, because the app may float controls over the top corners
- * and the bottom right holds the attribution.
+ * It has no scale bar: the map is read in glances at a fixed zoom level, and distances are read
+ * elsewhere (in Roadbook Navigator, on the odometer), so a scale would only add clutter.
  *
  * @param files the map files to draw.
  * @param settings the starting zoom level and tilt.
@@ -161,10 +155,6 @@ private fun Map.setUp(files: List<MapFile>, settings: MapSettings, center: MapCe
     val tileLayer = setBaseMap(source)
     layers().add(BuildingLayer(this, tileLayer))
     layers().add(LabelLayer(this, tileLayer))
-    val scaleBar = MapScaleBarLayer(this, DefaultMapScaleBar(this))
-    scaleBar.renderer.setPosition(GLViewport.Position.BOTTOM_LEFT)
-    scaleBar.renderer.setOffset(SCALE_BAR_OFFSET * CanvasAdapter.getScale(), 0f)
-    layers().add(scaleBar)
     setTheme(VtmThemes.DEFAULT)
     viewport().setMapViewCenterY(MAP_VIEW_CENTER_Y)
 

@@ -19,11 +19,14 @@ package dev.giste.map.ui.viewer
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.InputModeManager
 import androidx.compose.ui.platform.LocalInputModeManager
@@ -32,6 +35,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertWidthIsEqualTo
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -45,11 +49,13 @@ import dev.giste.map.MapSettings
 import dev.giste.map.MapZoomLevel
 import dev.giste.map.domain.testMapFile
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 @RunWith(RobolectricTestRunner::class)
 class MapViewerContentTest {
@@ -214,7 +220,7 @@ class MapViewerContentTest {
     }
 
     @Test
-    fun mapViewerContent_readyAndShowManageButton_showsItInTheTopEndCorner() {
+    fun mapViewerContent_readyAndShowManageButton_showsItInTheBottomEndCorner() {
         showManageable(ready, showManageButton = true)
 
         val button = rule.onNodeWithTag(MapViewerTestTags.MANAGE)
@@ -222,9 +228,22 @@ class MapViewerContentTest {
             .assertWidthIsEqualTo(56.dp)
             .assertHeightIsEqualTo(56.dp)
             .getUnclippedBoundsInRoot()
-        // Inset by the small spacing from the top and end edges of the 300 dp wide viewer.
-        assertEquals(8.dp, button.top)
-        assertEquals(292.dp, button.right)
+        // Material's 16 dp FAB margin from the bottom and end edges of the 300 × 200 dp viewer.
+        assertEquals(184.dp, button.bottom)
+        assertEquals(284.dp, button.right)
+    }
+
+    @Test
+    fun mapViewerContent_ready_showsTheAttributionInTheBottomStartCornerClearOfTheButton() {
+        showManageable(ready, showManageButton = true)
+
+        val attribution = rule.onNodeWithText("© OpenStreetMap").getUnclippedBoundsInRoot()
+        val button = rule.onNodeWithTag(MapViewerTestTags.MANAGE).getUnclippedBoundsInRoot()
+
+        // The text's own bounds: its background reaches the edge, 4 dp of padding before it.
+        assertEquals(4.dp, attribution.left)
+        assertEquals(200.dp, attribution.bottom)
+        assertTrue("The attribution reaches the button", attribution.right < button.left)
     }
 
     @Test
@@ -275,6 +294,31 @@ class MapViewerContentTest {
         button.requestFocus()
 
         button.assert(isFocused().not())
+    }
+
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun mapViewerContent_manageButton_isARoundedSquareInThePrimaryColor() {
+        var primary = Color.Unspecified
+        rule.setContent {
+            GisteTheme {
+                primary = MaterialTheme.colorScheme.primary
+                MapViewerContent(
+                    state = ready,
+                    modifier = Modifier.size(width = 300.dp, height = 200.dp),
+                    showManageButton = true,
+                    onManageMaps = {},
+                    map = { _, _, mapModifier -> Box(mapModifier) },
+                )
+            }
+        }
+
+        val pixels = rule.onNodeWithTag(MapViewerTestTags.MANAGE).captureToImage().toPixelMap()
+        // 8 dp in from the top start corner of the 56 dp button: outside a circle, which only
+        // reaches there at 8.2 dp, but inside the rounded corner of a floating action button.
+        val inset = with(rule.density) { 8.dp.roundToPx() }
+
+        assertEquals(primary, pixels[inset, inset])
     }
 
     private companion object {

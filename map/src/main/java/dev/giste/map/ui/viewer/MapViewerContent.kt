@@ -23,7 +23,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -63,13 +63,13 @@ private const val ATTRIBUTION_BACKGROUND_ALPHA: Float = 0.7f
  * - [MapUiState.Loading]: an empty area, as looking for the maps takes a moment.
  * - [MapUiState.NoMaps] and [MapUiState.UnreadableMaps]: a message on that area.
  * - [MapUiState.Ready]: the map, with the OpenStreetMap attribution that the map data's license
- *   requires in the bottom end corner.
+ *   requires in the bottom start corner.
  *
- * With [onManageMaps], a manage button floats in the top end corner while [showManageButton] is
- * set, and always when there is no map to draw ([MapUiState.NoMaps] or [MapUiState.UnreadableMaps]),
- * since managing the maps is then the only way forward. Without [onManageMaps] there is never one.
- * The button never takes the focus: it is meant to be touched, and an app may want the keys of a
- * remote control for itself.
+ * With [onManageMaps], a manage button floats in the bottom end corner, where floating action
+ * buttons usually are, while [showManageButton] is set, and always when there is no map to draw
+ * ([MapUiState.NoMaps] or [MapUiState.UnreadableMaps]), since managing the maps is then the only
+ * way forward. Without [onManageMaps] there is never one. The button never takes the focus: it is
+ * meant to be touched, and an app may want the keys of a remote control for itself.
  *
  * @param state what to show.
  * @param modifier the modifier applied to the viewer.
@@ -109,7 +109,7 @@ internal fun MapViewerContent(
                 Text(
                     text = stringResource(R.string.map_attribution),
                     modifier = Modifier
-                        .align(Alignment.BottomEnd)
+                        .align(Alignment.BottomStart)
                         .background(
                             MaterialTheme.colorScheme.surface.copy(alpha = ATTRIBUTION_BACKGROUND_ALPHA),
                         )
@@ -124,24 +124,29 @@ internal fun MapViewerContent(
             ManageMapsButton(
                 onClick = onManageMaps,
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(GisteTheme.dimensions.spacingSmall),
+                    .align(Alignment.BottomEnd)
+                    // Material's margin for a floating action button.
+                    .padding(GisteTheme.dimensions.spacingMedium),
             )
         }
     }
 }
 
 /**
- * The button that opens the map manager: a map icon on a filled primary circle, so it stands out
- * on any map, as large as the minimum touch target. It never takes the focus.
+ * The button that opens the map manager: a floating action button with a map icon, as large as
+ * the minimum touch target. It has the shape of the app's other floating action buttons, but the
+ * filled primary color instead of their default container color, which would have little
+ * contrast on the light map; its shadow also lifts it off the map. It never takes the focus.
  *
  * @param onClick called when the button is pressed.
  * @param modifier applied to the button.
  */
 @Composable
 private fun ManageMapsButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    FilledIconButton(
+    FloatingActionButton(
         onClick = onClick,
+        containerColor = MaterialTheme.colorScheme.primary,
+        contentColor = MaterialTheme.colorScheme.onPrimary,
         modifier = modifier
             .size(GisteTheme.dimensions.minTouchTarget)
             .focusProperties { canFocus = false }
