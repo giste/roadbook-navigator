@@ -27,6 +27,8 @@ import dev.giste.roadbook.RoadbookSettings
 import dev.giste.roadbook.RoadbookStyle
 import dev.giste.roadbook.ShortDistanceThreshold
 import dev.giste.roadbooknavigator.settings.AppSettings
+import dev.giste.roadbooknavigator.settings.DashboardSettings
+import dev.giste.roadbooknavigator.settings.ScreenShare
 import dev.giste.roadbooknavigator.settings.FakeSettingsRepository
 import dev.giste.roadbooknavigator.settings.MainDispatcherRule
 import dev.giste.roadbooknavigator.settings.RemoteAction
@@ -50,18 +52,27 @@ class SettingsViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val app = FakeSettingsRepository(AppSettings())
+    private val dashboard = FakeSettingsRepository(DashboardSettings())
     private val remote = FakeSettingsRepository(RemoteSettings())
     private val roadbook = FakeSettingsRepository(RoadbookSettings())
     private val map = FakeSettingsRepository(MapSettings())
 
     // Created in each test, after the rule has replaced Main: viewModelScope takes Main's
     // immediate dispatcher when the ViewModel is created.
-    private val viewModel by lazy { SettingsViewModel(app, remote, roadbook, map) }
+    private val viewModel by lazy { SettingsViewModel(app, dashboard, remote, roadbook, map) }
 
     private val defaults = SettingsUiState.Loaded(
         themeMode = ThemeMode.SYSTEM,
         orientation = ScreenOrientation.FOLLOW_SYSTEM,
         fullScreen = true,
+        landscapeSideColumn = DashboardSettings.DEFAULT_LANDSCAPE_SIDE_COLUMN,
+        canDecreaseLandscapeSideColumn = true,
+        canIncreaseLandscapeSideColumn = true,
+        canRestoreLandscapeSideColumn = false,
+        portraitDistances = DashboardSettings.DEFAULT_PORTRAIT_DISTANCES,
+        canDecreasePortraitDistances = false,
+        canIncreasePortraitDistances = true,
+        canRestorePortraitDistances = false,
         remoteModel = RemoteModel.TERRA_PIRATA,
         remoteKeys = RemoteKeys.TERRA_PIRATA,
         roadbookStyle = RoadbookStyle.APP_THEME,
@@ -174,6 +185,142 @@ class SettingsViewModelTest {
         advanceUntilIdle()
 
         assertEquals(true, app.settings.value.fullScreen)
+    }
+
+    @Test
+    fun uiState_widestSideColumnAndTallestDistances_cannotIncreaseThemButCanRestore() = runTest {
+        dashboard.settings.value = DashboardSettings(
+            landscapeSideColumn = ScreenShare.of(40),
+            portraitDistances = ScreenShare.of(12),
+        )
+
+        viewModel.uiState.test {
+            skipItems(1)
+
+            assertEquals(
+                defaults.copy(
+                    landscapeSideColumn = ScreenShare.of(40),
+                    canIncreaseLandscapeSideColumn = false,
+                    canRestoreLandscapeSideColumn = true,
+                    portraitDistances = ScreenShare.of(12),
+                    canDecreasePortraitDistances = true,
+                    canIncreasePortraitDistances = false,
+                    canRestorePortraitDistances = true,
+                ),
+                awaitItem(),
+            )
+        }
+    }
+
+    @Test
+    fun uiState_narrowestSideColumn_cannotDecreaseIt() = runTest {
+        dashboard.settings.value = DashboardSettings(landscapeSideColumn = ScreenShare.of(25))
+
+        viewModel.uiState.test {
+            skipItems(1)
+            val state = awaitItem() as SettingsUiState.Loaded
+
+            assertEquals(false, state.canDecreaseLandscapeSideColumn)
+            assertEquals(true, state.canIncreaseLandscapeSideColumn)
+            assertEquals(true, state.canRestoreLandscapeSideColumn)
+            assertEquals(false, state.canRestorePortraitDistances)
+        }
+    }
+
+    @Test
+    fun increaseLandscapeSideColumn_storesOneStepWider() = runTest {
+        viewModel.increaseLandscapeSideColumn()
+        advanceUntilIdle()
+
+        assertEquals(ScreenShare.of(35), dashboard.settings.value.landscapeSideColumn)
+    }
+
+    @Test
+    fun decreaseLandscapeSideColumn_storesOneStepNarrower() = runTest {
+        viewModel.decreaseLandscapeSideColumn()
+        advanceUntilIdle()
+
+        assertEquals(ScreenShare.of(25), dashboard.settings.value.landscapeSideColumn)
+    }
+
+    @Test
+    fun increaseLandscapeSideColumn_twiceQuickly_storesTwoSteps() = runTest {
+        viewModel.increaseLandscapeSideColumn()
+        viewModel.increaseLandscapeSideColumn()
+        advanceUntilIdle()
+
+        assertEquals(ScreenShare.of(40), dashboard.settings.value.landscapeSideColumn)
+    }
+
+    @Test
+    fun restoreLandscapeSideColumn_storesTheDefaultAndKeepsTheDistancesRow() = runTest {
+        dashboard.settings.value = DashboardSettings(
+            landscapeSideColumn = ScreenShare.of(40),
+            portraitDistances = ScreenShare.of(10),
+        )
+
+        viewModel.restoreLandscapeSideColumn()
+        advanceUntilIdle()
+
+        assertEquals(
+            DashboardSettings(portraitDistances = ScreenShare.of(10)),
+            dashboard.settings.value,
+        )
+    }
+
+    @Test
+    fun increasePortraitDistances_storesOneStepTaller() = runTest {
+        viewModel.increasePortraitDistances()
+        advanceUntilIdle()
+
+        assertEquals(ScreenShare.of(9), dashboard.settings.value.portraitDistances)
+    }
+
+    @Test
+    fun decreasePortraitDistances_storesOneStepShorter() = runTest {
+        dashboard.settings.value = DashboardSettings(portraitDistances = ScreenShare.of(10))
+
+        viewModel.decreasePortraitDistances()
+        advanceUntilIdle()
+
+        assertEquals(ScreenShare.of(9), dashboard.settings.value.portraitDistances)
+    }
+
+    @Test
+    fun decreasePortraitDistances_atTheShortest_keepsIt() = runTest {
+        viewModel.decreasePortraitDistances()
+        advanceUntilIdle()
+
+        assertEquals(ScreenShare.of(8), dashboard.settings.value.portraitDistances)
+    }
+
+    @Test
+    fun restorePortraitDistances_storesTheDefaultAndKeepsTheSideColumn() = runTest {
+        dashboard.settings.value = DashboardSettings(
+            landscapeSideColumn = ScreenShare.of(40),
+            portraitDistances = ScreenShare.of(12),
+        )
+
+        viewModel.restorePortraitDistances()
+        advanceUntilIdle()
+
+        assertEquals(
+            DashboardSettings(landscapeSideColumn = ScreenShare.of(40)),
+            dashboard.settings.value,
+        )
+    }
+
+    @Test
+    fun dashboardChange_notSaved_showsTheSaveError() = runTest {
+        dashboard.failUpdates = true
+
+        viewModel.uiState.test {
+            skipItems(2)
+
+            viewModel.increasePortraitDistances()
+
+            assertEquals(defaults.copy(saveFailed = true), awaitItem())
+        }
     }
 
     @Test

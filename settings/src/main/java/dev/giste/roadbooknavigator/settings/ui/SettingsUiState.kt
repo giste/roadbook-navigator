@@ -26,6 +26,7 @@ import dev.giste.roadbooknavigator.settings.RemoteKey
 import dev.giste.roadbooknavigator.settings.RemoteKeys
 import dev.giste.roadbooknavigator.settings.RemoteModel
 import dev.giste.roadbooknavigator.settings.ScreenOrientation
+import dev.giste.roadbooknavigator.settings.ScreenShare
 import dev.giste.roadbooknavigator.settings.ThemeMode
 
 /** What the settings screen shows. */
@@ -40,6 +41,14 @@ internal sealed interface SettingsUiState {
      * @property themeMode the app's light or dark colors.
      * @property orientation which way the app is shown on the screen.
      * @property fullScreen whether the app hides the status and navigation bars.
+     * @property landscapeSideColumn the dashboard's side column share of the width, in landscape.
+     * @property canDecreaseLandscapeSideColumn whether the side column can get narrower.
+     * @property canIncreaseLandscapeSideColumn whether the side column can get wider.
+     * @property canRestoreLandscapeSideColumn whether the side column differs from its default.
+     * @property portraitDistances the dashboard's distances row share of the height, in portrait.
+     * @property canDecreasePortraitDistances whether the distances row can get shorter.
+     * @property canIncreasePortraitDistances whether the distances row can get taller.
+     * @property canRestorePortraitDistances whether the distances row differs from its default.
      * @property remoteModel the remote control in use.
      * @property remoteKeys the keys in use, those of [remoteModel].
      * @property roadbookStyle the colors the roadbook is drawn with.
@@ -65,6 +74,14 @@ internal sealed interface SettingsUiState {
         val themeMode: ThemeMode,
         val orientation: ScreenOrientation,
         val fullScreen: Boolean,
+        val landscapeSideColumn: ScreenShare,
+        val canDecreaseLandscapeSideColumn: Boolean,
+        val canIncreaseLandscapeSideColumn: Boolean,
+        val canRestoreLandscapeSideColumn: Boolean,
+        val portraitDistances: ScreenShare,
+        val canDecreasePortraitDistances: Boolean,
+        val canIncreasePortraitDistances: Boolean,
+        val canRestorePortraitDistances: Boolean,
         val remoteModel: RemoteModel,
         val remoteKeys: RemoteKeys,
         val roadbookStyle: RoadbookStyle,

@@ -9,8 +9,9 @@ Stores the settings of every feature module and of the app, provides them to eac
 - Persist the settings of `:map` and `:roadbook`, each in its own DataStore file (AGENTS.md §7).
 - Implement `LocationSettingsSource`, `MapSettingsSource`, `OdometerSettingsSource` and `RoadbookSettingsSource`, and bind them with Hilt, so each module gets its settings as a flow and reacts to every change. The `:location` and `:odometer` settings are fixed to their defaults (see Design decisions).
 - Store the app's own settings (`AppSettings`: the theme mode, the screen orientation and full screen) and provide them as `AppSettingsSource`.
+- Store the dashboard layout (`DashboardSettings`: the landscape side column's share of the width and the portrait distances row's share of the height) and provide it as `DashboardSettingsSource`. `:app` lays out the dashboard with it.
 - Store the remote control settings (`RemoteSettings`: the remote model and the custom keys) and provide them as `RemoteSettingsSource`. `:app` acts on the keys while the dashboard is shown.
-- Show the settings screen (`SettingsScreen`), where the rider changes the theme, the screen orientation, the remote control, the map view (zoom and tilt) and the roadbook settings, and from which the app's About screen is opened.
+- Show the settings screen (`SettingsScreen`), where the rider changes the theme, the screen orientation, full screen, the dashboard layout, the remote control, the map view (zoom and tilt) and the roadbook settings, and from which the app's About screen is opened.
 - Never fail: a missing, invalid or unreadable value is the module's default.
 
 It does **not** store runtime state, such as the odometer distances or the loaded roadbook: each module persists its own (AGENTS.md §7). It does **not** navigate: the app decides how the screen is reached and left.
@@ -20,12 +21,15 @@ It does **not** store runtime state, such as the odometer distances or the loade
 ```
 dev/giste/roadbooknavigator/settings/
 ├── AppSettings, ThemeMode, ScreenOrientation, AppSettingsSource,
+│   DashboardSettings, ScreenShare, DashboardSettingsSource,
 │   RemoteSettings, RemoteModel, RemoteKeys, RemoteKey, RemoteAction,
 │   RemoteSettingsSource, SettingsScreen  ← public API
 ├── domain/         SettingsRepository, SettingsUpdateResult, ShortDistanceStep, MapViewStep,
+│                   DashboardLayoutStep,
 │                   CustomKeyAssignment (RemoteKeys.withOnlyKey)
 ├── data/           DataStoreSettingsRepository, SettingsCodec (+ reading helpers),
 │                   DataStoreAppSettingsRepository + AppSettingsCodec,
+│                   DataStoreDashboardSettingsRepository + DashboardSettingsCodec,
 │                   DataStoreRemoteSettingsRepository + RemoteSettingsCodec,
 │                   DataStoreMapSettingsRepository + MapSettingsCodec,
 │                   DataStoreRoadbookSettingsRepository + RoadbookSettingsCodec,
@@ -46,6 +50,9 @@ Package `dev.giste.roadbooknavigator.settings`:
 | `AppSettings` | The app's own settings: `themeMode`, default `ThemeMode.SYSTEM`, `orientation`, default `ScreenOrientation.FOLLOW_SYSTEM`, and `fullScreen` (hide the status and navigation bars), default `true`. The app decides how to apply them. |
 | `ThemeMode` | `SYSTEM`, `LIGHT` or `DARK`. |
 | `ScreenOrientation` | `FOLLOW_SYSTEM`, `VERTICAL` or `HORIZONTAL`. The app decides how to apply it. |
+| `DashboardSettings` | How the dashboard shares the screen: `landscapeSideColumn`, the side column's share of the width on a screen wider than tall, default 30 %, and `portraitDistances`, the distances row's share of the height on a screen taller than wide, default 8 %. The app decides how to apply them. |
+| `ScreenShare` | A share of the screen as a whole percentage, `percent` (1 to 99) and `fraction`. `ScreenShare.of` rejects other values; `isValid` checks them first. |
+| `DashboardSettingsSource` | Inject it to read the `DashboardSettings`: a cold flow of the stored settings, then every change, without repeats. It never throws. |
 | `RemoteSettings` | The remote control settings: `model`, default `RemoteModel.TERRA_PIRATA`, and `customKeys`, default `RemoteKeys.TERRA_PIRATA`. `keys` gives the keys in use: the model's fixed keys, or `customKeys` for `CUSTOM`. |
 | `RemoteModel` | `DND2`, `TERRA_PIRATA` or `CUSTOM`. |
 | `RemoteAction` | What a key does: `NEXT_WAYPOINT`, `PREVIOUS_WAYPOINT`, `INCREASE_PARTIAL`, `DECREASE_PARTIAL`, `RESET_PARTIAL`. |
@@ -59,7 +66,7 @@ Hilt makes every binding available as soon as `:app` depends on `:settings`.
 ## Inputs and outputs
 
 - **Inputs:** the feature modules' settings models (`LocationSettings`, `MapSettings`, `OdometerSettings`, `RoadbookSettings`) and their defaults.
-- **Outputs:** Hilt bindings in `SingletonComponent` of `LocationSettingsSource`, `MapSettingsSource`, `OdometerSettingsSource`, `RoadbookSettingsSource`, `AppSettingsSource` and `RemoteSettingsSource`, and the `SettingsScreen`. `:app` depends on `:settings` and must not bind those sources itself, or Hilt reports duplicate bindings.
+- **Outputs:** Hilt bindings in `SingletonComponent` of `LocationSettingsSource`, `MapSettingsSource`, `OdometerSettingsSource`, `RoadbookSettingsSource`, `AppSettingsSource`, `DashboardSettingsSource` and `RemoteSettingsSource`, and the `SettingsScreen`. `:app` depends on `:settings` and must not bind those sources itself, or Hilt reports duplicate bindings.
 
 ## Settings
 
@@ -72,6 +79,8 @@ The screen shows every stored setting:
 | Appearance › Theme | `AppSettings.themeMode` | Icons: automatic brightness (System) / sun (Light) / moon (Dark) |
 | Appearance › Screen orientation | `AppSettings.orientation` | Icons: rotating device (System) / upright device (Vertical) / sideways device (Horizontal) |
 | Appearance › Full screen | `AppSettings.fullScreen` | A switch; the whole row toggles it |
+| Dashboard › Side column (landscape) | `DashboardSettings.landscapeSideColumn` | − and + in steps of 5 %, within 25 % – 40 % (default 30 %), and a restore icon |
+| Dashboard › Distances height (portrait) | `DashboardSettings.portraitDistances` | − and + in steps of 1 %, within 8 % – 12 % (default 8 %), and a restore icon |
 | Remote control › Remote | `RemoteSettings.model` | DND2 / Terra Pirata / Custom |
 | Remote control › Keys | `RemoteSettings.keys` | Each action with its keys on a button: disabled (grayed) for DND2 and Terra Pirata; for Custom, it opens `KeyCaptureDialog` |
 | Map › Map zoom | `MapSettings.zoomLevel` | − and + in steps of 1, within 15 – 20, and a restore icon |
@@ -82,13 +91,15 @@ The screen shows every stored setting:
 
 ## Persisted state
 
-Four Preferences DataStore files, each owned by its repository:
+Five Preferences DataStore files, each owned by its repository:
 
 | File | Key | Type | Value |
 |---|---|---|---|
 | `settings_app` | `theme_mode` | `String` | `AppSettings.themeMode`, by enum name |
 | | `orientation` | `String` | `AppSettings.orientation`, by enum name |
 | | `full_screen` | `Boolean` | `AppSettings.fullScreen` |
+| `settings_dashboard` | `landscape_side_column_percent` | `Int` | `DashboardSettings.landscapeSideColumn`, in percent |
+| | `portrait_distances_percent` | `Int` | `DashboardSettings.portraitDistances`, in percent |
 | `settings_map` | `zoom_level` | `Int` | `MapSettings.zoomLevel` |
 | | `tilt_degrees` | `Double` | `MapSettings.tilt`, in degrees |
 | `settings_remote` | `model` | `String` | `RemoteSettings.model`, by enum name |
@@ -109,9 +120,11 @@ A key is stored only while its value differs from the default.
 - **Icons for the theme and the orientation.** Their options read clearly as symbols (a sun, a moon, a device upright or sideways), and an icon takes the same space in every language and needs no translation. Choices whose options are names (the remotes, the roadbook colors) keep their text.
 - **Full screen by default.** The roadbook and the odometer need every pixel of a handlebar tablet, and the rider has no use for the clock or notifications while riding, so the bars are hidden from the first start, as in the previous app. A rider who wants them back turns the switch off; a swipe from the edge shows them for a moment either way. The switch is the only on/off setting, so it is a switch rather than two segmented buttons.
 - **Steppers and segmented buttons, not sliders.** Every control is at least `minTouchTarget` high, and none needs a precise drag, so the screen works with gloves (AGENTS.md §5.3). A slider would be hard to set to an exact value on a moving bike.
-- **Restore icons on the steppers only.** A stepper's default (250 m, zoom 18, tilt 60°) is a number the rider cannot see or remember, so each stepper has a restore icon at the end of its title row, which sets it back at once (`restoreShortDistanceThreshold`, `restoreMapZoom`, `restoreMapTilt`). It is disabled (grayed) while the value is the default (`canRestore…`), so the row looks the same either way. No confirmation: it changes one value, which the stepper can set again. The segmented choices get none, since every option is on screen and the default is one tap away. The icon sits on the title row, not after +, because a phone is too narrow for four buttons at the touch target size.
+- **Restore icons on the steppers only.** A stepper's default (30 %, 8 %, 250 m, zoom 18, tilt 60°) is a number the rider cannot see or remember, so each stepper has a restore icon at the end of its title row, which sets it back at once (`restoreShortDistanceThreshold`, `restoreMapZoom`, `restoreMapTilt`). It is disabled (grayed) while the value is the default (`canRestore…`), so the row looks the same either way. No confirmation: it changes one value, which the stepper can set again. The segmented choices get none, since every option is on screen and the default is one tap away. The icon sits on the title row, not after +, because a phone is too narrow for four buttons at the touch target size.
 - **The `:location` and `:odometer` settings are fixed.** The app is for motor vehicles, and those modules' defaults are meant for them, so the rider never changes these settings and nothing is stored: `FixedLocationSettingsSource` and `FixedOdometerSettingsSource` always give the defaults, as a `StateFlow` that never completes. Their thresholds would mean little to a rider, and a wrong value would quietly spoil the odometer. If they are ever offered, they become stored settings like the others. Files left by earlier builds (`settings_location`, `settings_odometer`) are ignored.
 - **The map view offers narrower ranges than `:map` allows.** The screen offers zoom levels 15 to 20 and tilts of 0° to 60° in 5° steps (`MapViewStep`). Below 15 the rider cannot see the next turn, and these steps are what a rider tells apart at a glance. The ranges are this app's rule, so they live here: `:map` keeps the wider limits of its renderer for other apps. A stored value outside the offered ranges, which only an older build or a damaged file can leave, is brought into them when it is read, so the screen and the map always agree. The defaults stay `MapSettings`' (zoom level 18, tilt 60°), the values the previous app used. Buttons to restore a default are planned for later.
+- **The dashboard offers narrow ranges.** The side column takes 25 % to 40 % of the width in 5 % steps, the range of the previous app: narrower leaves the distances too small, wider squeezes the roadbook. The distances row takes 8 % (today's layout, the default) to 12 % of the height in 1 % steps: its digits are as large as their boxes allow, and from about 12 % the width limits them on every screen, so a taller row would only take height from the map and the roadbook. A stored value that is not a valid share is the default, with a warning; a valid one outside the ranges or between steps, which only a damaged file can hold, is brought to the nearest offered value (`DashboardLayoutStep`).
+- **The dashboard layout is its own settings group.** Only the dashboard reads it, so it has its own file (`settings_dashboard`) and source, as the remote keys do, and `AppSettings` stays what `MainActivity` needs.
 - **The threshold offers a narrower range than `:roadbook` allows.** `ShortDistanceThreshold` accepts 50 m to 1 km, but the screen offers 100 m to 500 m in 50 m steps (`ShortDistanceStep`): the thresholds riders use, in a few presses. The range is this app's rule, so it lives here, and `:roadbook` keeps its wider one for other apps. A stored value outside it, which earlier versions could store (they offered 50 m to 1 km), is brought into it when it is read (`withinOfferedRange`), so the screen and the roadbook always agree.
 - **The screen does not navigate.** It takes `onBack` and `onOpenAbout` callbacks; `:app` owns the routes and the back stack.
 - **About lives in `:app`, reached from here.** The About screen shows the app's version and the licences of every library the app ships, which only `:app` knows, so `:settings` only shows the button at the end of the list, where riders look for it, and does not hold the screen itself.
@@ -125,8 +138,8 @@ A key is stored only while its value differs from the default.
 
 ## Testing notes
 
-- The codecs are pure: `MapSettingsCodecTest`, `RoadbookSettingsCodecTest`, `AppSettingsCodecTest` and `RemoteSettingsCodecTest` round-trip settings, check that defaults store nothing, and cover every invalid value.
-- `SettingsViewModelTest` uses `FakeSettingsRepository` (in memory, with failing updates on demand) and `MainDispatcherRule` for every state and action. `ShortDistanceStepTest` and `MapViewStepTest` cover the steps, their limits and bringing stored values into the offered ranges, and `CustomKeyAssignmentTest` the key assignment (new key, moved key, own key, several keys). `RemoteKeysTest` and `RemoteSettingsTest` cover the fixed keys, the lookups, a key bound twice, equality, and the keys in use for each model. `SettingsContentTest` runs on Robolectric (SDK 35, set in `src/test/resources/robolectric.properties`): every setting, selected choices, the full-screen switch (on, off, and tapping the row or its description), the stepper limits, the restore icons (disabled at the default, enabled one by one, pressed), back, the About button, the save error, control sizes and the Spanish texts, plus the custom keys: buttons disabled for DND2 and Terra Pirata and enabled for Custom, opening the dialog, a key pressed in it after the tap that opened it (the touch-mode case), cancel, the open dialog surviving recreation, and the moved-key snackbar. `KeyCaptureDialogTest` covers the dialog on its own (texts, D-pad, volume, modifier and back keys, cancel) and `isCapturableKey`. Keys are sent with `performKeyInput`. It finds controls by their text plus a click action (scrolling to them first, since the screen is longer than the test window), the icon-only back button by `SettingsTestTags.BACK`, the icon-only theme and orientation choices by `SettingsTestTags.themeMode` and `SettingsTestTags.orientation`, the steppers' buttons and values inside their stepper (`SettingsTestTags.SHORT_DISTANCE_THRESHOLD_STEPPER`, `MAP_ZOOM_STEPPER`, `MAP_TILT_STEPPER`), the icon-only restore buttons by their tags (`SHORT_DISTANCE_THRESHOLD_RESTORE`, `MAP_ZOOM_RESTORE`, `MAP_TILT_RESTORE`), and a key name inside its action's row (`SettingsTestTags.keyBinding`). Under Robolectric `KeyEvent.keyCodeToString` gives the bare number, so the fallback key name is compared with what it returns.
+- The codecs are pure: `MapSettingsCodecTest`, `RoadbookSettingsCodecTest`, `AppSettingsCodecTest`, `DashboardSettingsCodecTest` and `RemoteSettingsCodecTest` round-trip settings, check that defaults store nothing, and cover every invalid value.
+- `SettingsViewModelTest` uses `FakeSettingsRepository` (in memory, with failing updates on demand) and `MainDispatcherRule` for every state and action. `ShortDistanceStepTest`, `MapViewStepTest` and `DashboardLayoutStepTest` cover the steps, their limits and bringing stored values into the offered ranges, and `CustomKeyAssignmentTest` the key assignment (new key, moved key, own key, several keys). `ScreenShareTest` covers the valid shares and their fraction. `RemoteKeysTest` and `RemoteSettingsTest` cover the fixed keys, the lookups, a key bound twice, equality, and the keys in use for each model. `SettingsContentTest` runs on Robolectric (SDK 35, set in `src/test/resources/robolectric.properties`): every setting, selected choices, the full-screen switch (on, off, and tapping the row or its description), the stepper limits, the restore icons (disabled at the default, enabled one by one, pressed), back, the About button, the save error, control sizes and the Spanish texts, plus the custom keys: buttons disabled for DND2 and Terra Pirata and enabled for Custom, opening the dialog, a key pressed in it after the tap that opened it (the touch-mode case), cancel, the open dialog surviving recreation, and the moved-key snackbar. `KeyCaptureDialogTest` covers the dialog on its own (texts, D-pad, volume, modifier and back keys, cancel) and `isCapturableKey`. Keys are sent with `performKeyInput`. It finds controls by their text plus a click action (scrolling to them first, since the screen is longer than the test window), the icon-only back button by `SettingsTestTags.BACK`, the icon-only theme and orientation choices by `SettingsTestTags.themeMode` and `SettingsTestTags.orientation`, the steppers' buttons and values inside their stepper (`SettingsTestTags.LANDSCAPE_SIDE_COLUMN_STEPPER`, `PORTRAIT_DISTANCES_STEPPER`, `SHORT_DISTANCE_THRESHOLD_STEPPER`, `MAP_ZOOM_STEPPER`, `MAP_TILT_STEPPER`), the icon-only restore buttons by their tags (`LANDSCAPE_SIDE_COLUMN_RESTORE`, `PORTRAIT_DISTANCES_RESTORE`, `SHORT_DISTANCE_THRESHOLD_RESTORE`, `MAP_ZOOM_RESTORE`, `MAP_TILT_RESTORE`), and a key name inside its action's row (`SettingsTestTags.keyBinding`). Under Robolectric `KeyEvent.keyCodeToString` gives the bare number, so the fallback key name is compared with what it returns.
 - `DataStoreSettingsRepositoryTest` uses `FakePreferencesDataStore`, which can fail reads and writes on demand, for the shared behavior (through the roadbook repository) and checks that the remote and map repositories read their own keys. `FixedSettingsSourcesTest` checks that the fixed sources give the defaults and never complete.
 - `DataStoreSettingsRepositoryIntegrationTest` uses a real DataStore file in a `TemporaryFolder`, through the roadbook repository, and closes and reopens it to check that the settings survive. DataStore allows one open instance per file, so each instance runs in its own `Job`.
 - `:core` does not share its test doubles, so `FakeLogger` lives in this module's test source set.

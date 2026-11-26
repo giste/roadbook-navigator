@@ -46,11 +46,13 @@ import dev.giste.map.MapTilt
 import dev.giste.map.MapZoomLevel
 import dev.giste.roadbook.RoadbookStyle
 import dev.giste.roadbook.ShortDistanceThreshold
+import dev.giste.roadbooknavigator.settings.DashboardSettings
 import dev.giste.roadbooknavigator.settings.RemoteAction
 import dev.giste.roadbooknavigator.settings.RemoteKey
 import dev.giste.roadbooknavigator.settings.RemoteKeys
 import dev.giste.roadbooknavigator.settings.RemoteModel
 import dev.giste.roadbooknavigator.settings.ScreenOrientation
+import dev.giste.roadbooknavigator.settings.ScreenShare
 import dev.giste.roadbooknavigator.settings.ThemeMode
 import kotlin.math.abs
 import org.junit.Assert.assertEquals
@@ -74,6 +76,14 @@ class SettingsContentTest {
         themeMode = ThemeMode.SYSTEM,
         orientation = ScreenOrientation.FOLLOW_SYSTEM,
         fullScreen = true,
+        landscapeSideColumn = DashboardSettings.DEFAULT_LANDSCAPE_SIDE_COLUMN,
+        canDecreaseLandscapeSideColumn = true,
+        canIncreaseLandscapeSideColumn = true,
+        canRestoreLandscapeSideColumn = false,
+        portraitDistances = DashboardSettings.DEFAULT_PORTRAIT_DISTANCES,
+        canDecreasePortraitDistances = false,
+        canIncreasePortraitDistances = true,
+        canRestorePortraitDistances = false,
         remoteModel = RemoteModel.DND2,
         remoteKeys = RemoteKeys.DND2,
         roadbookStyle = RoadbookStyle.APP_THEME,
@@ -101,6 +111,12 @@ class SettingsContentTest {
                     onThemeModeChange = { calls += "theme $it" },
                     onOrientationChange = { calls += "orientation $it" },
                     onFullScreenChange = { calls += "fullScreen $it" },
+                    onDecreaseLandscapeSideColumn = { calls += "side column narrower" },
+                    onIncreaseLandscapeSideColumn = { calls += "side column wider" },
+                    onRestoreLandscapeSideColumn = { calls += "restore side column" },
+                    onDecreasePortraitDistances = { calls += "distances shorter" },
+                    onIncreasePortraitDistances = { calls += "distances taller" },
+                    onRestorePortraitDistances = { calls += "restore distances" },
                     onRemoteModelChange = { calls += "remote $it" },
                     onAssignCustomKey = { action, key -> calls += "assign $action ${key.code}" },
                     onRoadbookStyleChange = { calls += "style $it" },
@@ -414,6 +430,12 @@ class SettingsContentTest {
                     onThemeModeChange = {},
                     onOrientationChange = {},
                     onFullScreenChange = {},
+                    onDecreaseLandscapeSideColumn = {},
+                    onIncreaseLandscapeSideColumn = {},
+                    onRestoreLandscapeSideColumn = {},
+                    onDecreasePortraitDistances = {},
+                    onIncreasePortraitDistances = {},
+                    onRestorePortraitDistances = {},
                     onRemoteModelChange = {},
                     onAssignCustomKey = { _, _ -> },
                     onRoadbookStyleChange = {},
@@ -507,6 +529,8 @@ class SettingsContentTest {
 
     /** Every restore button's tag. */
     private val restoreTags = listOf(
+        SettingsTestTags.LANDSCAPE_SIDE_COLUMN_RESTORE,
+        SettingsTestTags.PORTRAIT_DISTANCES_RESTORE,
         SettingsTestTags.SHORT_DISTANCE_THRESHOLD_RESTORE,
         SettingsTestTags.MAP_ZOOM_RESTORE,
         SettingsTestTags.MAP_TILT_RESTORE,
@@ -523,6 +547,8 @@ class SettingsContentTest {
     fun settingsContent_changedValues_restoreButtonsReportThem() {
         show(
             defaults.copy(
+                canRestoreLandscapeSideColumn = true,
+                canRestorePortraitDistances = true,
                 canRestoreShortDistanceThreshold = true,
                 canRestoreMapZoom = true,
                 canRestoreMapTilt = true,
@@ -531,16 +557,86 @@ class SettingsContentTest {
 
         restoreTags.forEach { restoreButton(it).assertIsEnabled().performClick() }
 
-        assertEquals(listOf("restore threshold", "restore zoom", "restore tilt"), calls)
+        assertEquals(
+            listOf(
+                "restore side column",
+                "restore distances",
+                "restore threshold",
+                "restore zoom",
+                "restore tilt",
+            ),
+            calls,
+        )
     }
 
     @Test
     fun settingsContent_oneChangedValue_enablesOnlyItsRestoreButton() {
         show(defaults.copy(canRestoreMapZoom = true))
 
+        restoreButton(SettingsTestTags.LANDSCAPE_SIDE_COLUMN_RESTORE).assertIsNotEnabled()
+        restoreButton(SettingsTestTags.PORTRAIT_DISTANCES_RESTORE).assertIsNotEnabled()
         restoreButton(SettingsTestTags.SHORT_DISTANCE_THRESHOLD_RESTORE).assertIsNotEnabled()
         restoreButton(SettingsTestTags.MAP_ZOOM_RESTORE).assertIsEnabled()
         restoreButton(SettingsTestTags.MAP_TILT_RESTORE).assertIsNotEnabled()
+    }
+
+    @Test
+    fun settingsContent_dashboardSettings_showTheirValues() {
+        show(defaults)
+
+        composeRule.onNodeWithText("Dashboard").performScrollTo().assertExists()
+        composeRule.onNodeWithText("Side column (landscape)").performScrollTo().assertExists()
+        stepperValue(SettingsTestTags.LANDSCAPE_SIDE_COLUMN_STEPPER, "30 %").assertExists()
+        composeRule.onNodeWithText("Distances height (portrait)").performScrollTo().assertExists()
+        stepperValue(SettingsTestTags.PORTRAIT_DISTANCES_STEPPER, "8 %").assertExists()
+    }
+
+    @Test
+    fun settingsContent_dashboardSteppersPressed_reportThem() {
+        show(defaults.copy(canDecreasePortraitDistances = true))
+
+        stepperButton(SettingsTestTags.LANDSCAPE_SIDE_COLUMN_STEPPER, "−").performClick()
+        stepperButton(SettingsTestTags.LANDSCAPE_SIDE_COLUMN_STEPPER, "+").performClick()
+        stepperButton(SettingsTestTags.PORTRAIT_DISTANCES_STEPPER, "−").performClick()
+        stepperButton(SettingsTestTags.PORTRAIT_DISTANCES_STEPPER, "+").performClick()
+
+        assertEquals(
+            listOf(
+                "side column narrower",
+                "side column wider",
+                "distances shorter",
+                "distances taller",
+            ),
+            calls,
+        )
+    }
+
+    @Test
+    fun settingsContent_defaultDistancesRow_cannotGetShorter() {
+        show(defaults)
+
+        stepperButton(SettingsTestTags.PORTRAIT_DISTANCES_STEPPER, "−").assertIsNotEnabled()
+        stepperButton(SettingsTestTags.PORTRAIT_DISTANCES_STEPPER, "+").assertIsEnabled()
+    }
+
+    @Test
+    fun settingsContent_dashboardAtTheLimits_disablesTheirButtons() {
+        show(
+            defaults.copy(
+                landscapeSideColumn = ScreenShare.of(40),
+                canIncreaseLandscapeSideColumn = false,
+                portraitDistances = ScreenShare.of(12),
+                canDecreasePortraitDistances = true,
+                canIncreasePortraitDistances = false,
+            ),
+        )
+
+        stepperValue(SettingsTestTags.LANDSCAPE_SIDE_COLUMN_STEPPER, "40 %").assertExists()
+        stepperButton(SettingsTestTags.LANDSCAPE_SIDE_COLUMN_STEPPER, "−").assertIsEnabled()
+        stepperButton(SettingsTestTags.LANDSCAPE_SIDE_COLUMN_STEPPER, "+").assertIsNotEnabled()
+        stepperValue(SettingsTestTags.PORTRAIT_DISTANCES_STEPPER, "12 %").assertExists()
+        stepperButton(SettingsTestTags.PORTRAIT_DISTANCES_STEPPER, "−").assertIsEnabled()
+        stepperButton(SettingsTestTags.PORTRAIT_DISTANCES_STEPPER, "+").assertIsNotEnabled()
     }
 
     @Test
@@ -618,6 +714,8 @@ class SettingsContentTest {
             assertTrue("An icon choice is $height high", height >= 56.dp)
         }
         val steppers = listOf(
+            SettingsTestTags.LANDSCAPE_SIDE_COLUMN_STEPPER,
+            SettingsTestTags.PORTRAIT_DISTANCES_STEPPER,
             SettingsTestTags.SHORT_DISTANCE_THRESHOLD_STEPPER,
             SettingsTestTags.MAP_ZOOM_STEPPER,
             SettingsTestTags.MAP_TILT_STEPPER,
@@ -666,6 +764,9 @@ class SettingsContentTest {
 
         composeRule.onNodeWithText("Toca la tecla de una acción para cambiarla.").assertExists()
         composeRule.onNodeWithText("Cruceta arriba pasa de «Viñeta siguiente» a «Poner el parcial a cero».").assertExists()
+        // Let the snackbar go, so it does not cover the button once it is scrolled into view.
+        composeRule.mainClock.advanceTimeBy(SNACKBAR_SHORT_MILLIS)
+        composeRule.waitForIdle()
         keyButton(RemoteAction.NEXT_WAYPOINT).performScrollTo().performClick()
         composeRule.onNodeWithText("Pulsa en el mando la tecla para esta acción.").assertExists()
         composeRule.onNodeWithText("Ahora: Cruceta arriba").assertExists()
@@ -681,6 +782,9 @@ class SettingsContentTest {
         composeRule.onNodeWithText("Tema").assertExists()
         composeRule.onNodeWithText("Orientación de la pantalla").assertExists()
         control("Pantalla completa").assertExists()
+        composeRule.onNodeWithText("Panel").performScrollTo().assertExists()
+        composeRule.onNodeWithText("Columna lateral (horizontal)").performScrollTo().assertExists()
+        composeRule.onNodeWithText("Altura de las distancias (vertical)").performScrollTo().assertExists()
         composeRule.onNodeWithText(
             "Oculta las barras de estado y de navegación. Desliza desde el borde de la pantalla " +
                 "para verlas un momento.",

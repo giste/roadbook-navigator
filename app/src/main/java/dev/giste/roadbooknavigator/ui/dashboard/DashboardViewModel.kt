@@ -28,6 +28,8 @@ import dev.giste.roadbook.RoadbookController
 import dev.giste.roadbooknavigator.domain.KeyPress
 import dev.giste.roadbooknavigator.domain.RemoteKeyInterpreter
 import dev.giste.roadbooknavigator.domain.RemoteKeyOutcome
+import dev.giste.roadbooknavigator.settings.DashboardSettings
+import dev.giste.roadbooknavigator.settings.DashboardSettingsSource
 import dev.giste.roadbooknavigator.settings.RemoteAction
 import dev.giste.roadbooknavigator.settings.RemoteKeys
 import dev.giste.roadbooknavigator.settings.RemoteSettingsSource
@@ -59,11 +61,13 @@ private val NO_REMOTE_KEYS = RemoteKeys(emptyMap())
  * visible (plus [STOP_TIMEOUT_MILLIS]).
  *
  * The remote control's keys are read from the start, and follow every change of the settings.
+ * So does the layout, while [uiState] is collected; until it is read, the default layout is used.
  *
  * @param odometer the distances, and the commands to change them.
  * @param roadbook the commands to move between waypoints.
  * @param locationSource whether the vehicle is stopped.
  * @param remoteSettings the keys of the remote control.
+ * @param dashboardSettings how the dashboard shares the screen.
  */
 @HiltViewModel
 internal class DashboardViewModel @Inject constructor(
@@ -71,6 +75,7 @@ internal class DashboardViewModel @Inject constructor(
     private val roadbook: RoadbookController,
     locationSource: LocationSource,
     remoteSettings: RemoteSettingsSource,
+    dashboardSettings: DashboardSettingsSource,
 ) : ViewModel() {
 
     /**
@@ -90,12 +95,15 @@ internal class DashboardViewModel @Inject constructor(
             .map<_, OdometerUiState> { OdometerUiState.Available(partial = it.trip, total = it.total) }
             .onStart { emit(OdometerUiState.Loading) },
         locationSource.motion,
-    ) { odometerState, motion ->
+        // The default layout at once, so the distances need not wait for the settings to be read.
+        dashboardSettings.settings.onStart { emit(DashboardSettings()) },
+    ) { odometerState, motion, layout ->
         // Importing and the settings are only offered while stopped, so the rider is not tempted
         // to use them while riding.
         DashboardUiState(
             odometer = odometerState,
             showStoppedActions = motion == MotionState.STOPPED,
+            layout = layout,
         )
     }.stateIn(
         scope = viewModelScope,

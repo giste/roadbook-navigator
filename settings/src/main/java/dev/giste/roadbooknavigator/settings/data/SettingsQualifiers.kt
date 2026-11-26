@@ -38,3 +38,8 @@ internal annotation class RemoteSettingsDataStore
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 internal annotation class RoadbookSettingsDataStore
+
+/** Qualifies the DataStore of the dashboard settings (file `settings_dashboard`). */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+internal annotation class DashboardSettingsDataStore

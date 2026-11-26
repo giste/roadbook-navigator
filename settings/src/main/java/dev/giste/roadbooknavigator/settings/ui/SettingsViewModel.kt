@@ -27,20 +27,25 @@ import dev.giste.roadbook.RoadbookSettings
 import dev.giste.roadbook.RoadbookStyle
 import dev.giste.roadbook.ShortDistanceThreshold
 import dev.giste.roadbooknavigator.settings.AppSettings
+import dev.giste.roadbooknavigator.settings.DashboardSettings
 import dev.giste.roadbooknavigator.settings.RemoteAction
 import dev.giste.roadbooknavigator.settings.RemoteKey
 import dev.giste.roadbooknavigator.settings.RemoteModel
 import dev.giste.roadbooknavigator.settings.RemoteSettings
 import dev.giste.roadbooknavigator.settings.ScreenOrientation
 import dev.giste.roadbooknavigator.settings.ThemeMode
+import dev.giste.roadbooknavigator.settings.domain.LANDSCAPE_SIDE_COLUMN_RANGE
 import dev.giste.roadbooknavigator.settings.domain.MAP_TILT_RANGE
 import dev.giste.roadbooknavigator.settings.domain.MAP_ZOOM_RANGE
+import dev.giste.roadbooknavigator.settings.domain.PORTRAIT_DISTANCES_RANGE
 import dev.giste.roadbooknavigator.settings.domain.SHORT_DISTANCE_MAX
 import dev.giste.roadbooknavigator.settings.domain.SHORT_DISTANCE_MIN
 import dev.giste.roadbooknavigator.settings.domain.SettingsRepository
 import dev.giste.roadbooknavigator.settings.domain.SettingsUpdateResult
 import dev.giste.roadbooknavigator.settings.domain.stepped
+import dev.giste.roadbooknavigator.settings.domain.withLandscapeSideColumnStepped
 import dev.giste.roadbooknavigator.settings.domain.withOnlyKey
+import dev.giste.roadbooknavigator.settings.domain.withPortraitDistancesStepped
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -61,6 +66,7 @@ private const val STOP_TIMEOUT_MILLIS: Long = 5_000
  * action sets [SettingsUiState.Loaded.keyMoved] until [dismissKeyMoved].
  *
  * @param appSettings the app's own settings.
+ * @param dashboardSettings how the dashboard shares the screen.
  * @param remoteSettings the remote control settings.
  * @param roadbookSettings the `:roadbook` settings.
  * @param mapSettings the `:map` settings.
@@ -68,6 +74,7 @@ private const val STOP_TIMEOUT_MILLIS: Long = 5_000
 @HiltViewModel
 internal class SettingsViewModel @Inject constructor(
     private val appSettings: SettingsRepository<AppSettings>,
+    private val dashboardSettings: SettingsRepository<DashboardSettings>,
     private val remoteSettings: SettingsRepository<RemoteSettings>,
     private val roadbookSettings: SettingsRepository<RoadbookSettings>,
     private val mapSettings: SettingsRepository<MapSettings>,
@@ -81,17 +88,33 @@ internal class SettingsViewModel @Inject constructor(
 
     /** The screen state. Starts at [SettingsUiState.Loading] and never fails. */
     val uiState: StateFlow<SettingsUiState> = combine(
-        combine(appSettings.settings, remoteSettings.settings, roadbookSettings.settings, mapSettings.settings) {
-                app, remote, roadbook, map ->
-            StoredSettings(app, remote, roadbook, map)
+        combine(
+            appSettings.settings,
+            dashboardSettings.settings,
+            remoteSettings.settings,
+            roadbookSettings.settings,
+            mapSettings.settings,
+        ) { app, dashboard, remote, roadbook, map ->
+            StoredSettings(app, dashboard, remote, roadbook, map)
         },
         saveFailed,
         keyMoved,
-    ) { (app, remote, roadbook, map), failed, moved ->
+    ) { (app, dashboard, remote, roadbook, map), failed, moved ->
+        val sideColumn = dashboard.landscapeSideColumn
+        val distances = dashboard.portraitDistances
         SettingsUiState.Loaded(
             themeMode = app.themeMode,
             orientation = app.orientation,
             fullScreen = app.fullScreen,
+            landscapeSideColumn = sideColumn,
+            canDecreaseLandscapeSideColumn = sideColumn.percent > LANDSCAPE_SIDE_COLUMN_RANGE.first,
+            canIncreaseLandscapeSideColumn = sideColumn.percent < LANDSCAPE_SIDE_COLUMN_RANGE.last,
+            canRestoreLandscapeSideColumn =
+                sideColumn != DashboardSettings.DEFAULT_LANDSCAPE_SIDE_COLUMN,
+            portraitDistances = distances,
+            canDecreasePortraitDistances = distances.percent > PORTRAIT_DISTANCES_RANGE.first,
+            canIncreasePortraitDistances = distances.percent < PORTRAIT_DISTANCES_RANGE.last,
+            canRestorePortraitDistances = distances != DashboardSettings.DEFAULT_PORTRAIT_DISTANCES,
             remoteModel = remote.model,
             remoteKeys = remote.keys,
             roadbookStyle = roadbook.style,
@@ -144,6 +167,44 @@ internal class SettingsViewModel @Inject constructor(
      */
     fun setFullScreen(fullScreen: Boolean) {
         save { appSettings.update { it.copy(fullScreen = fullScreen) } }
+    }
+
+    /** Makes the dashboard's landscape side column one step narrower, down to the narrowest. */
+    fun decreaseLandscapeSideColumn() {
+        save { dashboardSettings.update { it.withLandscapeSideColumnStepped(-1) } }
+    }
+
+    /** Makes the dashboard's landscape side column one step wider, up to the widest. */
+    fun increaseLandscapeSideColumn() {
+        save { dashboardSettings.update { it.withLandscapeSideColumnStepped(1) } }
+    }
+
+    /** Sets the dashboard's landscape side column back to its default. */
+    fun restoreLandscapeSideColumn() {
+        save {
+            dashboardSettings.update {
+                it.copy(landscapeSideColumn = DashboardSettings.DEFAULT_LANDSCAPE_SIDE_COLUMN)
+            }
+        }
+    }
+
+    /** Makes the dashboard's portrait distances row one step shorter, down to the shortest. */
+    fun decreasePortraitDistances() {
+        save { dashboardSettings.update { it.withPortraitDistancesStepped(-1) } }
+    }
+
+    /** Makes the dashboard's portrait distances row one step taller, up to the tallest. */
+    fun increasePortraitDistances() {
+        save { dashboardSettings.update { it.withPortraitDistancesStepped(1) } }
+    }
+
+    /** Sets the dashboard's portrait distances row back to its default. */
+    fun restorePortraitDistances() {
+        save {
+            dashboardSettings.update {
+                it.copy(portraitDistances = DashboardSettings.DEFAULT_PORTRAIT_DISTANCES)
+            }
+        }
     }
 
     /**
@@ -269,6 +330,7 @@ internal class SettingsViewModel @Inject constructor(
 /** The stored settings the screen shows, read together. */
 private data class StoredSettings(
     val app: AppSettings,
+    val dashboard: DashboardSettings,
     val remote: RemoteSettings,
     val roadbook: RoadbookSettings,
     val map: MapSettings,

@@ -24,6 +24,7 @@ import dev.giste.location.MotionState
 import dev.giste.odometer.OdometerState
 import dev.giste.roadbooknavigator.FakeLocationSource
 import dev.giste.roadbooknavigator.FakeOdometerController
+import dev.giste.roadbooknavigator.FakeDashboardSettingsSource
 import dev.giste.roadbooknavigator.FakeRemoteSettingsSource
 import dev.giste.roadbooknavigator.FakeRoadbookController
 import dev.giste.roadbooknavigator.MainDispatcherRule
@@ -32,7 +33,10 @@ import dev.giste.roadbooknavigator.domain.KeyPressType
 import dev.giste.roadbooknavigator.domain.RESET_HOLD_MILLIS
 import dev.giste.roadbooknavigator.settings.RemoteKey
 import dev.giste.roadbooknavigator.settings.RemoteModel
+import dev.giste.roadbooknavigator.settings.DashboardSettings
+import dev.giste.roadbooknavigator.settings.DashboardSettingsSource
 import dev.giste.roadbooknavigator.settings.RemoteSettings
+import dev.giste.roadbooknavigator.settings.ScreenShare
 import dev.giste.roadbooknavigator.settings.RemoteSettingsSource
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -57,9 +61,12 @@ class DashboardViewModelTest {
     private val remoteSettings = FakeRemoteSettingsSource().apply {
         settings.value = RemoteSettings(model = RemoteModel.DND2)
     }
+    private val dashboardSettings = FakeDashboardSettingsSource()
     // Created in each test, after the rule has replaced Main: viewModelScope takes Main's
     // immediate dispatcher when the ViewModel is created.
-    private val viewModel by lazy { DashboardViewModel(odometer, roadbook, locationSource, remoteSettings) }
+    private val viewModel by lazy {
+        DashboardViewModel(odometer, roadbook, locationSource, remoteSettings, dashboardSettings)
+    }
 
     private val distances = OdometerState(trip = Distance.meters(1_200.0), total = Distance.meters(9_000.0))
 
@@ -92,6 +99,55 @@ class DashboardViewModelTest {
             locationSource.motion.value = MotionState.MOVING
 
             assertEquals(DashboardUiState(OdometerUiState.Loading, showStoppedActions = false), awaitItem())
+        }
+    }
+
+    @Test
+    fun uiState_storedLayout_isShown() = runTest {
+        val layout = DashboardSettings(
+            landscapeSideColumn = ScreenShare.of(40),
+            portraitDistances = ScreenShare.of(12),
+        )
+        dashboardSettings.settings.value = layout
+
+        viewModel.uiState.test {
+            skipItems(1)
+
+            assertEquals(layout, awaitItem().layout)
+        }
+    }
+
+    @Test
+    fun uiState_layoutChanged_followsIt() = runTest {
+        viewModel.uiState.test {
+            skipItems(1)
+
+            dashboardSettings.settings.value =
+                DashboardSettings(portraitDistances = ScreenShare.of(10))
+
+            assertEquals(ScreenShare.of(10), awaitItem().layout.portraitDistances)
+        }
+    }
+
+    @Test
+    fun uiState_layoutNotReadYet_usesTheDefaultLayout() = runTest {
+        val unread = object : DashboardSettingsSource {
+            override val settings: Flow<DashboardSettings> = emptyFlow()
+        }
+        val viewModel =
+            DashboardViewModel(odometer, roadbook, locationSource, remoteSettings, unread)
+
+        viewModel.uiState.test {
+            skipItems(1)
+
+            odometer.emit(distances)
+
+            val state = awaitItem()
+            assertEquals(DashboardSettings(), state.layout)
+            assertEquals(
+                OdometerUiState.Available(partial = distances.trip, total = distances.total),
+                state.odometer,
+            )
         }
     }
 
@@ -226,7 +282,8 @@ class DashboardViewModelTest {
         val unread = object : RemoteSettingsSource {
             override val settings: Flow<RemoteSettings> = emptyFlow()
         }
-        val viewModel = DashboardViewModel(odometer, roadbook, locationSource, unread)
+        val viewModel =
+            DashboardViewModel(odometer, roadbook, locationSource, unread, dashboardSettings)
         advanceUntilIdle()
 
         val consumed = viewModel.onKeyPress(KeyPress(RemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT), KeyPressType.DOWN, 0, 0))

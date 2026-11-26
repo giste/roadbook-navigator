@@ -10,6 +10,13 @@
     <string name="settings_full_screen_title">Full screen</string>
     <string name="settings_full_screen_description">Hide the status and navigation bars. Swipe from the edge of the screen to show them for a moment.</string>
 
+    <!-- Dashboard -->
+    <string name="settings_section_dashboard">Dashboard</string>
+    <string name="settings_landscape_side_column_title">Side column (landscape)</string>
+    <string name="settings_landscape_side_column_description">How much of the screen width the distances and the map take when the screen is wider than tall.</string>
+    <string name="settings_portrait_distances_title">Distances height (portrait)</string>
+    <string name="settings_portrait_distances_description">How much of the screen height the total and the partial take when the screen is taller than wide.</string>
+
     <!-- Remote control -->
     <string name="settings_section_remote">Remote control</string>
     <string name="settings_remote_model_title">Remote</string>
@@ -75,6 +82,7 @@
     <string name="settings_map_tilt_description">How much the map leans towards the horizon. At 0° it looks straight down.</string>
     <!-- An angle in whole degrees: %1$d is the number -->
     <string name="settings_degrees">%1$d°</string>
+    <string name="settings_percent">%1$d %%</string>
 
     <!-- About -->
     <string name="settings_section_about">About</string>

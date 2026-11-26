@@ -66,12 +66,14 @@ import dev.giste.map.MapTilt
 import dev.giste.map.MapZoomLevel
 import dev.giste.roadbook.RoadbookStyle
 import dev.giste.roadbook.ShortDistanceThreshold
+import dev.giste.roadbooknavigator.settings.DashboardSettings
 import dev.giste.roadbooknavigator.settings.R
 import dev.giste.roadbooknavigator.settings.RemoteAction
 import dev.giste.roadbooknavigator.settings.RemoteKey
 import dev.giste.roadbooknavigator.settings.RemoteKeys
 import dev.giste.roadbooknavigator.settings.RemoteModel
 import dev.giste.roadbooknavigator.settings.ScreenOrientation
+import dev.giste.roadbooknavigator.settings.ScreenShare
 import dev.giste.roadbooknavigator.settings.ThemeMode
 import kotlin.math.roundToInt
 
@@ -98,6 +100,18 @@ internal object SettingsTestTags {
 
     /** The button that restores the map tilt's default. */
     const val MAP_TILT_RESTORE: String = "settings_map_tilt_restore"
+
+    /** The dashboard's landscape side column stepper. */
+    const val LANDSCAPE_SIDE_COLUMN_STEPPER: String = "settings_landscape_side_column_stepper"
+
+    /** The button that restores the landscape side column's default. */
+    const val LANDSCAPE_SIDE_COLUMN_RESTORE: String = "settings_landscape_side_column_restore"
+
+    /** The dashboard's portrait distances row stepper. */
+    const val PORTRAIT_DISTANCES_STEPPER: String = "settings_portrait_distances_stepper"
+
+    /** The button that restores the portrait distances row's default. */
+    const val PORTRAIT_DISTANCES_RESTORE: String = "settings_portrait_distances_restore"
 
     /**
      * The choice of one theme mode, which shows an icon instead of text.
@@ -136,6 +150,8 @@ internal object SettingsTestTags {
  * - **Screen orientation:** system, vertical or horizontal, shown as icons (a rotating device, a
  *   device upright and a device sideways).
  * - **Full screen:** a switch that hides the status and navigation bars. The whole row toggles it.
+ * - **Side column (landscape)** and **distances height (portrait):** how the dashboard shares the
+ *   screen, in percent, changed in steps with − and + within the ranges the app offers.
  * - **Remote:** DND2, Terra Pirata or custom, and the keys of each action, on a button. For DND2
  *   and Terra Pirata the buttons are disabled (grayed), since their keys cannot change. With
  *   custom, each button opens [KeyCaptureDialog], which assigns the key the rider presses; which
@@ -144,7 +160,7 @@ internal object SettingsTestTags {
  * - **Highlight close waypoints:** the short-distance threshold, changed in steps with − and +.
  * - **Map zoom** and **map tilt:** how close the map is shown and how much it leans, changed in
  *   steps with − and + within the ranges the app offers.
- * - Each of these three has a restore icon at the end of its title, which sets it back to its
+ * - Each stepper has a restore icon at the end of its title, which sets it back to its
  *   default at once. It is disabled (grayed) while the value already is the default.
  * - **About and licences:** a button that opens the About screen.
  *
@@ -158,6 +174,12 @@ internal object SettingsTestTags {
  * @param onThemeModeChange called with the theme mode the user picks.
  * @param onOrientationChange called with the screen orientation the user picks.
  * @param onFullScreenChange called with whether the user wants the app full screen.
+ * @param onDecreaseLandscapeSideColumn called when the side column's − is pressed.
+ * @param onIncreaseLandscapeSideColumn called when the side column's + is pressed.
+ * @param onRestoreLandscapeSideColumn called when the side column's restore button is pressed.
+ * @param onDecreasePortraitDistances called when the distances row's − is pressed.
+ * @param onIncreasePortraitDistances called when the distances row's + is pressed.
+ * @param onRestorePortraitDistances called when the distances row's restore button is pressed.
  * @param onRemoteModelChange called with the remote model the user picks.
  * @param onAssignCustomKey called with a custom action and the key the user pressed for it.
  * @param onRoadbookStyleChange called with the roadbook style the user picks.
@@ -182,6 +204,12 @@ internal fun SettingsContent(
     onThemeModeChange: (ThemeMode) -> Unit,
     onOrientationChange: (ScreenOrientation) -> Unit,
     onFullScreenChange: (Boolean) -> Unit,
+    onDecreaseLandscapeSideColumn: () -> Unit,
+    onIncreaseLandscapeSideColumn: () -> Unit,
+    onRestoreLandscapeSideColumn: () -> Unit,
+    onDecreasePortraitDistances: () -> Unit,
+    onIncreasePortraitDistances: () -> Unit,
+    onRestorePortraitDistances: () -> Unit,
     onRemoteModelChange: (RemoteModel) -> Unit,
     onAssignCustomKey: (RemoteAction, RemoteKey) -> Unit,
     onRoadbookStyleChange: (RoadbookStyle) -> Unit,
@@ -247,6 +275,12 @@ internal fun SettingsContent(
                 onThemeModeChange = onThemeModeChange,
                 onOrientationChange = onOrientationChange,
                 onFullScreenChange = onFullScreenChange,
+                onDecreaseLandscapeSideColumn = onDecreaseLandscapeSideColumn,
+                onIncreaseLandscapeSideColumn = onIncreaseLandscapeSideColumn,
+                onRestoreLandscapeSideColumn = onRestoreLandscapeSideColumn,
+                onDecreasePortraitDistances = onDecreasePortraitDistances,
+                onIncreasePortraitDistances = onIncreasePortraitDistances,
+                onRestorePortraitDistances = onRestorePortraitDistances,
                 onRemoteModelChange = onRemoteModelChange,
                 onAssignCustomKey = onAssignCustomKey,
                 onRoadbookStyleChange = onRoadbookStyleChange,
@@ -275,6 +309,12 @@ internal fun SettingsContent(
  * @param onThemeModeChange called with the theme mode the user picks.
  * @param onOrientationChange called with the screen orientation the user picks.
  * @param onFullScreenChange called with whether the user wants the app full screen.
+ * @param onDecreaseLandscapeSideColumn called when the side column's − is pressed.
+ * @param onIncreaseLandscapeSideColumn called when the side column's + is pressed.
+ * @param onRestoreLandscapeSideColumn called when the side column's restore button is pressed.
+ * @param onDecreasePortraitDistances called when the distances row's − is pressed.
+ * @param onIncreasePortraitDistances called when the distances row's + is pressed.
+ * @param onRestorePortraitDistances called when the distances row's restore button is pressed.
  * @param onRemoteModelChange called with the remote model the user picks.
  * @param onAssignCustomKey called with a custom action and the key the user pressed for it.
  * @param onRoadbookStyleChange called with the roadbook style the user picks.
@@ -296,6 +336,12 @@ private fun SettingsSections(
     onThemeModeChange: (ThemeMode) -> Unit,
     onOrientationChange: (ScreenOrientation) -> Unit,
     onFullScreenChange: (Boolean) -> Unit,
+    onDecreaseLandscapeSideColumn: () -> Unit,
+    onIncreaseLandscapeSideColumn: () -> Unit,
+    onRestoreLandscapeSideColumn: () -> Unit,
+    onDecreasePortraitDistances: () -> Unit,
+    onIncreasePortraitDistances: () -> Unit,
+    onRestorePortraitDistances: () -> Unit,
     onRemoteModelChange: (RemoteModel) -> Unit,
     onAssignCustomKey: (RemoteAction, RemoteKey) -> Unit,
     onRoadbookStyleChange: (RoadbookStyle) -> Unit,
@@ -343,6 +389,46 @@ private fun SettingsSections(
             description = stringResource(R.string.settings_full_screen_description),
             checked = state.fullScreen,
             onCheckedChange = onFullScreenChange,
+        )
+
+        SectionTitle(stringResource(R.string.settings_section_dashboard))
+        RestorableSettingTitle(
+            text = stringResource(R.string.settings_landscape_side_column_title),
+            canRestore = state.canRestoreLandscapeSideColumn,
+            onRestore = onRestoreLandscapeSideColumn,
+            restoreTag = SettingsTestTags.LANDSCAPE_SIDE_COLUMN_RESTORE,
+        )
+        Text(
+            text = stringResource(R.string.settings_landscape_side_column_description),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Stepper(
+            value = stringResource(R.string.settings_percent, state.landscapeSideColumn.percent),
+            canDecrease = state.canDecreaseLandscapeSideColumn,
+            canIncrease = state.canIncreaseLandscapeSideColumn,
+            onDecrease = onDecreaseLandscapeSideColumn,
+            onIncrease = onIncreaseLandscapeSideColumn,
+            modifier = Modifier.testTag(SettingsTestTags.LANDSCAPE_SIDE_COLUMN_STEPPER),
+        )
+        RestorableSettingTitle(
+            text = stringResource(R.string.settings_portrait_distances_title),
+            canRestore = state.canRestorePortraitDistances,
+            onRestore = onRestorePortraitDistances,
+            restoreTag = SettingsTestTags.PORTRAIT_DISTANCES_RESTORE,
+        )
+        Text(
+            text = stringResource(R.string.settings_portrait_distances_description),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Stepper(
+            value = stringResource(R.string.settings_percent, state.portraitDistances.percent),
+            canDecrease = state.canDecreasePortraitDistances,
+            canIncrease = state.canIncreasePortraitDistances,
+            onDecrease = onDecreasePortraitDistances,
+            onIncrease = onIncreasePortraitDistances,
+            modifier = Modifier.testTag(SettingsTestTags.PORTRAIT_DISTANCES_STEPPER),
         )
 
         SectionTitle(stringResource(R.string.settings_section_remote))
@@ -883,6 +969,14 @@ private val DEFAULTS = SettingsUiState.Loaded(
     themeMode = ThemeMode.SYSTEM,
     orientation = ScreenOrientation.FOLLOW_SYSTEM,
     fullScreen = true,
+    landscapeSideColumn = DashboardSettings.DEFAULT_LANDSCAPE_SIDE_COLUMN,
+    canDecreaseLandscapeSideColumn = true,
+    canIncreaseLandscapeSideColumn = true,
+    canRestoreLandscapeSideColumn = false,
+    portraitDistances = DashboardSettings.DEFAULT_PORTRAIT_DISTANCES,
+    canDecreasePortraitDistances = false,
+    canIncreasePortraitDistances = true,
+    canRestorePortraitDistances = false,
     remoteModel = RemoteModel.TERRA_PIRATA,
     remoteKeys = RemoteKeys.TERRA_PIRATA,
     roadbookStyle = RoadbookStyle.APP_THEME,
@@ -902,13 +996,22 @@ private val DEFAULTS = SettingsUiState.Loaded(
 )
 
 /**
- * Preview sample: dark theme, horizontal, not full screen, DND2, FIA colors, the shortest
+ * Preview sample: dark theme, horizontal, not full screen, the widest side column and the tallest
+ * distances row, DND2, FIA colors, the shortest
  * threshold, the closest map zoom and a flat map.
  */
 private val CHANGED = SettingsUiState.Loaded(
     themeMode = ThemeMode.DARK,
     orientation = ScreenOrientation.HORIZONTAL,
     fullScreen = false,
+    landscapeSideColumn = ScreenShare.of(40),
+    canDecreaseLandscapeSideColumn = true,
+    canIncreaseLandscapeSideColumn = false,
+    canRestoreLandscapeSideColumn = true,
+    portraitDistances = ScreenShare.of(12),
+    canDecreasePortraitDistances = true,
+    canIncreasePortraitDistances = false,
+    canRestorePortraitDistances = true,
     remoteModel = RemoteModel.DND2,
     remoteKeys = RemoteKeys.DND2,
     roadbookStyle = RoadbookStyle.FIA,
@@ -949,6 +1052,12 @@ private fun SettingsPreview(state: SettingsUiState) {
             onThemeModeChange = {},
             onOrientationChange = {},
             onFullScreenChange = {},
+            onDecreaseLandscapeSideColumn = {},
+            onIncreaseLandscapeSideColumn = {},
+            onRestoreLandscapeSideColumn = {},
+            onDecreasePortraitDistances = {},
+            onIncreasePortraitDistances = {},
+            onRestorePortraitDistances = {},
             onRemoteModelChange = {},
             onAssignCustomKey = { _, _ -> },
             onRoadbookStyleChange = {},

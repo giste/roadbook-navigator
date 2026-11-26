@@ -39,10 +39,14 @@ import dev.giste.roadbook.RoadbookSettings
 import dev.giste.roadbook.RoadbookSettingsSource
 import dev.giste.roadbooknavigator.settings.AppSettings
 import dev.giste.roadbooknavigator.settings.AppSettingsSource
+import dev.giste.roadbooknavigator.settings.DashboardSettings
+import dev.giste.roadbooknavigator.settings.DashboardSettingsSource
 import dev.giste.roadbooknavigator.settings.RemoteSettings
 import dev.giste.roadbooknavigator.settings.RemoteSettingsSource
 import dev.giste.roadbooknavigator.settings.data.AppSettingsDataStore
+import dev.giste.roadbooknavigator.settings.data.DashboardSettingsDataStore
 import dev.giste.roadbooknavigator.settings.data.DataStoreAppSettingsRepository
+import dev.giste.roadbooknavigator.settings.data.DataStoreDashboardSettingsRepository
 import dev.giste.roadbooknavigator.settings.data.DataStoreMapSettingsRepository
 import dev.giste.roadbooknavigator.settings.data.DataStoreRemoteSettingsRepository
 import dev.giste.roadbooknavigator.settings.data.DataStoreRoadbookSettingsRepository
@@ -75,6 +79,18 @@ internal interface SettingsModule {
     fun bindAppSettingsRepository(
         repository: DataStoreAppSettingsRepository,
     ): SettingsRepository<AppSettings>
+
+    /** Provides the stored dashboard settings wherever a [DashboardSettingsSource] is injected. */
+    @Binds
+    fun bindDashboardSettingsSource(
+        repository: DataStoreDashboardSettingsRepository,
+    ): DashboardSettingsSource
+
+    /** Provides the dashboard settings repository to the settings screen, which changes them. */
+    @Binds
+    fun bindDashboardSettingsRepository(
+        repository: DataStoreDashboardSettingsRepository,
+    ): SettingsRepository<DashboardSettings>
 
     /** Provides the stored remote settings wherever a [RemoteSettingsSource] is injected. */
     @Binds
@@ -141,6 +157,22 @@ internal interface SettingsModule {
             @IoDispatcher ioDispatcher: CoroutineDispatcher,
         ): DataStore<Preferences> =
             settingsDataStore(context, ioDispatcher, DataStoreAppSettingsRepository.FILE_NAME)
+
+        /**
+         * Provides the DataStore of the dashboard settings.
+         *
+         * @param context the application context, to locate the file.
+         * @param ioDispatcher the dispatcher DataStore reads and writes the file on.
+         * @return the DataStore stored in the `settings_dashboard` file.
+         */
+        @Provides
+        @Singleton
+        @DashboardSettingsDataStore
+        fun provideDashboardSettingsDataStore(
+            @ApplicationContext context: Context,
+            @IoDispatcher ioDispatcher: CoroutineDispatcher,
+        ): DataStore<Preferences> =
+            settingsDataStore(context, ioDispatcher, DataStoreDashboardSettingsRepository.FILE_NAME)
 
         /**
          * Provides the DataStore of the `:map` settings.

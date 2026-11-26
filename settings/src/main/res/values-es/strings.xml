@@ -10,6 +10,13 @@
     <string name="settings_full_screen_title">Pantalla completa</string>
     <string name="settings_full_screen_description">Oculta las barras de estado y de navegación. Desliza desde el borde de la pantalla para verlas un momento.</string>
 
+    <!-- Dashboard -->
+    <string name="settings_section_dashboard">Panel</string>
+    <string name="settings_landscape_side_column_title">Columna lateral (horizontal)</string>
+    <string name="settings_landscape_side_column_description">Qué parte del ancho de la pantalla ocupan las distancias y el mapa cuando la pantalla es más ancha que alta.</string>
+    <string name="settings_portrait_distances_title">Altura de las distancias (vertical)</string>
+    <string name="settings_portrait_distances_description">Qué parte del alto de la pantalla ocupan el total y el parcial cuando la pantalla es más alta que ancha.</string>
+
     <!-- Remote control -->
     <string name="settings_section_remote">Mando</string>
     <string name="settings_remote_model_title">Modelo de mando</string>
@@ -75,6 +82,7 @@
     <string name="settings_map_tilt_description">Cuánto se inclina el mapa hacia el horizonte. Con 0° se ve desde arriba.</string>
     <!-- An angle in whole degrees: %1$d is the number -->
     <string name="settings_degrees">%1$d°</string>
+    <string name="settings_percent">%1$d %%</string>
 
     <!-- Shown when a changed setting could not be stored -->
     <string name="settings_error_not_saved">No se ha podido guardar el ajuste. Inténtalo de nuevo.</string>

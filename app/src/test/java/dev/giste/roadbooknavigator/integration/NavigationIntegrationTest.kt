@@ -44,7 +44,9 @@ import dev.giste.roadbooknavigator.BuildConfig
 import dev.giste.roadbooknavigator.MainActivity
 import dev.giste.roadbooknavigator.settings.AppSettings
 import dev.giste.roadbooknavigator.settings.AppSettingsSource
+import dev.giste.roadbooknavigator.settings.DashboardSettingsSource
 import dev.giste.roadbooknavigator.settings.ScreenOrientation
+import dev.giste.roadbooknavigator.settings.ScreenShare
 import dev.giste.roadbooknavigator.settings.ThemeMode
 import dev.giste.roadbooknavigator.ui.dashboard.DashboardTestTags
 import dev.giste.roadbooknavigator.ui.requestsSystemBars
@@ -76,6 +78,10 @@ class NavigationIntegrationTest {
 
     @Inject
     lateinit var appSettings: AppSettingsSource
+
+    /** The layout the dashboard receives, as `:settings` provides it. */
+    @Inject
+    lateinit var dashboardSettings: DashboardSettingsSource
 
     /** The settings `:map` receives, as `:settings` provides them. */
     @Inject
@@ -224,6 +230,22 @@ class NavigationIntegrationTest {
     }
 
     @Test
+    fun portraitDistancesIncreased_reachesTheDashboard() {
+        openSettings()
+
+        composeRule.onNode(
+            hasText("+") and hasClickAction() and
+                hasAnyAncestor(hasTestTag(PORTRAIT_DISTANCES_STEPPER_TAG)),
+        ).performScrollTo().performClick()
+        composeRule.waitForIdle()
+
+        // From the default 8 %, one step taller.
+        composeRule.awaitValue(dashboardSettings.settings) {
+            it.portraitDistances == ScreenShare.of(9)
+        }
+    }
+
+    @Test
     fun mapZoomDecreased_reachesTheMap() {
         openSettings()
 
@@ -305,6 +327,12 @@ class NavigationIntegrationTest {
          * `SettingsTestTags.MAP_ZOOM_RESTORE`.
          */
         const val MAP_ZOOM_RESTORE_TAG = "settings_map_zoom_restore"
+
+        /**
+         * The tag of the settings' portrait distances stepper: `:settings`'
+         * `SettingsTestTags.PORTRAIT_DISTANCES_STEPPER`.
+         */
+        const val PORTRAIT_DISTANCES_STEPPER_TAG = "settings_portrait_distances_stepper"
 
         /**
          * The tag of the dark theme's choice, an icon: `:settings`'
