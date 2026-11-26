@@ -195,6 +195,18 @@ class BeerColorSchemeTest {
         "surfaceContainer" to surfaceContainer,
         "surfaceContainerHigh" to surfaceContainerHigh,
         "surfaceContainerHighest" to surfaceContainerHighest,
+        "primaryFixed" to primaryFixed,
+        "primaryFixedDim" to primaryFixedDim,
+        "onPrimaryFixed" to onPrimaryFixed,
+        "onPrimaryFixedVariant" to onPrimaryFixedVariant,
+        "secondaryFixed" to secondaryFixed,
+        "secondaryFixedDim" to secondaryFixedDim,
+        "onSecondaryFixed" to onSecondaryFixed,
+        "onSecondaryFixedVariant" to onSecondaryFixedVariant,
+        "tertiaryFixed" to tertiaryFixed,
+        "tertiaryFixedDim" to tertiaryFixedDim,
+        "onTertiaryFixed" to onTertiaryFixed,
+        "onTertiaryFixedVariant" to onTertiaryFixedVariant,
     )
 
     /** A color in CIELAB: lightness [l] (0–100) and the opponent axes [a] and [b]. */
@@ -292,6 +304,19 @@ class BeerColorSchemeTest {
         "onSurface/surfaceContainerHighest" to (onSurface to surfaceContainerHighest),
         "onSurfaceVariant/surfaceContainerHighest" to
             (onSurfaceVariant to surfaceContainerHighest),
+        "onPrimaryFixed/primaryFixed" to (onPrimaryFixed to primaryFixed),
+        "onPrimaryFixed/primaryFixedDim" to (onPrimaryFixed to primaryFixedDim),
+        "onPrimaryFixedVariant/primaryFixed" to (onPrimaryFixedVariant to primaryFixed),
+        "onPrimaryFixedVariant/primaryFixedDim" to (onPrimaryFixedVariant to primaryFixedDim),
+        "onSecondaryFixed/secondaryFixed" to (onSecondaryFixed to secondaryFixed),
+        "onSecondaryFixed/secondaryFixedDim" to (onSecondaryFixed to secondaryFixedDim),
+        "onSecondaryFixedVariant/secondaryFixed" to (onSecondaryFixedVariant to secondaryFixed),
+        "onSecondaryFixedVariant/secondaryFixedDim" to
+            (onSecondaryFixedVariant to secondaryFixedDim),
+        "onTertiaryFixed/tertiaryFixed" to (onTertiaryFixed to tertiaryFixed),
+        "onTertiaryFixed/tertiaryFixedDim" to (onTertiaryFixed to tertiaryFixedDim),
+        "onTertiaryFixedVariant/tertiaryFixed" to (onTertiaryFixedVariant to tertiaryFixed),
+        "onTertiaryFixedVariant/tertiaryFixedDim" to (onTertiaryFixedVariant to tertiaryFixedDim),
     ).mapNotNull { (name, pair) ->
         val ratio = contrastRatio(pair.first, pair.second)
         if (ratio < MIN_CONTRAST) "$name=%.2f".format(ratio) else null

@@ -43,10 +43,12 @@ import androidx.compose.ui.graphics.Color
 //
 // Each seed gives a tonal palette (CIELAB lightness = Material "tone", seed hue and chroma kept
 // within the sRGB gamut), and every role uses the Material 3 baseline tone for it: e.g. primary
-// is tone 80 in dark and secondary tone 40 in light. The light primary (tone 42) is the exception
-// described above. Every role is set, so no default purple-tinted color
-// leaks in. Light surfaces show the bright gold through primaryContainer (tone 80) because white
-// text on the bright gold itself would be unreadable.
+// is tone 80 in dark and secondary tone 40 in light. The light primary (tone 48) is the exception
+// described above. Every role is set, so no default purple-tinted color leaks in. The fixed roles
+// (primaryFixed and the like) are the same in both schemes, as Material defines them: tones 90
+// (fixed), 80 (fixed dim), 10 (on fixed) and 30 (on fixed variant) of each palette. Light
+// surfaces show the bright gold through primaryContainer (tone 80) because white text on the
+// bright gold itself would be unreadable.
 //
 // BeerColorSchemeTest checks that every content color reaches WCAG AA contrast (4.5:1) on its
 // background, that every brand color stays clearly distinct from its error counterpart, and that
@@ -90,6 +92,18 @@ internal val LightBeerColorScheme: ColorScheme = lightColorScheme(
     surfaceContainer = Color(0xFFF4EDE7),
     surfaceContainerHigh = Color(0xFFEEE7E1),
     surfaceContainerHighest = Color(0xFFE8E1DB),
+    primaryFixed = Color(0xFFFFDDB5),
+    primaryFixedDim = Color(0xFFFFB950),
+    onPrimaryFixed = Color(0xFF271900),
+    onPrimaryFixedVariant = Color(0xFF624000),
+    secondaryFixed = Color(0xFFF5E0BB),
+    secondaryFixedDim = Color(0xFFD8C4A0),
+    onSecondaryFixed = Color(0xFF241A04),
+    onSecondaryFixedVariant = Color(0xFF53452A),
+    tertiaryFixed = Color(0xFFFDDDBA),
+    tertiaryFixedDim = Color(0xFFE0C19F),
+    onTertiaryFixed = Color(0xFF271900),
+    onTertiaryFixedVariant = Color(0xFF594326),
 )
 
 /** Dark scheme: beer gold, soft straw and malt on stout. */
@@ -130,6 +144,18 @@ internal val DarkBeerColorScheme: ColorScheme = darkColorScheme(
     surfaceContainer = Color(0xFF231F1A),
     surfaceContainerHigh = Color(0xFF2E2925),
     surfaceContainerHighest = Color(0xFF39342F),
+    primaryFixed = Color(0xFFFFDDB5),
+    primaryFixedDim = Color(0xFFFFB950),
+    onPrimaryFixed = Color(0xFF271900),
+    onPrimaryFixedVariant = Color(0xFF624000),
+    secondaryFixed = Color(0xFFF5E0BB),
+    secondaryFixedDim = Color(0xFFD8C4A0),
+    onSecondaryFixed = Color(0xFF241A04),
+    onSecondaryFixedVariant = Color(0xFF53452A),
+    tertiaryFixed = Color(0xFFFDDDBA),
+    tertiaryFixedDim = Color(0xFFE0C19F),
+    onTertiaryFixed = Color(0xFF271900),
+    onTertiaryFixedVariant = Color(0xFF594326),
 )
 
 /**
