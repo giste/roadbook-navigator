@@ -49,6 +49,7 @@ import dev.giste.map.MapSettings
 import dev.giste.map.MapZoomLevel
 import dev.giste.map.domain.testMapFile
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -219,7 +220,7 @@ class MapViewerContentTest {
     }
 
     @Test
-    fun mapViewerContent_readyAndShowManageButton_showsItInTheTopEndCorner() {
+    fun mapViewerContent_readyAndShowManageButton_showsItInTheBottomEndCorner() {
         showManageable(ready, showManageButton = true)
 
         val button = rule.onNodeWithTag(MapViewerTestTags.MANAGE)
@@ -227,9 +228,22 @@ class MapViewerContentTest {
             .assertWidthIsEqualTo(56.dp)
             .assertHeightIsEqualTo(56.dp)
             .getUnclippedBoundsInRoot()
-        // Inset by the small spacing from the top and end edges of the 300 dp wide viewer.
-        assertEquals(8.dp, button.top)
-        assertEquals(292.dp, button.right)
+        // Material's 16 dp FAB margin from the bottom and end edges of the 300 × 200 dp viewer.
+        assertEquals(184.dp, button.bottom)
+        assertEquals(284.dp, button.right)
+    }
+
+    @Test
+    fun mapViewerContent_ready_showsTheAttributionInTheBottomStartCornerClearOfTheButton() {
+        showManageable(ready, showManageButton = true)
+
+        val attribution = rule.onNodeWithText("© OpenStreetMap").getUnclippedBoundsInRoot()
+        val button = rule.onNodeWithTag(MapViewerTestTags.MANAGE).getUnclippedBoundsInRoot()
+
+        // The text's own bounds: its background reaches the edge, 4 dp of padding before it.
+        assertEquals(4.dp, attribution.left)
+        assertEquals(200.dp, attribution.bottom)
+        assertTrue("The attribution reaches the button", attribution.right < button.left)
     }
 
     @Test

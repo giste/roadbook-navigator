@@ -45,9 +45,10 @@ import dev.giste.map.ui.viewer.MapViewerContent
  * [MapLocationSource] and a [MapSettingsSource]. If the location needs a permission, show the
  * viewer only once it is granted.
  *
- * With [onManageMaps], a manage button floats in the top end corner: while [showManageButton] is
- * set (e.g. only while the vehicle is stopped), and always when there is no map to draw. The app
- * opens [MapManager] from it. The button never takes the focus.
+ * With [onManageMaps], a manage button floats in the bottom end corner: while
+ * [showManageButton] is set (e.g. only while the vehicle is stopped), and always when there is no
+ * map to draw. The app opens [MapManager] from it. The button never takes the focus. The
+ * OpenStreetMap attribution sits in the bottom start corner.
  *
  * @param modifier the modifier applied to the viewer.
  * @param interactive whether the user may move, zoom, rotate and tilt the map with gestures.
