@@ -15,31 +15,32 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.giste.roadbooknavigator.adapter
+package dev.giste.roadbooknavigator.data.adapter
 
 import dev.giste.geo.LocationFix
 import dev.giste.location.LocationEvent
 import dev.giste.location.LocationSource
-import dev.giste.odometer.OdometerLocationSource
+import dev.giste.map.MapLocationSource
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.map
 
 /**
- * Feeds `:odometer` with the fixes of `:location` (AGENTS.md §4.2).
+ * Feeds `:map` with the fixes of `:location` (AGENTS.md §4.2).
  *
  * Only [LocationEvent.LocationUpdated] carries a fix. Provider changes and errors are dropped:
- * the odometer simply receives no fixes while there are none. Collecting [locations] collects
- * [LocationSource.events], so it must only be collected once the location permission is granted.
- * The odometer collects it only while its state is collected, which the dashboard does behind the
+ * the map simply stays where it is while there are no fixes. `:location` shares one request among
+ * its collectors, so the map and the odometer do not start the GPS twice. Collecting [locations]
+ * collects [LocationSource.events], so it must only be collected once the location permission is
+ * granted: the map collects it only while it is shown, which the dashboard does behind the
  * permission gate.
  *
  * @param locationSource the device location.
  */
-internal class LocationOdometerLocationSource @Inject constructor(
+internal class LocationMapLocationSource @Inject constructor(
     private val locationSource: LocationSource,
-) : OdometerLocationSource {
+) : MapLocationSource {
 
     /** The fixes of [LocationSource.events], in order. It never throws, like its source. */
     override val locations: Flow<LocationFix> = locationSource.events

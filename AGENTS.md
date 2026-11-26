@@ -117,7 +117,7 @@ When several modules need the **same primitive geographic or measurement concept
 
 Some rules belong to no single feature, because they decide how features react to each other, and no feature may know about another. Resetting the odometer when a new roadbook is loaded is one example. These **cross-module rules** live in `:app`. So do **application rules**: this app's own policies on top of the modules' concepts, such as offering to import a roadbook only while the vehicle is stopped. **Rules about one concept** do not: anything about one concept (how distance is accumulated, when a waypoint is reached, how `.rn2` is parsed, when a vehicle counts as stopped) belongs in the feature that owns that concept, so every app that reuses it gets it.
 
-- Implement each rule as a small **coordinator** class in `:app`'s `coordination` package, named after what it coordinates, e.g. `RoadbookOdometerCoordinator`. It collects one module's public outputs (events, flows) and calls another module's public API. It runs in the injected application `CoroutineScope` and starts from the `Application`.
+- Implement each rule as a small **coordinator** class in `:app`'s `domain/coordination` package, named after what it coordinates, e.g. `RoadbookOdometerCoordinator`. It collects one module's public outputs (events, flows) and calls another module's public API. It runs in the injected application `CoroutineScope` and starts from the `Application`.
 - Coordinators use only the modules' public APIs. They follow the same rules as any other code: KDoc, no exceptions escaping flows, injected dispatchers, and tests (see [§10.1](#101-test-types)).
 - If a rule only involves one module's concepts, move it into that module.
 - A rule with real logic (calculations, decisions over several inputs, state machines) is not written inside a coordinator or a ViewModel. It goes in `:app`'s `domain` package, as plain Kotlin with no Android dependencies, following [§5.2](#52-ddd-building-blocks) (e.g. one `VerbNounUseCase` per action, no pass-through use cases), with unit tests. Coordinators and ViewModels call it. A one-line policy, such as showing a button while stopped, may stay where it is used.
@@ -205,16 +205,16 @@ core/
 dev/giste/roadbooknavigator/
 ├── RoadbookNavigatorApplication.kt, MainActivity.kt
 ├── ui/             One sub-package per screen (e.g. ui/dashboard/): composables, ViewModel, UI state
+│   └── permission/ The app's permission definitions for the :core permission gate
 ├── domain/         Application rules (see §4.3), and the models and repository interfaces of what
-│                   `:app` reads itself (e.g. the About screen's library list). Created when first needed
-├── data/           Repository implementations for what `:app` reads itself (see §5.2). Created when first needed
-├── coordination/   Coordinators (see §4.3)
-├── adapter/        Adapters between modules' ports (see §4.2)
-├── permission/     The app's permission definitions for the :core permission gate
+│                   `:app` reads itself (e.g. the About screen's library list)
+│   └── coordination/  Coordinators (see §4.3)
+├── data/           Repository implementations for what `:app` reads itself (see §5.2)
+│   └── adapter/    Adapters between modules' ports (see §4.2)
 └── di/             Hilt modules
 ```
 
-The same visibility rules apply: everything is `internal` or `private`. `domain` and `data` follow the same layering as in a feature module (`ui → domain ← data`), but only for what belongs to no module: anything about a module's concept still goes in that module.
+The same visibility rules apply: everything is `internal` or `private`. `:app` uses the same layers as a feature module (`ui → domain ← data`), but only for what belongs to no module: anything about a module's concept still goes in that module. Its roles keep their own sub-packages inside the layer they belong to: adapters implement other modules' ports, as `data` implements repositories; coordinators orchestrate modules, as use cases do in `domain`; permission definitions carry user-facing texts, so they are `ui`. Each sub-package is created when first needed. These role sub-packages exist whatever their size, as they name a role rather than group files, so the rule to keep small layers flat does not apply to them.
 
 #### `:geo` exception: value objects only
 

@@ -32,7 +32,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import dev.giste.core.permission.PermissionGate
 import dev.giste.core.ui.theme.GisteTheme
-import dev.giste.roadbooknavigator.permission.PreciseLocationPermission
+import dev.giste.roadbooknavigator.ui.permission.PreciseLocationPermission
 import dev.giste.roadbooknavigator.settings.AppSettings
 import dev.giste.roadbooknavigator.settings.AppSettingsSource
 import dev.giste.roadbooknavigator.ui.AppNavHost
