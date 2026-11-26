@@ -5,6 +5,8 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt.android)
+    // Lists the open-source libraries the app ships, with their licences, for the About screen.
+    alias(libs.plugins.aboutlibraries)
 }
 
 android {
@@ -43,6 +45,22 @@ android {
     }
     buildFeatures {
         compose = true
+        // BuildConfig.VERSION_NAME, shown on the About screen.
+        buildConfig = true
+    }
+}
+
+aboutLibraries {
+    // Never reach the network while building: the licence texts come from `aboutlibraries/`.
+    offlineMode = true
+    collect {
+        // The texts of the licences the app's libraries use, and corrections to their metadata.
+        configPath = file("aboutlibraries")
+    }
+    license {
+        // A library under any other licence fails the build, so its text is added first.
+        strictMode = com.mikepenz.aboutlibraries.plugin.StrictMode.FAIL
+        allowedLicenses.addAll("Apache-2.0", "BSD-3-Clause", "LGPL-3.0-or-later")
     }
 }
 
@@ -73,6 +91,8 @@ dependencies {
     // workers of every module are injected.
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.hilt.work)
+    // Reads the list of open-source libraries the AboutLibraries plugin generates.
+    implementation(libs.aboutlibraries.core)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

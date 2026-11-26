@@ -18,7 +18,7 @@ Base package: `dev.giste.roadbooknavigator`. App-specific module packages are `d
 
 ## 2. Hard rules (never break these)
 
-1. **Do not modify `gradle/libs.versions.toml` without the developer's explicit permission.** If a task needs a library or plugin that is not in the catalog, stop and ask. Say which artifact you need, why, and the alternatives you considered. Once you have permission, change only what was approved: add the new entries using the latest stable version, and follow the file's existing naming and ordering. Developers update existing library versions by hand, so do not bump, rename or remove existing entries unless you are explicitly asked to.
+1. **Do not modify `gradle/libs.versions.toml` without the developer's explicit permission.** If a task needs a library or plugin that is not in the catalog, stop and ask. Say which artifact you need, why, its licence, and the alternatives you considered. The app lists every library's licence on its About screen, and a library under a licence the app does not use yet fails the build until that licence's text is added (see the `:app` README). Once you have permission, change only what was approved: add the new entries using the latest stable version, and follow the file's existing naming and ordering. Developers update existing library versions by hand, so do not bump, rename or remove existing entries unless you are explicitly asked to.
 2. **Never hardcode dependency versions** in `build.gradle.kts` files. Always use catalog aliases (`libs.*`).
 3. **Never break the module dependency graph** described in [§4](#4-modules-and-dependency-rules).
 4. **Use explicit API mode** in every library module. Everything that is not part of the module's public API must be `internal` or `private`.
@@ -205,14 +205,16 @@ core/
 dev/giste/roadbooknavigator/
 ├── RoadbookNavigatorApplication.kt, MainActivity.kt
 ├── ui/             One sub-package per screen (e.g. ui/dashboard/): composables, ViewModel, UI state
-├── domain/         Application rules (see §4.3). Created with the first rule that needs it
+├── domain/         Application rules (see §4.3), and the models and repository interfaces of what
+│                   `:app` reads itself (e.g. the About screen's library list). Created when first needed
+├── data/           Repository implementations for what `:app` reads itself (see §5.2). Created when first needed
 ├── coordination/   Coordinators (see §4.3)
 ├── adapter/        Adapters between modules' ports (see §4.2)
 ├── permission/     The app's permission definitions for the :core permission gate
 └── di/             Hilt modules
 ```
 
-The same visibility rules apply: everything is `internal` or `private`.
+The same visibility rules apply: everything is `internal` or `private`. `domain` and `data` follow the same layering as in a feature module (`ui → domain ← data`), but only for what belongs to no module: anything about a module's concept still goes in that module.
 
 #### `:geo` exception: value objects only
 

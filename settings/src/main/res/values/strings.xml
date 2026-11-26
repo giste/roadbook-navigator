@@ -80,6 +80,11 @@
     <!-- An angle in whole degrees: %1$d is the number -->
     <string name="settings_degrees">%1$d°</string>
 
+    <!-- About -->
+    <string name="settings_section_about">About</string>
+    <!-- Opens the About screen: the app, its version and its licences -->
+    <string name="settings_about_open">About and licences</string>
+
     <!-- Shown when a changed setting could not be stored -->
     <string name="settings_error_not_saved">The setting couldn\'t be saved. Try again.</string>
 </resources>

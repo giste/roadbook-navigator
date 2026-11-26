@@ -20,4 +20,28 @@
     <string name="app_odometer_reset_all_confirm">Reset</string>
     <string name="app_action_set">Set</string>
     <string name="app_action_cancel">Cancel</string>
+
+    <!-- About screen, opened from the settings -->
+    <string name="app_about_title">About</string>
+    <!-- The app's version: %1$s is the version name, e.g. 1.0 -->
+    <string name="app_about_version">Version %1$s</string>
+    <string name="app_about_app_licence">Roadbook Navigator is free software, under the GNU General Public License, version 3 or later.</string>
+    <!-- A link to a licence's full text -->
+    <string name="app_about_app_licence_link">Read the licence</string>
+    <string name="app_about_section_map_data">Map data</string>
+    <!-- Fixed: the attribution OpenStreetMap's licence (ODbL) and attribution guidelines require, in these words. -->
+    <string name="app_about_osm_attribution" translatable="false">© OpenStreetMap contributors</string>
+    <string name="app_about_osm_licence">The map data is available under the Open Database License.</string>
+    <!-- A link to OpenStreetMap's copyright and licence page -->
+    <string name="app_about_osm_copyright_link">Copyright and licence</string>
+    <string name="app_about_section_map_renderer">Map renderer</string>
+    <string name="app_about_vtm">The map is drawn with VTM, from the mapsforge project, under the GNU Lesser General Public License, version 3 or later.</string>
+    <string name="app_about_vtm_link">VTM website</string>
+    <string name="app_about_section_libraries">Open-source libraries</string>
+    <string name="app_about_libraries_hint">Tap a library to read its licence.</string>
+    <string name="app_about_libraries_unavailable">The list of libraries couldn\'t be read.</string>
+    <!-- A library's version and licences: %1$s is the version, %2$s the licence names -->
+    <string name="app_about_library_details">%1$s · %2$s</string>
+    <!-- Shown when no app on the device can open a link -->
+    <string name="app_about_link_failed">No app can open this link.</string>
 </resources>

@@ -1,0 +1,42 @@
+{
+  "libraries": [
+    {
+      "uniqueId": "org.mapsforge:vtm",
+      "artifactVersion": "0.25.0",
+      "name": "VTM",
+      "licenses": ["lgpl"]
+    },
+    {
+      "uniqueId": "com.example:no-version",
+      "artifactVersion": "",
+      "name": "another library",
+      "licenses": ["mit", "apache"]
+    },
+    {
+      "uniqueId": "com.squareup.okhttp3:okhttp",
+      "artifactVersion": "5.5.1",
+      "name": "OkHttp",
+      "licenses": ["apache"]
+    }
+  ],
+  "licenses": {
+    "apache": {
+      "hash": "apache",
+      "name": "Apache License 2.0",
+      "url": "https://spdx.org/licenses/Apache-2.0.html",
+      "content": "Apache License text"
+    },
+    "lgpl": {
+      "hash": "lgpl",
+      "name": "GNU Lesser General Public License v3.0 or later",
+      "url": "https://www.gnu.org/licenses/lgpl-3.0.html",
+      "content": "LGPL text"
+    },
+    "mit": {
+      "hash": "mit",
+      "name": "MIT License",
+      "url": "",
+      "content": " "
+    }
+  }
+}

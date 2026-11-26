@@ -20,12 +20,15 @@ package dev.giste.roadbooknavigator.integration
 import android.content.pm.ActivityInfo
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.test.core.app.ApplicationProvider
 import androidx.work.Configuration
 import androidx.work.testing.SynchronousExecutor
@@ -37,6 +40,7 @@ import dagger.hilt.android.testing.HiltTestApplication
 import dev.giste.map.MapDownloadServer
 import dev.giste.map.MapSettingsSource
 import dev.giste.map.MapZoomLevel
+import dev.giste.roadbooknavigator.BuildConfig
 import dev.giste.roadbooknavigator.MainActivity
 import dev.giste.roadbooknavigator.settings.AppSettings
 import dev.giste.roadbooknavigator.settings.AppSettingsSource
@@ -55,8 +59,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Moving between the dashboard, the settings, the map manager and the map downloader in the real
- * app, with the real Hilt graph and location granted.
+ * Moving between the dashboard, the settings, the About screen, the map manager and the map
+ * downloader in the real app, with the real Hilt graph and location granted.
  */
 @HiltAndroidTest
 @RunWith(RobolectricTestRunner::class)
@@ -211,6 +215,36 @@ class NavigationIntegrationTest {
         runBlocking {
             withTimeout(TIMEOUT_MILLIS) { mapSettings.settings.first { it.zoomLevel == MapZoomLevel.of(17) } }
         }
+    }
+
+    /** Opens the About screen from the settings, whose About button is at the end of the list. */
+    private fun openAbout() {
+        openSettings()
+        composeRule.onNode(hasText("About and licences") and hasClickAction()).performScrollTo().performClick()
+        composeRule.awaitText("Version ${BuildConfig.VERSION_NAME}")
+    }
+
+    @Test
+    fun aboutButton_pressedInTheSettings_opensTheAboutScreenWithTheLibraries() {
+        openAbout()
+
+        // A library from the list the AboutLibraries plugin generates for this build.
+        composeRule.onNode(hasScrollAction()).performScrollToNode(hasText("Timber"))
+        composeRule.onNodeWithText("Timber").assertExists()
+    }
+
+    @Test
+    fun systemBack_inTheAbout_returnsToTheSettings() {
+        openAbout()
+        // Leave only once the library list is read. The read runs on the real Dispatchers.IO,
+        // whose threads outlive the test: one still reading the app's resources when Robolectric
+        // tears the test down breaks the DataStore writes of later tests in this JVM.
+        composeRule.onNode(hasScrollAction()).performScrollToNode(hasText("Timber"))
+
+        composeRule.runOnUiThread { composeRule.activity.onBackPressedDispatcher.onBackPressed() }
+
+        composeRule.awaitText("Version ${BuildConfig.VERSION_NAME}", exists = false)
+        composeRule.awaitText("Settings")
     }
 
     /**
