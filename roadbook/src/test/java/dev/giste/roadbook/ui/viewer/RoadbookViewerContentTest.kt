@@ -17,10 +17,14 @@
 
 package dev.giste.roadbook.ui.viewer
 
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.InputModeManager
 import androidx.compose.ui.platform.LocalInputModeManager
@@ -29,27 +33,31 @@ import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasProgressBarRangeInfo
 import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.requestFocus
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.requestFocus
 import androidx.compose.ui.test.swipeUp
+import androidx.compose.ui.unit.dp
 import dev.giste.core.ui.theme.GisteTheme
 import dev.giste.geo.Distance
 import dev.giste.roadbook.ImportRoadbookFailure
+import dev.giste.roadbook.RoadbookStyle
 import dev.giste.roadbook.ShortDistanceThreshold
 import dev.giste.roadbook.domain.roadbook.Roadbook
 import dev.giste.roadbook.domain.roadbook.WaypointNumber
 import dev.giste.roadbook.domain.roadbook.testWaypoint
+import dev.giste.roadbook.ui.theme.FIA_ROADBOOK_COLORS
 import dev.giste.roadbook.ui.waypoint.WaypointTestTags
 import kotlin.math.abs
 import org.junit.Assert.assertEquals
@@ -58,6 +66,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.GraphicsMode
 
 @RunWith(RobolectricTestRunner::class)
 class RoadbookViewerContentTest {
@@ -211,6 +220,53 @@ class RoadbookViewerContentTest {
         button.requestFocus()
 
         button.assert(isFocused().not())
+    }
+
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun importButton_appTheme_isInThePrimaryColor() {
+        var primary = Color.Unspecified
+        rule.setContent {
+            GisteTheme {
+                primary = MaterialTheme.colorScheme.primary
+                ImportButtonOnly(RoadbookStyle.APP_THEME)
+            }
+        }
+
+        assertEquals(primary, importButtonColor())
+    }
+
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun importButton_fiaInDarkMode_isDarkGray() {
+        rule.setContent {
+            GisteTheme(darkTheme = true) {
+                ImportButtonOnly(RoadbookStyle.FIA)
+            }
+        }
+
+        assertEquals(FIA_ROADBOOK_COLORS.action, importButtonColor())
+    }
+
+    /** The viewer of [style] with no roadbook, so only its message and the import button show. */
+    @Composable
+    private fun ImportButtonOnly(style: RoadbookStyle) {
+        RoadbookViewerContent(
+            state = RoadbookUiState(style = style, roadbook = RoadbookContentState.Empty),
+            showImportButton = true,
+            onImportClick = {},
+            onImportFailureShown = {},
+            onSetPartial = {},
+            onScrollStopped = {},
+        )
+    }
+
+    /** The color of the import button's container, read next to its top start corner. */
+    private fun importButtonColor(): Color {
+        val pixels = rule.onNodeWithTag(RoadbookViewerTestTags.IMPORT).captureToImage().toPixelMap()
+        // 8 dp in from the corner: inside the rounded corner, and away from the centered icon.
+        val inset = with(rule.density) { 8.dp.roundToPx() }
+        return pixels[inset, inset]
     }
 
     @Test

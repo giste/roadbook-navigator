@@ -55,6 +55,7 @@ import dev.giste.core.ui.theme.GisteTheme
 import dev.giste.geo.Distance
 import dev.giste.roadbook.ImportRoadbookFailure
 import dev.giste.roadbook.R
+import dev.giste.roadbook.ui.theme.RoadbookColors
 import dev.giste.roadbook.ui.theme.RoadbookTheme
 import dev.giste.roadbook.ui.waypoint.ROW_ASPECT_RATIO
 import dev.giste.roadbook.ui.waypoint.WaypointItem
@@ -231,7 +232,10 @@ private fun NoRoadbook(message: String, modifier: Modifier = Modifier) {
 
 /**
  * The floating button that opens the file picker: a standard Material 3 floating action button,
- * with its default shape and colors, showing only the import icon.
+ * with its default shape, showing only the import icon. It takes the action colors of the
+ * roadbook style ([RoadbookColors.action]), not the app theme's: it sits on the roadbook's paper,
+ * which stays white in the FIA style even in dark mode, where the app's colors would barely stand
+ * out from it.
  *
  * It never takes the focus: it is meant to be touched, and otherwise, when an app drives the
  * screen with keys (e.g. a remote control), an arrow or Tab key it does not handle would move the
@@ -242,6 +246,8 @@ private fun ImportButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val minTouchTarget = GisteTheme.dimensions.minTouchTarget
     FloatingActionButton(
         onClick = onClick,
+        containerColor = RoadbookTheme.colors.action,
+        contentColor = RoadbookTheme.colors.onAction,
         modifier = modifier
             .defaultMinSize(minWidth = minTouchTarget, minHeight = minTouchTarget)
             .focusProperties { canFocus = false }

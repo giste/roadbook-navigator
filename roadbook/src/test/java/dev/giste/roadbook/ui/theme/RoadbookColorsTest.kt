@@ -49,6 +49,8 @@ class RoadbookColorsTest {
                 onShortDistanceSurface = light.onTertiaryContainer,
                 waypointNumberSurface = light.inverseSurface,
                 onWaypointNumberSurface = light.inverseOnSurface,
+                action = light.primary,
+                onAction = light.onPrimary,
             ),
             colors,
         )
@@ -95,6 +97,28 @@ class RoadbookColorsTest {
         assertEquals(Color.Black, FIA_ROADBOOK_COLORS.onSurface)
         assertEquals(Color.Blue, FIA_ROADBOOK_COLORS.track)
         assertEquals(Color.Red, FIA_ROADBOOK_COLORS.danger)
+    }
+
+    @Test
+    fun fiaColors_action_isDarkGrayWithWhiteIcons() {
+        assertEquals(Color(0xFF424242), FIA_ROADBOOK_COLORS.action)
+        assertEquals(Color.White, FIA_ROADBOOK_COLORS.onAction)
+    }
+
+    @Test
+    fun fiaColors_action_standsOutOnThePaper() {
+        assertTrue(
+            contrastRatio(FIA_ROADBOOK_COLORS.action, FIA_ROADBOOK_COLORS.surface) >=
+                MIN_LINE_CONTRAST,
+        )
+    }
+
+    @Test
+    fun fiaColors_onAction_isReadableOnTheAction() {
+        assertTrue(
+            contrastRatio(FIA_ROADBOOK_COLORS.onAction, FIA_ROADBOOK_COLORS.action) >=
+                MIN_LINE_CONTRAST,
+        )
     }
 
     @Test

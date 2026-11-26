@@ -46,6 +46,10 @@ import dev.giste.roadbook.ui.icon.IconColors
  * @property onShortDistanceSurface the distances drawn over [shortDistanceSurface].
  * @property waypointNumberSurface the background of the waypoint number.
  * @property onWaypointNumberSurface the waypoint number, over [waypointNumberSurface].
+ * @property action the container of the floating buttons over the roadbook, such as the import
+ * button: the primary color of the style, so the buttons stand out from the paper in every style
+ * and mode.
+ * @property onAction the icons drawn over [action].
  */
 @Immutable
 internal data class RoadbookColors(
@@ -60,6 +64,8 @@ internal data class RoadbookColors(
     val onShortDistanceSurface: Color,
     val waypointNumberSurface: Color,
     val onWaypointNumberSurface: Color,
+    val action: Color,
+    val onAction: Color,
 ) {
 
     /**
@@ -79,8 +85,10 @@ internal data class RoadbookColors(
 
 /**
  * The colors of FIA paper roadbooks: black ink on white paper, a blue track, red danger marks, a
- * pale green behind waypoints that come soon, and white numbers on black. They do not change with
- * the light and dark modes.
+ * pale green behind waypoints that come soon, and white numbers on black. Floating buttons are
+ * dark gray with white icons: not a FIA color, but it stands out from the paper without taking the
+ * blue of the track, and was preferred on a device to the blue and to black. They do not change
+ * with the light and dark modes.
  */
 internal val FIA_ROADBOOK_COLORS: RoadbookColors = RoadbookColors(
     surface = Color(0xFFFFFFFF),
@@ -94,6 +102,8 @@ internal val FIA_ROADBOOK_COLORS: RoadbookColors = RoadbookColors(
     onShortDistanceSurface = Color(0xFF000000),
     waypointNumberSurface = Color(0xFF000000),
     onWaypointNumberSurface = Color(0xFFFFFFFF),
+    action = Color(0xFF424242),
+    onAction = Color(0xFFFFFFFF),
 )
 
 /** Alpha of the center line of a dual carriageway that is not the track, over the ink color. */
@@ -122,6 +132,10 @@ internal fun roadbookColors(style: RoadbookStyle, colorScheme: ColorScheme): Roa
             onShortDistanceSurface = colorScheme.onTertiaryContainer,
             waypointNumberSurface = colorScheme.inverseSurface,
             onWaypointNumberSurface = colorScheme.inverseOnSurface,
+            // As the app's other floating buttons over content (e.g. the map's): the default
+            // primaryContainer has little contrast on a light surface.
+            action = colorScheme.primary,
+            onAction = colorScheme.onPrimary,
         )
         RoadbookStyle.FIA -> FIA_ROADBOOK_COLORS
     }
