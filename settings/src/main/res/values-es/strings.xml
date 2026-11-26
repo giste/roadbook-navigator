@@ -69,6 +69,17 @@
     <string name="settings_action_decrease">−</string>
     <string name="settings_action_increase">+</string>
 
+    <!-- Map -->
+    <string name="settings_section_map">Mapa</string>
+    <string name="settings_map_zoom_title">Zoom del mapa</string>
+    <string name="settings_map_zoom_description">Lo cerca que se ve el mapa. Cada nivel muestra el terreno el doble de grande que el anterior.</string>
+    <!-- A map zoom level: %1$d is the number, e.g. 18 -->
+    <string name="settings_map_zoom_level">%1$d</string>
+    <string name="settings_map_tilt_title">Inclinación del mapa</string>
+    <string name="settings_map_tilt_description">Cuánto se inclina el mapa hacia el horizonte. Con 0° se ve desde arriba.</string>
+    <!-- An angle in whole degrees: %1$d is the number -->
+    <string name="settings_degrees">%1$d°</string>
+
     <!-- Shown when a changed setting could not be stored -->
     <string name="settings_error_not_saved">No se ha podido guardar el ajuste. Inténtalo de nuevo.</string>
 </resources>

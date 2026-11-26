@@ -32,6 +32,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dev.giste.core.coroutines.IoDispatcher
 import dev.giste.location.LocationSettingsSource
+import dev.giste.map.MapSettings
 import dev.giste.map.MapSettingsSource
 import dev.giste.odometer.OdometerSettingsSource
 import dev.giste.roadbook.RoadbookSettings
@@ -42,11 +43,12 @@ import dev.giste.roadbooknavigator.settings.RemoteSettings
 import dev.giste.roadbooknavigator.settings.RemoteSettingsSource
 import dev.giste.roadbooknavigator.settings.data.AppSettingsDataStore
 import dev.giste.roadbooknavigator.settings.data.DataStoreAppSettingsRepository
+import dev.giste.roadbooknavigator.settings.data.DataStoreMapSettingsRepository
 import dev.giste.roadbooknavigator.settings.data.DataStoreRemoteSettingsRepository
 import dev.giste.roadbooknavigator.settings.data.DataStoreRoadbookSettingsRepository
 import dev.giste.roadbooknavigator.settings.data.FixedLocationSettingsSource
-import dev.giste.roadbooknavigator.settings.data.FixedMapSettingsSource
 import dev.giste.roadbooknavigator.settings.data.FixedOdometerSettingsSource
+import dev.giste.roadbooknavigator.settings.data.MapSettingsDataStore
 import dev.giste.roadbooknavigator.settings.data.RemoteSettingsDataStore
 import dev.giste.roadbooknavigator.settings.data.RoadbookSettingsDataStore
 import dev.giste.roadbooknavigator.settings.domain.SettingsRepository
@@ -96,9 +98,15 @@ internal interface SettingsModule {
     @Binds
     fun bindLocationSettingsSource(source: FixedLocationSettingsSource): LocationSettingsSource
 
-    /** Provides the fixed `:map` settings wherever a [MapSettingsSource] is injected. */
+    /** Provides the stored `:map` settings wherever a [MapSettingsSource] is injected. */
     @Binds
-    fun bindMapSettingsSource(source: FixedMapSettingsSource): MapSettingsSource
+    fun bindMapSettingsSource(repository: DataStoreMapSettingsRepository): MapSettingsSource
+
+    /** Provides the `:map` settings repository to the settings screen, which changes them. */
+    @Binds
+    fun bindMapSettingsRepository(
+        repository: DataStoreMapSettingsRepository,
+    ): SettingsRepository<MapSettings>
 
     /** Provides the fixed `:odometer` settings wherever an [OdometerSettingsSource] is injected. */
     @Binds
@@ -133,6 +141,22 @@ internal interface SettingsModule {
             @IoDispatcher ioDispatcher: CoroutineDispatcher,
         ): DataStore<Preferences> =
             settingsDataStore(context, ioDispatcher, DataStoreAppSettingsRepository.FILE_NAME)
+
+        /**
+         * Provides the DataStore of the `:map` settings.
+         *
+         * @param context the application context, to locate the file.
+         * @param ioDispatcher the dispatcher DataStore reads and writes the file on.
+         * @return the DataStore stored in the `settings_map` file.
+         */
+        @Provides
+        @Singleton
+        @MapSettingsDataStore
+        fun provideMapSettingsDataStore(
+            @ApplicationContext context: Context,
+            @IoDispatcher ioDispatcher: CoroutineDispatcher,
+        ): DataStore<Preferences> =
+            settingsDataStore(context, ioDispatcher, DataStoreMapSettingsRepository.FILE_NAME)
 
         /**
          * Provides the DataStore of the remote control settings.

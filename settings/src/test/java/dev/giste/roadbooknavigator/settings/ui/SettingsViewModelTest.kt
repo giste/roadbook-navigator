@@ -20,6 +20,9 @@ package dev.giste.roadbooknavigator.settings.ui
 import android.view.KeyEvent
 import app.cash.turbine.test
 import dev.giste.geo.Distance
+import dev.giste.map.MapSettings
+import dev.giste.map.MapTilt
+import dev.giste.map.MapZoomLevel
 import dev.giste.roadbook.RoadbookSettings
 import dev.giste.roadbook.RoadbookStyle
 import dev.giste.roadbook.ShortDistanceThreshold
@@ -47,10 +50,11 @@ class SettingsViewModelTest {
     private val app = FakeSettingsRepository(AppSettings())
     private val remote = FakeSettingsRepository(RemoteSettings())
     private val roadbook = FakeSettingsRepository(RoadbookSettings())
+    private val map = FakeSettingsRepository(MapSettings())
 
     // Created in each test, after the rule has replaced Main: viewModelScope takes Main's
     // immediate dispatcher when the ViewModel is created.
-    private val viewModel by lazy { SettingsViewModel(app, remote, roadbook) }
+    private val viewModel by lazy { SettingsViewModel(app, remote, roadbook, map) }
 
     private val defaults = SettingsUiState.Loaded(
         themeMode = ThemeMode.SYSTEM,
@@ -61,6 +65,12 @@ class SettingsViewModelTest {
         shortDistanceThreshold = ShortDistanceThreshold.DEFAULT,
         canDecreaseThreshold = true,
         canIncreaseThreshold = true,
+        mapZoomLevel = MapZoomLevel.DEFAULT,
+        canDecreaseMapZoom = true,
+        canIncreaseMapZoom = true,
+        mapTilt = MapTilt.DEFAULT,
+        canDecreaseMapTilt = true,
+        canIncreaseMapTilt = false,
         saveFailed = false,
     )
 
@@ -218,6 +228,127 @@ class SettingsViewModelTest {
         advanceUntilIdle()
 
         assertEquals(Distance.meters(350.0), roadbook.settings.value.shortDistanceThreshold.distance)
+    }
+
+    // --- Map ---
+
+    @Test
+    fun uiState_farthestOfferedZoom_cannotDecrease() = runTest {
+        map.settings.value = MapSettings(zoomLevel = MapZoomLevel.of(15))
+
+        viewModel.uiState.test {
+            skipItems(1)
+            val state = awaitItem() as SettingsUiState.Loaded
+
+            assertEquals(MapZoomLevel.of(15), state.mapZoomLevel)
+            assertEquals(false, state.canDecreaseMapZoom)
+            assertEquals(true, state.canIncreaseMapZoom)
+        }
+    }
+
+    @Test
+    fun uiState_closestOfferedZoom_cannotIncrease() = runTest {
+        map.settings.value = MapSettings(zoomLevel = MapZoomLevel.of(20))
+
+        viewModel.uiState.test {
+            skipItems(1)
+            val state = awaitItem() as SettingsUiState.Loaded
+
+            assertEquals(true, state.canDecreaseMapZoom)
+            assertEquals(false, state.canIncreaseMapZoom)
+        }
+    }
+
+    @Test
+    fun uiState_flatMap_cannotDecreaseTilt() = runTest {
+        map.settings.value = MapSettings(tilt = MapTilt.of(0.0))
+
+        viewModel.uiState.test {
+            skipItems(1)
+            val state = awaitItem() as SettingsUiState.Loaded
+
+            assertEquals(MapTilt.of(0.0), state.mapTilt)
+            assertEquals(false, state.canDecreaseMapTilt)
+            assertEquals(true, state.canIncreaseMapTilt)
+        }
+    }
+
+    @Test
+    fun uiState_mapSettingsChange_showsThem() = runTest {
+        viewModel.uiState.test {
+            skipItems(2)
+
+            map.settings.value = MapSettings(zoomLevel = MapZoomLevel.of(16), tilt = MapTilt.of(30.0))
+
+            assertEquals(
+                defaults.copy(mapZoomLevel = MapZoomLevel.of(16), mapTilt = MapTilt.of(30.0), canIncreaseMapTilt = true),
+                awaitItem(),
+            )
+        }
+    }
+
+    @Test
+    fun increaseMapZoom_storesOneLevelCloser() = runTest {
+        viewModel.increaseMapZoom()
+        advanceUntilIdle()
+
+        assertEquals(MapZoomLevel.of(19), map.settings.value.zoomLevel)
+    }
+
+    @Test
+    fun decreaseMapZoom_storesOneLevelFarther() = runTest {
+        viewModel.decreaseMapZoom()
+        advanceUntilIdle()
+
+        assertEquals(MapZoomLevel.of(17), map.settings.value.zoomLevel)
+    }
+
+    @Test
+    fun increaseMapZoom_twiceQuickly_storesTwoLevels() = runTest {
+        viewModel.increaseMapZoom()
+        viewModel.increaseMapZoom()
+        advanceUntilIdle()
+
+        assertEquals(MapZoomLevel.of(20), map.settings.value.zoomLevel)
+    }
+
+    @Test
+    fun decreaseMapTilt_storesOneStepFlatter() = runTest {
+        viewModel.decreaseMapTilt()
+        advanceUntilIdle()
+
+        assertEquals(MapTilt.of(55.0), map.settings.value.tilt)
+    }
+
+    @Test
+    fun increaseMapTilt_storesOneStepMore() = runTest {
+        map.settings.value = MapSettings(tilt = MapTilt.of(30.0))
+
+        viewModel.increaseMapTilt()
+        advanceUntilIdle()
+
+        assertEquals(MapTilt.of(35.0), map.settings.value.tilt)
+    }
+
+    @Test
+    fun increaseMapTilt_atTheMost_keepsIt() = runTest {
+        viewModel.increaseMapTilt()
+        advanceUntilIdle()
+
+        assertEquals(MapTilt.of(60.0), map.settings.value.tilt)
+    }
+
+    @Test
+    fun mapChange_notSaved_showsTheSaveError() = runTest {
+        map.failUpdates = true
+
+        viewModel.uiState.test {
+            skipItems(2)
+
+            viewModel.increaseMapZoom()
+
+            assertEquals(defaults.copy(saveFailed = true), awaitItem())
+        }
     }
 
     @Test

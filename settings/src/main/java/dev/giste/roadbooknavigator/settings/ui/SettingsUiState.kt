@@ -17,6 +17,8 @@
 
 package dev.giste.roadbooknavigator.settings.ui
 
+import dev.giste.map.MapTilt
+import dev.giste.map.MapZoomLevel
 import dev.giste.roadbook.RoadbookStyle
 import dev.giste.roadbook.ShortDistanceThreshold
 import dev.giste.roadbooknavigator.settings.RemoteAction
@@ -43,6 +45,12 @@ internal sealed interface SettingsUiState {
      * @property shortDistanceThreshold below which distance a waypoint is highlighted.
      * @property canDecreaseThreshold whether the threshold can get shorter.
      * @property canIncreaseThreshold whether the threshold can get longer.
+     * @property mapZoomLevel how close the map is shown.
+     * @property canDecreaseMapZoom whether the map can be shown farther.
+     * @property canIncreaseMapZoom whether the map can be shown closer.
+     * @property mapTilt how much the map leans towards the horizon.
+     * @property canDecreaseMapTilt whether the map can look more straight down.
+     * @property canIncreaseMapTilt whether the map can lean more.
      * @property saveFailed whether the last change could not be stored, so the screen tells the
      * user until they dismiss it.
      * @property keyMoved the key the last custom assignment took from another action, so the
@@ -57,6 +65,12 @@ internal sealed interface SettingsUiState {
         val shortDistanceThreshold: ShortDistanceThreshold,
         val canDecreaseThreshold: Boolean,
         val canIncreaseThreshold: Boolean,
+        val mapZoomLevel: MapZoomLevel,
+        val canDecreaseMapZoom: Boolean,
+        val canIncreaseMapZoom: Boolean,
+        val mapTilt: MapTilt,
+        val canDecreaseMapTilt: Boolean,
+        val canIncreaseMapTilt: Boolean,
         val saveFailed: Boolean,
         val keyMoved: KeyMove? = null,
     ) : SettingsUiState

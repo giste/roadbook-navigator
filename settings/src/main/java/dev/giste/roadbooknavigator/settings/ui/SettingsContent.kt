@@ -59,6 +59,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import dev.giste.core.ui.theme.GisteTheme
 import dev.giste.geo.Distance
+import dev.giste.map.MapTilt
+import dev.giste.map.MapZoomLevel
 import dev.giste.roadbook.RoadbookStyle
 import dev.giste.roadbook.ShortDistanceThreshold
 import dev.giste.roadbooknavigator.settings.R
@@ -76,6 +78,15 @@ internal object SettingsTestTags {
     /** The back button, which shows an icon instead of text. */
     const val BACK: String = "settings_back"
 
+    /** The short-distance threshold's stepper, whose − and + repeat in the other steppers. */
+    const val THRESHOLD_STEPPER: String = "settings_threshold_stepper"
+
+    /** The map zoom's stepper. */
+    const val MAP_ZOOM_STEPPER: String = "settings_map_zoom_stepper"
+
+    /** The map tilt's stepper. */
+    const val MAP_TILT_STEPPER: String = "settings_map_tilt_stepper"
+
     /**
      * The row of one remote action and its keys, whose texts may repeat in other rows (e.g. "No
      * key").
@@ -88,8 +99,8 @@ internal object SettingsTestTags {
 }
 
 /**
- * The settings screen for [state]: a top bar with a back button, then the appearance and roadbook
- * sections. Every control is at least the minimum touch target high, so it works with gloves.
+ * The settings screen for [state]: a top bar with a back button, then the appearance, remote
+ * control, roadbook and map sections. Every control is at least the minimum touch target high, so it works with gloves.
  *
  * - **Theme:** system, light or dark.
  * - **Screen orientation:** system, vertical or horizontal.
@@ -99,6 +110,8 @@ internal object SettingsTestTags {
  *   action's dialog is open survives configuration changes.
  * - **Roadbook colors:** the app theme or the FIA palette.
  * - **Highlight close waypoints:** the short-distance threshold, changed in steps with − and +.
+ * - **Map zoom** and **map tilt:** how close the map is shown and how much it leans, changed in
+ *   steps with − and + within the ranges the app offers.
  *
  * When [SettingsUiState.Loaded.saveFailed] is set, a snackbar says the change was not stored, and
  * [onSaveErrorShown] is called once it has been shown. Likewise, when
@@ -114,6 +127,10 @@ internal object SettingsTestTags {
  * @param onRoadbookStyleChange called with the roadbook style the user picks.
  * @param onDecreaseThreshold called when the threshold's − is pressed.
  * @param onIncreaseThreshold called when the threshold's + is pressed.
+ * @param onDecreaseMapZoom called when the map zoom's − is pressed.
+ * @param onIncreaseMapZoom called when the map zoom's + is pressed.
+ * @param onDecreaseMapTilt called when the map tilt's − is pressed.
+ * @param onIncreaseMapTilt called when the map tilt's + is pressed.
  * @param onSaveErrorShown called once the save error has been shown.
  * @param onKeyMoveShown called once the notice of a moved key has been shown.
  * @param modifier applied to the root layout.
@@ -129,6 +146,10 @@ internal fun SettingsContent(
     onRoadbookStyleChange: (RoadbookStyle) -> Unit,
     onDecreaseThreshold: () -> Unit,
     onIncreaseThreshold: () -> Unit,
+    onDecreaseMapZoom: () -> Unit,
+    onIncreaseMapZoom: () -> Unit,
+    onDecreaseMapTilt: () -> Unit,
+    onIncreaseMapTilt: () -> Unit,
     onSaveErrorShown: () -> Unit,
     onKeyMoveShown: () -> Unit,
     modifier: Modifier = Modifier,
@@ -185,6 +206,10 @@ internal fun SettingsContent(
                 onRoadbookStyleChange = onRoadbookStyleChange,
                 onDecreaseThreshold = onDecreaseThreshold,
                 onIncreaseThreshold = onIncreaseThreshold,
+                onDecreaseMapZoom = onDecreaseMapZoom,
+                onIncreaseMapZoom = onIncreaseMapZoom,
+                onDecreaseMapTilt = onDecreaseMapTilt,
+                onIncreaseMapTilt = onIncreaseMapTilt,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
@@ -204,6 +229,10 @@ internal fun SettingsContent(
  * @param onRoadbookStyleChange called with the roadbook style the user picks.
  * @param onDecreaseThreshold called when the threshold's − is pressed.
  * @param onIncreaseThreshold called when the threshold's + is pressed.
+ * @param onDecreaseMapZoom called when the map zoom's − is pressed.
+ * @param onIncreaseMapZoom called when the map zoom's + is pressed.
+ * @param onDecreaseMapTilt called when the map tilt's − is pressed.
+ * @param onIncreaseMapTilt called when the map tilt's + is pressed.
  * @param modifier applied to the column.
  */
 @Composable
@@ -216,6 +245,10 @@ private fun SettingsSections(
     onRoadbookStyleChange: (RoadbookStyle) -> Unit,
     onDecreaseThreshold: () -> Unit,
     onIncreaseThreshold: () -> Unit,
+    onDecreaseMapZoom: () -> Unit,
+    onIncreaseMapZoom: () -> Unit,
+    onDecreaseMapTilt: () -> Unit,
+    onIncreaseMapTilt: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val dimensions = GisteTheme.dimensions
@@ -292,6 +325,37 @@ private fun SettingsSections(
             canIncrease = state.canIncreaseThreshold,
             onDecrease = onDecreaseThreshold,
             onIncrease = onIncreaseThreshold,
+            modifier = Modifier.testTag(SettingsTestTags.THRESHOLD_STEPPER),
+        )
+
+        SectionTitle(stringResource(R.string.settings_section_map))
+        SettingTitle(stringResource(R.string.settings_map_zoom_title))
+        Text(
+            text = stringResource(R.string.settings_map_zoom_description),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Stepper(
+            value = stringResource(R.string.settings_map_zoom_level, state.mapZoomLevel.value),
+            canDecrease = state.canDecreaseMapZoom,
+            canIncrease = state.canIncreaseMapZoom,
+            onDecrease = onDecreaseMapZoom,
+            onIncrease = onIncreaseMapZoom,
+            modifier = Modifier.testTag(SettingsTestTags.MAP_ZOOM_STEPPER),
+        )
+        SettingTitle(stringResource(R.string.settings_map_tilt_title))
+        Text(
+            text = stringResource(R.string.settings_map_tilt_description),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Stepper(
+            value = stringResource(R.string.settings_degrees, state.mapTilt.inDegrees.roundToInt()),
+            canDecrease = state.canDecreaseMapTilt,
+            canIncrease = state.canIncreaseMapTilt,
+            onDecrease = onDecreaseMapTilt,
+            onIncrease = onIncreaseMapTilt,
+            modifier = Modifier.testTag(SettingsTestTags.MAP_TILT_STEPPER),
         )
     }
 
@@ -424,6 +488,7 @@ private fun KeyNames(keys: Set<RemoteKey>) {
  * @param canIncrease whether + is enabled.
  * @param onDecrease called when − is pressed.
  * @param onIncrease called when + is pressed.
+ * @param modifier applied to the row.
  */
 @Composable
 private fun Stepper(
@@ -432,12 +497,14 @@ private fun Stepper(
     canIncrease: Boolean,
     onDecrease: () -> Unit,
     onIncrease: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val dimensions = GisteTheme.dimensions
     val buttonModifier = Modifier
         .heightIn(min = dimensions.minTouchTarget)
         .widthIn(min = dimensions.minTouchTarget * 2)
     Row(
+        modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(dimensions.spacingMedium),
     ) {
@@ -573,10 +640,19 @@ private val DEFAULTS = SettingsUiState.Loaded(
     shortDistanceThreshold = ShortDistanceThreshold.DEFAULT,
     canDecreaseThreshold = true,
     canIncreaseThreshold = true,
+    mapZoomLevel = MapZoomLevel.DEFAULT,
+    canDecreaseMapZoom = true,
+    canIncreaseMapZoom = true,
+    mapTilt = MapTilt.DEFAULT,
+    canDecreaseMapTilt = true,
+    canIncreaseMapTilt = false,
     saveFailed = false,
 )
 
-/** Preview sample: dark theme, horizontal, DND2, FIA colors and the shortest threshold. */
+/**
+ * Preview sample: dark theme, horizontal, DND2, FIA colors, the shortest threshold, the closest
+ * map zoom and a flat map.
+ */
 private val CHANGED = SettingsUiState.Loaded(
     themeMode = ThemeMode.DARK,
     orientation = ScreenOrientation.HORIZONTAL,
@@ -586,6 +662,12 @@ private val CHANGED = SettingsUiState.Loaded(
     shortDistanceThreshold = ShortDistanceThreshold.of(Distance.meters(50.0)),
     canDecreaseThreshold = false,
     canIncreaseThreshold = true,
+    mapZoomLevel = MapZoomLevel.of(20),
+    canDecreaseMapZoom = true,
+    canIncreaseMapZoom = false,
+    mapTilt = MapTilt.of(0.0),
+    canDecreaseMapTilt = false,
+    canIncreaseMapTilt = true,
     saveFailed = false,
 )
 
@@ -615,6 +697,10 @@ private fun SettingsPreview(state: SettingsUiState) {
             onRoadbookStyleChange = {},
             onDecreaseThreshold = {},
             onIncreaseThreshold = {},
+            onDecreaseMapZoom = {},
+            onIncreaseMapZoom = {},
+            onDecreaseMapTilt = {},
+            onIncreaseMapTilt = {},
             onSaveErrorShown = {},
             onKeyMoveShown = {},
         )

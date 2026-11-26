@@ -6,11 +6,11 @@ Stores the settings of every feature module and of the app, provides them to eac
 
 ## Responsibility
 
-- Persist the settings of `:roadbook`, in its own DataStore file (AGENTS.md §7).
-- Implement `LocationSettingsSource`, `MapSettingsSource`, `OdometerSettingsSource` and `RoadbookSettingsSource`, and bind them with Hilt, so each module gets its settings as a flow and reacts to every change. The `:location`, `:map` and `:odometer` settings are fixed to their defaults (see Design decisions).
+- Persist the settings of `:map` and `:roadbook`, each in its own DataStore file (AGENTS.md §7).
+- Implement `LocationSettingsSource`, `MapSettingsSource`, `OdometerSettingsSource` and `RoadbookSettingsSource`, and bind them with Hilt, so each module gets its settings as a flow and reacts to every change. The `:location` and `:odometer` settings are fixed to their defaults (see Design decisions).
 - Store the app's own settings (`AppSettings`: the theme mode and the screen orientation) and provide them as `AppSettingsSource`.
 - Store the remote control settings (`RemoteSettings`: the remote model and the custom keys) and provide them as `RemoteSettingsSource`. `:app` acts on the keys while the dashboard is shown.
-- Show the settings screen (`SettingsScreen`), where the rider changes the theme, the screen orientation, the remote control and the roadbook settings.
+- Show the settings screen (`SettingsScreen`), where the rider changes the theme, the screen orientation, the remote control, the map view (zoom and tilt) and the roadbook settings.
 - Never fail: a missing, invalid or unreadable value is the module's default.
 
 It does **not** store runtime state, such as the odometer distances or the loaded roadbook: each module persists its own (AGENTS.md §7). It does **not** navigate: the app decides how the screen is reached and left.
@@ -22,14 +22,14 @@ dev/giste/roadbooknavigator/settings/
 ├── AppSettings, ThemeMode, ScreenOrientation, AppSettingsSource,
 │   RemoteSettings, RemoteModel, RemoteKeys, RemoteKey, RemoteAction,
 │   RemoteSettingsSource, SettingsScreen  ← public API
-├── domain/         SettingsRepository, SettingsUpdateResult, ShortDistanceStep,
+├── domain/         SettingsRepository, SettingsUpdateResult, ShortDistanceStep, MapViewStep,
 │                   CustomKeyAssignment (RemoteKeys.withOnlyKey)
 ├── data/           DataStoreSettingsRepository, SettingsCodec (+ reading helpers),
 │                   DataStoreAppSettingsRepository + AppSettingsCodec,
 │                   DataStoreRemoteSettingsRepository + RemoteSettingsCodec,
+│                   DataStoreMapSettingsRepository + MapSettingsCodec,
 │                   DataStoreRoadbookSettingsRepository + RoadbookSettingsCodec,
-│                   FixedLocationSettingsSource, FixedMapSettingsSource,
-│                   FixedOdometerSettingsSource,
+│                   FixedLocationSettingsSource, FixedOdometerSettingsSource,
 │                   SettingsQualifiers
 ├── ui/             SettingsViewModel, SettingsUiState (+ KeyMove), SettingsContent,
 │                   KeyCaptureDialog (+ isCapturableKey), each with its previews
@@ -63,7 +63,7 @@ Hilt makes every binding available as soon as `:app` depends on `:settings`.
 
 ## Settings
 
-It stores every value of the `:roadbook` settings, the `AppSettings` and the `RemoteSettings`. The `:location`, `:map` and `:odometer` settings are always their modules' defaults, and are not stored. Their meaning, defaults and validation are documented in each module's README.
+It stores every value of the `:map` and `:roadbook` settings, the `AppSettings` and the `RemoteSettings`. The `:location` and `:odometer` settings are always their modules' defaults, and are not stored. Their meaning, defaults and validation are documented in each module's README.
 
 The screen shows every stored setting:
 
@@ -73,17 +73,21 @@ The screen shows every stored setting:
 | Appearance › Screen orientation | `AppSettings.orientation` | System / Vertical / Horizontal |
 | Remote control › Remote | `RemoteSettings.model` | DND2 / Terra Pirata / Custom |
 | Remote control › Keys | `RemoteSettings.keys` | Each action with its keys on a button: disabled (grayed) for DND2 and Terra Pirata; for Custom, it opens `KeyCaptureDialog` |
+| Map › Map zoom | `MapSettings.zoomLevel` | − and + in steps of 1, within 15 – 20 |
+| Map › Map tilt | `MapSettings.tilt` | − and + in steps of 5°, within 0° – 60° |
 | Roadbook › Roadbook colors | `RoadbookSettings.style` | App theme / FIA |
 | Roadbook › Highlight close waypoints | `RoadbookSettings.shortDistanceThreshold` | − and + in steps of 50 m, within 50 m – 1 km |
 
 ## Persisted state
 
-Three Preferences DataStore files, each owned by its repository:
+Four Preferences DataStore files, each owned by its repository:
 
 | File | Key | Type | Value |
 |---|---|---|---|
 | `settings_app` | `theme_mode` | `String` | `AppSettings.themeMode`, by enum name |
 | | `orientation` | `String` | `AppSettings.orientation`, by enum name |
+| `settings_map` | `zoom_level` | `Int` | `MapSettings.zoomLevel` |
+| | `tilt_degrees` | `Double` | `MapSettings.tilt`, in degrees |
 | `settings_remote` | `model` | `String` | `RemoteSettings.model`, by enum name |
 | | `custom_next_waypoint`, `custom_previous_waypoint`, `custom_increase_partial`, `custom_decrease_partial`, `custom_reset_partial` | `String` | The custom key codes of each action, comma-separated and sorted, e.g. `85,126`; empty for an action without keys |
 | `settings_roadbook` | `short_distance_threshold_meters` | `Double` | `RoadbookSettings.shortDistanceThreshold` |
@@ -101,7 +105,7 @@ A key is stored only while its value differs from the default.
 - **Segmented buttons without a check mark.** The selected button's color already marks it, so the label gets the whole button and long names ("Terra Pirata", "Personalizado") fit on a phone with the larger text.
 - **Steppers and segmented buttons, not sliders.** Every control is at least `minTouchTarget` high, and none needs a precise drag, so the screen works with gloves (AGENTS.md §5.3). A slider would be hard to set to an exact value on a moving bike.
 - **The `:location` and `:odometer` settings are fixed.** The app is for motor vehicles, and those modules' defaults are meant for them, so the rider never changes these settings and nothing is stored: `FixedLocationSettingsSource` and `FixedOdometerSettingsSource` always give the defaults, as a `StateFlow` that never completes. Their thresholds would mean little to a rider, and a wrong value would quietly spoil the odometer. If they are ever offered, they become stored settings like the others. Files left by earlier builds (`settings_location`, `settings_odometer`) are ignored.
-- **The `:map` settings are fixed for now.** `FixedMapSettingsSource` gives `MapSettings`' defaults (zoom level 18, tilt 60°), the values the previous app used. Offering them on the settings screen is planned for later; they will then be stored like the others.
+- **The map view offers narrower ranges than `:map` allows.** The screen offers zoom levels 15 to 20 and tilts of 0° to 60° in 5° steps (`MapViewStep`). Below 15 the rider cannot see the next turn, and these steps are what a rider tells apart at a glance. The ranges are this app's rule, so they live here: `:map` keeps the wider limits of its renderer for other apps. A stored value outside the offered ranges, which only an older build or a damaged file can leave, is brought into them when it is read, so the screen and the map always agree. The defaults stay `MapSettings`' (zoom level 18, tilt 60°), the values the previous app used. Buttons to restore a default are planned for later.
 - **The screen does not navigate.** It takes an `onBack` callback; `:app` owns the routes and the back stack.
 - **The remote keys are their own settings group.** They are not part of `AppSettings`: only the dashboard needs them, and only `MainActivity` needs the theme and orientation, so each reads only what it uses, and each file falls back to its defaults on its own. One file per settings model, as for the modules.
 - **Fixed remotes store only their name.** The keys of DND2 and Terra Pirata live in code (`RemoteKeys.DND2`, `RemoteKeys.TERRA_PIRATA`), so stored data can never disagree with them. Only the custom keys are stored, and they stay while another remote is selected, so they come back with Custom. Terra Pirata is the default remote, and the custom keys start as its keys.
@@ -113,8 +117,8 @@ A key is stored only while its value differs from the default.
 
 ## Testing notes
 
-- The codecs are pure: `RoadbookSettingsCodecTest`, `AppSettingsCodecTest` and `RemoteSettingsCodecTest` round-trip settings, check that defaults store nothing, and cover every invalid value.
-- `SettingsViewModelTest` uses `FakeSettingsRepository` (in memory, with failing updates on demand) and `MainDispatcherRule` for every state and action. `ShortDistanceStepTest` covers the steps and their limits, and `CustomKeyAssignmentTest` the key assignment (new key, moved key, own key, several keys). `RemoteKeysTest` and `RemoteSettingsTest` cover the fixed keys, the lookups, a key bound twice, equality, and the keys in use for each model. `SettingsContentTest` runs on Robolectric (SDK 35, set in `src/test/resources/robolectric.properties`): every setting, selected choices (the theme's and the orientation's "System" share their label, so they are told apart by their order), the stepper limits, back, the save error, control sizes and the Spanish texts, plus the custom keys: buttons disabled for DND2 and Terra Pirata and enabled for Custom, opening the dialog, a key pressed in it after the tap that opened it (the touch-mode case), cancel, the open dialog surviving recreation, and the moved-key snackbar. `KeyCaptureDialogTest` covers the dialog on its own (texts, D-pad, volume, modifier and back keys, cancel) and `isCapturableKey`. Keys are sent with `performKeyInput`. It finds controls by their text plus a click action (scrolling to them first, since the screen is longer than the test window), the icon-only back button by `SettingsTestTags.BACK`, and a key name inside its action's row (`SettingsTestTags.keyBinding`). Under Robolectric `KeyEvent.keyCodeToString` gives the bare number, so the fallback key name is compared with what it returns.
-- `DataStoreSettingsRepositoryTest` uses `FakePreferencesDataStore`, which can fail reads and writes on demand, for the shared behavior (through the roadbook repository) and checks that the remote repository reads its own keys. `FixedSettingsSourcesTest` checks that the fixed sources give the defaults and never complete.
+- The codecs are pure: `MapSettingsCodecTest`, `RoadbookSettingsCodecTest`, `AppSettingsCodecTest` and `RemoteSettingsCodecTest` round-trip settings, check that defaults store nothing, and cover every invalid value.
+- `SettingsViewModelTest` uses `FakeSettingsRepository` (in memory, with failing updates on demand) and `MainDispatcherRule` for every state and action. `ShortDistanceStepTest` and `MapViewStepTest` cover the steps and their limits (and, for the map, bringing stored values into the offered ranges), and `CustomKeyAssignmentTest` the key assignment (new key, moved key, own key, several keys). `RemoteKeysTest` and `RemoteSettingsTest` cover the fixed keys, the lookups, a key bound twice, equality, and the keys in use for each model. `SettingsContentTest` runs on Robolectric (SDK 35, set in `src/test/resources/robolectric.properties`): every setting, selected choices (the theme's and the orientation's "System" share their label, so they are told apart by their order), the stepper limits, back, the save error, control sizes and the Spanish texts, plus the custom keys: buttons disabled for DND2 and Terra Pirata and enabled for Custom, opening the dialog, a key pressed in it after the tap that opened it (the touch-mode case), cancel, the open dialog surviving recreation, and the moved-key snackbar. `KeyCaptureDialogTest` covers the dialog on its own (texts, D-pad, volume, modifier and back keys, cancel) and `isCapturableKey`. Keys are sent with `performKeyInput`. It finds controls by their text plus a click action (scrolling to them first, since the screen is longer than the test window), the icon-only back button by `SettingsTestTags.BACK`, the steppers' buttons and values inside their stepper (`SettingsTestTags.THRESHOLD_STEPPER`, `MAP_ZOOM_STEPPER`, `MAP_TILT_STEPPER`), and a key name inside its action's row (`SettingsTestTags.keyBinding`). Under Robolectric `KeyEvent.keyCodeToString` gives the bare number, so the fallback key name is compared with what it returns.
+- `DataStoreSettingsRepositoryTest` uses `FakePreferencesDataStore`, which can fail reads and writes on demand, for the shared behavior (through the roadbook repository) and checks that the remote and map repositories read their own keys. `FixedSettingsSourcesTest` checks that the fixed sources give the defaults and never complete.
 - `DataStoreSettingsRepositoryIntegrationTest` uses a real DataStore file in a `TemporaryFolder`, through the roadbook repository, and closes and reopens it to check that the settings survive. DataStore allows one open instance per file, so each instance runs in its own `Job`.
 - `:core` does not share its test doubles, so `FakeLogger` lives in this module's test source set.

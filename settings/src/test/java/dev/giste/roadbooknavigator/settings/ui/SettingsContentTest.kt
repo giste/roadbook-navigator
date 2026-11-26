@@ -40,6 +40,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.height
 import dev.giste.core.ui.theme.GisteTheme
 import dev.giste.geo.Distance
+import dev.giste.map.MapTilt
+import dev.giste.map.MapZoomLevel
 import dev.giste.roadbook.RoadbookStyle
 import dev.giste.roadbook.ShortDistanceThreshold
 import dev.giste.roadbooknavigator.settings.RemoteAction
@@ -75,6 +77,12 @@ class SettingsContentTest {
         shortDistanceThreshold = ShortDistanceThreshold.DEFAULT,
         canDecreaseThreshold = true,
         canIncreaseThreshold = true,
+        mapZoomLevel = MapZoomLevel.DEFAULT,
+        canDecreaseMapZoom = true,
+        canIncreaseMapZoom = true,
+        mapTilt = MapTilt.DEFAULT,
+        canDecreaseMapTilt = true,
+        canIncreaseMapTilt = false,
         saveFailed = false,
     )
 
@@ -91,6 +99,10 @@ class SettingsContentTest {
                     onRoadbookStyleChange = { calls += "style $it" },
                     onDecreaseThreshold = { calls += "decrease" },
                     onIncreaseThreshold = { calls += "increase" },
+                    onDecreaseMapZoom = { calls += "zoom out" },
+                    onIncreaseMapZoom = { calls += "zoom in" },
+                    onDecreaseMapTilt = { calls += "tilt down" },
+                    onIncreaseMapTilt = { calls += "tilt up" },
                     onSaveErrorShown = { calls += "errorShown" },
                     onKeyMoveShown = { calls += "keyMoveShown" },
                 )
@@ -101,6 +113,16 @@ class SettingsContentTest {
     /** The clickable control labeled [text], e.g. a segmented button or a stepper button. */
     private fun control(text: String) =
         composeRule.onNode(hasText(text) and hasClickAction()).performScrollTo()
+
+    /** The button [text] (− or +) of the stepper tagged [stepper]. */
+    private fun stepperButton(stepper: String, text: String) = composeRule.onNode(
+        hasText(text) and hasClickAction() and hasAnyAncestor(hasTestTag(stepper)),
+    ).performScrollTo()
+
+    /** The value the stepper tagged [stepper] shows. */
+    private fun stepperValue(stepper: String, text: String) = composeRule.onNode(
+        hasText(text) and hasAnyAncestor(hasTestTag(stepper)),
+    ).performScrollTo()
 
     /** The text [text] in the row of [action] and its keys. */
     private fun inBinding(action: RemoteAction, text: String) = composeRule.onNode(
@@ -342,6 +364,10 @@ class SettingsContentTest {
                     onRoadbookStyleChange = {},
                     onDecreaseThreshold = {},
                     onIncreaseThreshold = {},
+                    onDecreaseMapZoom = {},
+                    onIncreaseMapZoom = {},
+                    onDecreaseMapTilt = {},
+                    onIncreaseMapTilt = {},
                     onSaveErrorShown = {},
                     onKeyMoveShown = {},
                 )
@@ -379,8 +405,8 @@ class SettingsContentTest {
     fun settingsContent_stepperPressed_reportsIt() {
         show(defaults)
 
-        control("−").performClick()
-        control("+").performClick()
+        stepperButton(SettingsTestTags.THRESHOLD_STEPPER, "−").performClick()
+        stepperButton(SettingsTestTags.THRESHOLD_STEPPER, "+").performClick()
 
         assertEquals(listOf("decrease", "increase"), calls)
     }
@@ -394,17 +420,67 @@ class SettingsContentTest {
             ),
         )
 
-        composeRule.onNodeWithText("50 m").assertExists()
-        control("−").assertIsNotEnabled()
-        control("+").assertIsEnabled()
+        stepperValue(SettingsTestTags.THRESHOLD_STEPPER, "50 m").assertExists()
+        stepperButton(SettingsTestTags.THRESHOLD_STEPPER, "−").assertIsNotEnabled()
+        stepperButton(SettingsTestTags.THRESHOLD_STEPPER, "+").assertIsEnabled()
     }
 
     @Test
     fun settingsContent_longestThreshold_disablesIncrease() {
         show(defaults.copy(canIncreaseThreshold = false))
 
-        control("−").assertIsEnabled()
-        control("+").assertIsNotEnabled()
+        stepperButton(SettingsTestTags.THRESHOLD_STEPPER, "−").assertIsEnabled()
+        stepperButton(SettingsTestTags.THRESHOLD_STEPPER, "+").assertIsNotEnabled()
+    }
+
+    @Test
+    fun settingsContent_mapSettings_showTheirValues() {
+        show(defaults)
+
+        composeRule.onNodeWithText("Map zoom").performScrollTo().assertExists()
+        stepperValue(SettingsTestTags.MAP_ZOOM_STEPPER, "18").assertExists()
+        composeRule.onNodeWithText("Map tilt").performScrollTo().assertExists()
+        stepperValue(SettingsTestTags.MAP_TILT_STEPPER, "60°").assertExists()
+    }
+
+    @Test
+    fun settingsContent_mapSteppersPressed_reportThem() {
+        show(defaults.copy(canIncreaseMapTilt = true))
+
+        stepperButton(SettingsTestTags.MAP_ZOOM_STEPPER, "−").performClick()
+        stepperButton(SettingsTestTags.MAP_ZOOM_STEPPER, "+").performClick()
+        stepperButton(SettingsTestTags.MAP_TILT_STEPPER, "−").performClick()
+        stepperButton(SettingsTestTags.MAP_TILT_STEPPER, "+").performClick()
+
+        assertEquals(listOf("zoom out", "zoom in", "tilt down", "tilt up"), calls)
+    }
+
+    @Test
+    fun settingsContent_mapAtTheLimits_disablesTheirButtons() {
+        show(
+            defaults.copy(
+                mapZoomLevel = MapZoomLevel.of(20),
+                canIncreaseMapZoom = false,
+                mapTilt = MapTilt.of(0.0),
+                canDecreaseMapTilt = false,
+                canIncreaseMapTilt = true,
+            ),
+        )
+
+        stepperValue(SettingsTestTags.MAP_ZOOM_STEPPER, "20").assertExists()
+        stepperButton(SettingsTestTags.MAP_ZOOM_STEPPER, "−").assertIsEnabled()
+        stepperButton(SettingsTestTags.MAP_ZOOM_STEPPER, "+").assertIsNotEnabled()
+        stepperValue(SettingsTestTags.MAP_TILT_STEPPER, "0°").assertExists()
+        stepperButton(SettingsTestTags.MAP_TILT_STEPPER, "−").assertIsNotEnabled()
+        stepperButton(SettingsTestTags.MAP_TILT_STEPPER, "+").assertIsEnabled()
+    }
+
+    @Test
+    fun settingsContent_defaultTilt_cannotIncrease() {
+        show(defaults)
+
+        stepperButton(SettingsTestTags.MAP_TILT_STEPPER, "−").assertIsEnabled()
+        stepperButton(SettingsTestTags.MAP_TILT_STEPPER, "+").assertIsNotEnabled()
     }
 
     @Test
@@ -431,9 +507,20 @@ class SettingsContentTest {
     fun settingsContent_controls_areAtLeastTheMinimumTouchTarget() {
         show(defaults)
 
-        listOf("Dark", "Horizontal", "Terra Pirata", "FIA", "−", "+").forEach { label ->
+        listOf("Dark", "Horizontal", "Terra Pirata", "FIA").forEach { label ->
             val height = control(label).getUnclippedBoundsInRoot().height
             assertTrue("$label is $height high", height >= 56.dp)
+        }
+        val steppers = listOf(
+            SettingsTestTags.THRESHOLD_STEPPER,
+            SettingsTestTags.MAP_ZOOM_STEPPER,
+            SettingsTestTags.MAP_TILT_STEPPER,
+        )
+        steppers.forEach { stepper ->
+            listOf("−", "+").forEach { label ->
+                val height = stepperButton(stepper, label).getUnclippedBoundsInRoot().height
+                assertTrue("$stepper $label is $height high", height >= 56.dp)
+            }
         }
         val back = composeRule.onNodeWithTag(SettingsTestTags.BACK).getUnclippedBoundsInRoot()
         assertTrue("Back is ${back.height} high", back.height >= 56.dp)
@@ -475,6 +562,9 @@ class SettingsContentTest {
         inBinding(RemoteAction.NEXT_WAYPOINT, "Viñeta siguiente").assertExists()
         inBinding(RemoteAction.NEXT_WAYPOINT, "Cruceta arriba").assertExists()
         composeRule.onNodeWithText("Resaltar viñetas cercanas").assertExists()
+        composeRule.onNodeWithText("Mapa").performScrollTo().assertExists()
+        composeRule.onNodeWithText("Zoom del mapa").performScrollTo().assertExists()
+        composeRule.onNodeWithText("Inclinación del mapa").performScrollTo().assertExists()
     }
 
     private companion object {
