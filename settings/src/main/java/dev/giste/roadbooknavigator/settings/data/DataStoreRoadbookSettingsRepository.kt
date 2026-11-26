@@ -27,6 +27,7 @@ import dev.giste.roadbook.RoadbookSettings
 import dev.giste.roadbook.RoadbookSettingsSource
 import dev.giste.roadbook.RoadbookStyle
 import dev.giste.roadbook.ShortDistanceThreshold
+import dev.giste.roadbooknavigator.settings.domain.withinOfferedRange
 import javax.inject.Inject
 
 /**
@@ -51,8 +52,10 @@ internal class DataStoreRoadbookSettingsRepository @Inject constructor(
 /**
  * [SettingsCodec] of [RoadbookSettings].
  *
- * A stored threshold outside [ShortDistanceThreshold.RANGE] is brought into it with
- * [ShortDistanceThreshold.coerce], as that type asks for values read from storage.
+ * A stored threshold is brought into [ShortDistanceThreshold.RANGE] with
+ * [ShortDistanceThreshold.coerce], as that type asks for values read from storage, and then into
+ * the narrower range the settings screen offers ([withinOfferedRange]), so the screen and the
+ * roadbook always agree.
  */
 internal object RoadbookSettingsCodec : SettingsCodec<RoadbookSettings> {
 
@@ -72,7 +75,7 @@ internal object RoadbookSettingsCodec : SettingsCodec<RoadbookSettings> {
             logger,
         )
         return RoadbookSettings(
-            shortDistanceThreshold = ShortDistanceThreshold.coerce(distance),
+            shortDistanceThreshold = ShortDistanceThreshold.coerce(distance).withinOfferedRange(),
             style = preferences.readEnum(STYLE_KEY, default.style, logger),
         )
     }

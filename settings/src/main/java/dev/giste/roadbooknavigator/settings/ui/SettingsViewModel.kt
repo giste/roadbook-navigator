@@ -35,6 +35,8 @@ import dev.giste.roadbooknavigator.settings.ScreenOrientation
 import dev.giste.roadbooknavigator.settings.ThemeMode
 import dev.giste.roadbooknavigator.settings.domain.MAP_TILT_RANGE
 import dev.giste.roadbooknavigator.settings.domain.MAP_ZOOM_RANGE
+import dev.giste.roadbooknavigator.settings.domain.SHORT_DISTANCE_MAX
+import dev.giste.roadbooknavigator.settings.domain.SHORT_DISTANCE_MIN
 import dev.giste.roadbooknavigator.settings.domain.SettingsRepository
 import dev.giste.roadbooknavigator.settings.domain.SettingsUpdateResult
 import dev.giste.roadbooknavigator.settings.domain.stepped
@@ -94,9 +96,9 @@ internal class SettingsViewModel @Inject constructor(
             roadbookStyle = roadbook.style,
             shortDistanceThreshold = roadbook.shortDistanceThreshold,
             canDecreaseShortDistanceThreshold =
-                roadbook.shortDistanceThreshold > ShortDistanceThreshold.MIN,
+                roadbook.shortDistanceThreshold > SHORT_DISTANCE_MIN,
             canIncreaseShortDistanceThreshold =
-                roadbook.shortDistanceThreshold < ShortDistanceThreshold.MAX,
+                roadbook.shortDistanceThreshold < SHORT_DISTANCE_MAX,
             canRestoreShortDistanceThreshold =
                 roadbook.shortDistanceThreshold != ShortDistanceThreshold.DEFAULT,
             mapZoomLevel = map.zoomLevel,

@@ -26,6 +26,8 @@ import dev.giste.roadbook.ShortDistanceThreshold
 import dev.giste.roadbooknavigator.settings.FakeLogger
 import dev.giste.roadbooknavigator.settings.data.RoadbookSettingsCodec.SHORT_DISTANCE_THRESHOLD_KEY
 import dev.giste.roadbooknavigator.settings.data.RoadbookSettingsCodec.STYLE_KEY
+import dev.giste.roadbooknavigator.settings.domain.SHORT_DISTANCE_MAX
+import dev.giste.roadbooknavigator.settings.domain.SHORT_DISTANCE_MIN
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -62,13 +64,40 @@ class RoadbookSettingsCodecTest {
     }
 
     @Test
-    fun read_thresholdAboveTheRange_isTheLongestThreshold() {
+    fun read_thresholdAboveTheRange_isTheLongestOffered() {
         val settings = RoadbookSettingsCodec.read(
             preferencesOf(SHORT_DISTANCE_THRESHOLD_KEY to 5_000.0),
             logger,
         )
 
-        assertEquals(ShortDistanceThreshold.MAX, settings.shortDistanceThreshold)
+        assertEquals(SHORT_DISTANCE_MAX, settings.shortDistanceThreshold)
+    }
+
+    @Test
+    fun read_thresholdAboveTheOfferedRange_isTheLongestOffered() {
+        // 1 km: valid for :roadbook, and offered by earlier versions.
+        val settings = RoadbookSettingsCodec.read(
+            preferencesOf(SHORT_DISTANCE_THRESHOLD_KEY to 1_000.0),
+            logger,
+        )
+
+        assertEquals(SHORT_DISTANCE_MAX, settings.shortDistanceThreshold)
+    }
+
+    @Test
+    fun read_thresholdBelowTheOfferedRange_isTheShortestOffered() {
+        val settings =
+            RoadbookSettingsCodec.read(preferencesOf(SHORT_DISTANCE_THRESHOLD_KEY to 50.0), logger)
+
+        assertEquals(SHORT_DISTANCE_MIN, settings.shortDistanceThreshold)
+    }
+
+    @Test
+    fun read_thresholdInTheOfferedRange_isKept() {
+        val settings =
+            RoadbookSettingsCodec.read(preferencesOf(SHORT_DISTANCE_THRESHOLD_KEY to 400.0), logger)
+
+        assertEquals(400.0, settings.shortDistanceThreshold.distance.inMeters, 0.0)
     }
 
     @Test

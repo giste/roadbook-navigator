@@ -37,17 +37,49 @@ class ShortDistanceStepTest {
     }
 
     @Test
-    fun stepped_belowTheMinimum_staysAtTheMinimum() {
-        assertEquals(ShortDistanceThreshold.MIN, ShortDistanceThreshold.MIN.stepped(-1))
+    fun offeredRange_is100To500Meters() {
+        assertEquals(threshold(100.0), SHORT_DISTANCE_MIN)
+        assertEquals(threshold(500.0), SHORT_DISTANCE_MAX)
     }
 
     @Test
-    fun stepped_aboveTheMaximum_staysAtTheMaximum() {
-        assertEquals(ShortDistanceThreshold.MAX, ShortDistanceThreshold.MAX.stepped(1))
+    fun stepped_belowTheOfferedMinimum_staysAtIt() {
+        assertEquals(SHORT_DISTANCE_MIN, SHORT_DISTANCE_MIN.stepped(-1))
     }
 
     @Test
-    fun stepped_manyStepsDown_staysAtTheMinimum() {
-        assertEquals(ShortDistanceThreshold.MIN, threshold(250.0).stepped(-100))
+    fun stepped_aboveTheOfferedMaximum_staysAtIt() {
+        assertEquals(SHORT_DISTANCE_MAX, SHORT_DISTANCE_MAX.stepped(1))
+    }
+
+    @Test
+    fun stepped_manyStepsDown_staysAtTheOfferedMinimum() {
+        assertEquals(SHORT_DISTANCE_MIN, threshold(250.0).stepped(-100))
+    }
+
+    @Test
+    fun stepped_manyStepsUp_staysAtTheOfferedMaximum() {
+        assertEquals(SHORT_DISTANCE_MAX, threshold(250.0).stepped(100))
+    }
+
+    @Test
+    fun stepped_fromOutsideTheOfferedRange_landsInIt() {
+        // A value an older version stored, which the codec would already have brought in.
+        assertEquals(SHORT_DISTANCE_MAX, ShortDistanceThreshold.MAX.stepped(-1))
+    }
+
+    @Test
+    fun withinOfferedRange_shorter_isTheOfferedMinimum() {
+        assertEquals(SHORT_DISTANCE_MIN, ShortDistanceThreshold.MIN.withinOfferedRange())
+    }
+
+    @Test
+    fun withinOfferedRange_longer_isTheOfferedMaximum() {
+        assertEquals(SHORT_DISTANCE_MAX, ShortDistanceThreshold.MAX.withinOfferedRange())
+    }
+
+    @Test
+    fun withinOfferedRange_inside_isKept() {
+        assertEquals(threshold(350.0), threshold(350.0).withinOfferedRange())
     }
 }
